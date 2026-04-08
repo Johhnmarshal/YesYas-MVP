@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Fields: uid, displayName, email, partnerUid, connectionCode, isPaired, createdAt
+    //
+    // Collection: /desires/{desireId}
+    // Fields: id, title, description, category
+    //
+    // Collection: /users/{userId}/preferences/{desireId}
+    // Fields: userId, desireId, preference, updatedAt
+    //
+    // Collection: /pairs/{pairId}/matches/{desireId}
+    // Fields: pairId, desireId, createdAt
+    //
+    // Collection: /pairs/{pairId}/journal/{entryId}
+    // Fields: authorId, partnerId, content, isPrivate, mood, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "OluwaMarshal@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isPairMember(pairId) {
+      // pairId is expected to be "uid1_uid2" where uid1 < uid2
+      return isAuthenticated() && (
+        pairId.matches("^" + request.auth.uid + "_.*") || 
+        pairId.matches(".*_" + request.auth.uid + "$")
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidPreference(data) {
+      return data.keys().hasAll(['userId', 'desireId', 'preference']) &&
+             data.userId == request.auth.uid &&
+             data.preference in ['Yes', 'Maybe', 'No'];
+    }
+
+    function isValidJournalEntry(data) {
+      return data.keys().hasAll(['authorId', 'content', 'isPrivate']) &&
+             data.authorId == request.auth.uid &&
+             data.content is string && data.content.size() < 5000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Allow reading any profile if authenticated (needed for pairing search)
+      // In production, consider splitting public/private profile data
+      allow read: if isAuthenticated(); 
+      
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      // Allow a user to update their own profile, OR allow a user to update 
+      // another user's profile ONLY to set the partnerUid during pairing
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data)) || 
+                    (isAuthenticated() && 
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPaired', 'partnerUid']) &&
+                     request.resource.data.partnerUid == request.auth.uid &&
+                     resource.data.isPaired == false) ||
+                    isAdmin();
+    }
+
+    match /desires/{desireId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId}/preferences/{desireId} {
+      allow read, write: if isOwner(userId) && isValidPreference(request.resource.data);
+    }
+
+    match /pairs/{pairId}/matches/{desireId} {
+      allow read: if isPairMember(pairId);
+      allow write: if isPairMember(pairId); // In a real app, this might be triggered by a cloud function or validated strictly
+    }
+
+    match /pairs/{pairId}/journal/{entryId} {
+      allow read: if isPairMember(pairId) && (!resource.data.isPrivate || resource.data.authorId == request.auth.uid);
+      allow create: if isPairMember(pairId) && isValidJournalEntry(request.resource.data);
+      allow update: if isPairMember(pairId) && resource.data.authorId == request.auth.uid && isValidJournalEntry(request.resource.data);
+      allow delete: if isPairMember(pairId) && resource.data.authorId == request.auth.uid;
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  
+  --color-sunset-gold: #FFB347;
+  --color-deep-plum: #5D3A6B;
+  --color-soft-sage: #D6E8D2;
+  --color-moonlit-cream: #FAF3E0;
+}
+
+@layer base {
+  body {
+    @apply bg-moonlit-cream text-deep-plum font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
+}
+
+.nature-gradient {
+  background: linear-gradient(135deg, var(--color-moonlit-cream) 0%, var(--color-soft-sage) 100%);
+}
+
+.glass-card {
+  @apply bg-white/40 backdrop-blur-md border border-white/20 rounded-3xl shadow-xl;
+}

@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and pairing information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "format": "email", "description": "User's email" },
+        "partnerUid": { "type": "string", "description": "UID of the paired partner" },
+        "connectionCode": { "type": "string", "description": "Unique code for pairing" },
+        "isPaired": { "type": "boolean", "description": "Whether the user is paired" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "Desire": {
+      "title": "Desire",
+      "description": "A specific activity or desire from the library",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["Physical", "Emotional", "Adventurous", "Sensual"] }
+      },
+      "required": ["id", "title", "category"]
+    },
+    "UserDesire": {
+      "title": "UserDesire",
+      "description": "A user's private preference for a desire",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "desireId": { "type": "string" },
+        "preference": { "type": "string", "enum": ["Yes", "Maybe", "No"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "desireId", "preference"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A mutual 'Yes' between partners",
+      "type": "object",
+      "properties": {
+        "pairId": { "type": "string", "description": "Sorted combination of partner UIDs" },
+        "desireId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pairId", "desireId"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "A shared or private journal entry",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "partnerId": { "type": "string" },
+        "content": { "type": "string" },
+        "isPrivate": { "type": "boolean" },
+        "mood": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "content", "isPrivate"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/desires/{desireId}": {
+      "schema": "Desire",
+      "description": "Global library of desires"
+    },
+    "/users/{userId}/preferences/{desireId}": {
+      "schema": "UserDesire",
+      "description": "User's private preferences"
+    },
+    "/pairs/{pairId}/matches/{desireId}": {
+      "schema": "Match",
+      "description": "Mutual matches for a pair"
+    },
+    "/pairs/{pairId}/journal/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "Shared journal entries for a pair"
+    }
+  }
+}
