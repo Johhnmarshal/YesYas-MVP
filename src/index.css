@@ -8,11 +8,12 @@
   --color-deep-plum: #5D3A6B;
   --color-soft-sage: #D6E8D2;
   --color-moonlit-cream: #FAF3E0;
+  --color-oxblood: #4A0404;
 }
 
 @layer base {
   body {
-    @apply bg-moonlit-cream text-deep-plum font-sans antialiased;
+    @apply bg-oxblood text-moonlit-cream font-sans antialiased;
   }
   
   h1, h2, h3, h4 {
@@ -21,9 +22,9 @@
 }
 
 .nature-gradient {
-  background: linear-gradient(135deg, var(--color-moonlit-cream) 0%, var(--color-soft-sage) 100%);
+  background: linear-gradient(135deg, var(--color-oxblood) 0%, #2A0202 100%);
 }
 
 .glass-card {
-  @apply bg-white/40 backdrop-blur-md border border-white/20 rounded-3xl shadow-xl;
+  @apply bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl;
 }

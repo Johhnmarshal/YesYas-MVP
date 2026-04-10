@@ -31,7 +31,7 @@ export default function App() {
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-serif mb-6 text-deep-plum"
+            className="text-5xl font-serif mb-6 text-moonlit-cream"
           >
             Reconnect with <br /> <span className="text-sunset-gold italic">Intention</span>
           </motion.h2>
@@ -64,14 +64,14 @@ export default function App() {
           <div className="bg-white/40 backdrop-blur-sm p-1 rounded-full flex gap-1 border border-white/20 shadow-sm">
             <button 
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-deep-plum text-white shadow-md' : 'hover:bg-white/40 opacity-60'}`}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-sunset-gold text-oxblood shadow-md' : 'hover:bg-white/10 opacity-60'}`}
             >
               <LayoutDashboard size={16} />
               Dashboard
             </button>
             <button 
               onClick={() => setActiveTab('library')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'library' ? 'bg-deep-plum text-white shadow-md' : 'hover:bg-white/40 opacity-60'}`}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'library' ? 'bg-sunset-gold text-oxblood shadow-md' : 'hover:bg-white/10 opacity-60'}`}
             >
               <Library size={16} />
               Library

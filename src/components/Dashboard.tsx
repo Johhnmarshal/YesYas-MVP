@@ -73,13 +73,13 @@ export const Dashboard: React.FC = () => {
               value={newEntry}
               onChange={(e) => setNewEntry(e.target.value)}
               placeholder="What's on your mind? Share a thought or a feeling..."
-              className="w-full p-4 bg-white/50 border border-white/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-soft-sage min-h-[100px] resize-none"
+              className="w-full p-4 bg-white/10 border border-white/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-soft-sage min-h-[100px] resize-none text-moonlit-cream placeholder-moonlit-cream/50"
             />
             <div className="flex justify-between items-center">
               <button 
                 type="button"
                 onClick={() => setIsPrivate(!isPrivate)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${isPrivate ? 'bg-deep-plum text-white' : 'bg-white/50 text-deep-plum opacity-60'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${isPrivate ? 'bg-sunset-gold text-oxblood' : 'bg-white/10 text-moonlit-cream opacity-60'}`}
               >
                 {isPrivate ? <Lock size={14} /> : <Unlock size={14} />}
                 {isPrivate ? 'Private Note' : 'Shared with Partner'}
@@ -87,7 +87,7 @@ export const Dashboard: React.FC = () => {
               <button 
                 type="submit"
                 disabled={!newEntry.trim()}
-                className="px-6 py-2 bg-soft-sage text-deep-plum font-bold rounded-full shadow-md hover:bg-soft-sage/80 disabled:opacity-50 transition-all flex items-center gap-2"
+                className="px-6 py-2 bg-soft-sage text-oxblood font-bold rounded-full shadow-md hover:bg-soft-sage/80 disabled:opacity-50 transition-all flex items-center gap-2"
               >
                 <Send size={16} />
                 Send
@@ -101,7 +101,7 @@ export const Dashboard: React.FC = () => {
                 key={entry.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className={`p-4 rounded-2xl ${entry.authorId === user?.uid ? 'bg-white/60 ml-8 border-r-4 border-soft-sage' : 'bg-white/30 mr-8 border-l-4 border-sunset-gold'}`}
+                className={`p-4 rounded-2xl ${entry.authorId === user?.uid ? 'bg-white/20 ml-8 border-r-4 border-soft-sage' : 'bg-white/10 mr-8 border-l-4 border-sunset-gold'}`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">

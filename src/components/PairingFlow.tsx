@@ -126,14 +126,14 @@ export const PairingFlow: React.FC = () => {
         Share your unique code with your partner to begin your journey together.
       </p>
 
-      <div className="bg-white/50 p-4 rounded-2xl mb-8 flex items-center justify-between border border-white/40">
+      <div className="bg-white/10 p-4 rounded-2xl mb-8 flex items-center justify-between border border-white/20">
         <div>
           <p className="text-xs uppercase tracking-widest opacity-50 mb-1">Your Connection Code</p>
           <p className="text-2xl font-mono font-bold tracking-tighter">{profile.connectionCode}</p>
         </div>
         <button 
           onClick={copyCode}
-          className="p-3 bg-deep-plum text-white rounded-xl hover:bg-deep-plum/80 transition-colors"
+          className="p-3 bg-sunset-gold text-oxblood rounded-xl hover:bg-sunset-gold/80 transition-colors"
         >
           {copied ? <Check size={20} /> : <Copy size={20} />}
         </button>
@@ -146,14 +146,14 @@ export const PairingFlow: React.FC = () => {
             value={partnerCode}
             onChange={(e) => setPartnerCode(e.target.value)}
             placeholder="Enter partner's code"
-            className="w-full px-5 py-4 bg-white/30 border border-white/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sunset-gold transition-all"
+            className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sunset-gold transition-all text-moonlit-cream placeholder-moonlit-cream/50"
           />
           <LinkIcon className="absolute right-4 top-4 opacity-20" />
         </div>
         <button 
           onClick={handleLinkPartner}
           disabled={!partnerCode || isLinking}
-          className="w-full py-4 bg-deep-plum text-white rounded-2xl font-bold shadow-lg hover:bg-deep-plum/90 disabled:opacity-50 transition-all"
+          className="w-full py-4 bg-sunset-gold text-oxblood rounded-2xl font-bold shadow-lg hover:bg-sunset-gold/90 disabled:opacity-50 transition-all"
         >
           {isLinking ? 'Linking...' : 'Connect Partner'}
         </button>
@@ -161,7 +161,7 @@ export const PairingFlow: React.FC = () => {
         <div className="pt-4 border-t border-white/20">
           <button 
             onClick={handleDemoMode}
-            className="w-full py-3 bg-soft-sage/30 text-deep-plum rounded-2xl font-bold text-sm hover:bg-soft-sage/50 transition-all"
+            className="w-full py-3 bg-white/10 text-moonlit-cream rounded-2xl font-bold text-sm hover:bg-white/20 transition-all"
           >
             Skip for now (Demo Mode)
           </button>

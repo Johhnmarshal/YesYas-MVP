@@ -29,7 +29,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="w-10 h-10 bg-sunset-gold rounded-full flex items-center justify-center shadow-lg">
             <Heart className="text-white w-6 h-6 fill-current" />
           </div>
-          <h1 className="text-2xl font-serif font-bold text-deep-plum tracking-tight">Yes Yas!</h1>
+          <h1 className="text-2xl font-serif font-bold text-moonlit-cream tracking-tight">Yes Yas!</h1>
         </motion.div>
 
         <div className="flex items-center gap-4">
@@ -50,7 +50,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           ) : (
             <button 
               onClick={handleLogin}
-              className="px-6 py-2 bg-deep-plum text-white rounded-full font-medium shadow-lg hover:bg-deep-plum/90 transition-all active:scale-95"
+              className="px-6 py-2 bg-sunset-gold text-oxblood rounded-full font-medium shadow-lg hover:bg-sunset-gold/90 transition-all active:scale-95"
             >
               Sign In
             </button>

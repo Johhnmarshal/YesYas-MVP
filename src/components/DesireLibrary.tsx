@@ -86,21 +86,21 @@ export const DesireLibrary: React.FC = () => {
           <div className="flex gap-4 mt-8">
             <button 
               onClick={() => handlePreference(currentDesire.id, 'No')}
-              className="flex-1 py-4 rounded-2xl border border-deep-plum/10 hover:bg-red-50 transition-colors flex flex-col items-center gap-1"
+              className="flex-1 py-4 rounded-2xl border border-white/10 hover:bg-white/5 transition-colors flex flex-col items-center gap-1"
             >
               <X className="text-red-400" />
               <span className="text-xs font-bold opacity-40">Not now</span>
             </button>
             <button 
               onClick={() => handlePreference(currentDesire.id, 'Maybe')}
-              className="flex-1 py-4 rounded-2xl border border-deep-plum/10 hover:bg-sunset-gold/10 transition-colors flex flex-col items-center gap-1"
+              className="flex-1 py-4 rounded-2xl border border-white/10 hover:bg-sunset-gold/10 transition-colors flex flex-col items-center gap-1"
             >
               <Star className="text-sunset-gold" />
               <span className="text-xs font-bold opacity-40">Maybe</span>
             </button>
             <button 
               onClick={() => handlePreference(currentDesire.id, 'Yes')}
-              className="flex-1 py-4 bg-deep-plum text-white rounded-2xl shadow-lg hover:bg-deep-plum/90 transition-all flex flex-col items-center gap-1"
+              className="flex-1 py-4 bg-sunset-gold text-oxblood rounded-2xl shadow-lg hover:bg-sunset-gold/90 transition-all flex flex-col items-center gap-1"
             >
               <Heart className="fill-current" />
               <span className="text-xs font-bold opacity-60">Yes!</span>
@@ -113,7 +113,7 @@ export const DesireLibrary: React.FC = () => {
         {MOCK_DESIRES.map((_, i) => (
           <div 
             key={i} 
-            className={`h-1 rounded-full transition-all ${i === currentIndex ? 'w-8 bg-deep-plum' : 'w-2 bg-deep-plum/10'}`}
+            className={`h-1 rounded-full transition-all ${i === currentIndex ? 'w-8 bg-sunset-gold' : 'w-2 bg-white/20'}`}
           />
         ))}
       </div>
