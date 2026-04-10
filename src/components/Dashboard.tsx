@@ -12,8 +12,9 @@ export const Dashboard: React.FC = () => {
   const [newEntry, setNewEntry] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // In a real app, we'd calculate pairId correctly (sorted uids)
-  const pairId = profile?.partnerUid ? [user?.uid, profile.partnerUid].sort().join('_') : 'demo_pair';
+  // For ENM support, we default to the first partner's journal, or a demo pair
+  const firstPartnerUid = profile?.partnerUids?.[0];
+  const pairId = firstPartnerUid ? [user?.uid, firstPartnerUid].sort().join('_') : 'demo_pair';
 
   useEffect(() => {
     if (!user) return;
@@ -119,13 +120,34 @@ export const Dashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="glass-card p-6">
           <h3 className="font-serif mb-4">Partner Status</h3>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-soft-sage/30 rounded-full flex items-center justify-center">
-              <Heart className="text-soft-sage fill-current" size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-bold">Waiting for partner...</p>
-              <p className="text-xs opacity-50">Share your code to pair</p>
+          <div className="flex flex-col gap-4">
+            {profile?.partnerUids && profile.partnerUids.length > 0 ? (
+              profile.partnerUids.map((uid: string, idx: number) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-sunset-gold/20 rounded-full flex items-center justify-center">
+                    <Heart className="text-sunset-gold fill-current" size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Connected Partner</p>
+                    <p className="text-xs opacity-50">ID: {uid.substring(0, 6)}...</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-soft-sage/30 rounded-full flex items-center justify-center">
+                  <Heart className="text-soft-sage fill-current" size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Waiting for partner...</p>
+                  <p className="text-xs opacity-50">Share your code to pair</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="pt-4 border-t border-white/10 mt-2">
+              <p className="text-xs opacity-60 mb-2">Have another partner? (ENM Support)</p>
+              <p className="text-xs font-bold text-sunset-gold">Use the "Pairing" tab above to connect.</p>
             </div>
           </div>
         </div>

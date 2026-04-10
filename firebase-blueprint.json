@@ -8,7 +8,7 @@
         "uid": { "type": "string", "description": "Firebase Auth UID" },
         "displayName": { "type": "string", "description": "User's display name" },
         "email": { "type": "string", "format": "email", "description": "User's email" },
-        "partnerUid": { "type": "string", "description": "UID of the paired partner" },
+        "partnerUids": { "type": "array", "items": { "type": "string" }, "description": "UIDs of paired partners" },
         "connectionCode": { "type": "string", "description": "Unique code for pairing" },
         "isPaired": { "type": "boolean", "description": "Whether the user is paired" },
         "createdAt": { "type": "string", "format": "date-time" }

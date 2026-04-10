@@ -9,7 +9,7 @@ import { Library, LayoutDashboard, Heart } from 'lucide-react';
 
 export default function App() {
   const { user, profile, loading } = useFirebase();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'library'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'pairing'>('dashboard');
 
   if (loading) {
     return (
@@ -49,7 +49,7 @@ export default function App() {
     );
   }
 
-  if (!profile || !profile.isPaired) {
+  if (!profile || (!profile.isPaired && activeTab !== 'pairing')) {
     return (
       <Layout>
         <PairingFlow />
@@ -76,6 +76,13 @@ export default function App() {
               <Library size={16} />
               Library
             </button>
+            <button 
+              onClick={() => setActiveTab('pairing')}
+              className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'pairing' ? 'bg-sunset-gold text-oxblood shadow-md' : 'hover:bg-white/10 opacity-60'}`}
+            >
+              <Heart size={16} />
+              Pairing
+            </button>
           </div>
         </nav>
 
@@ -87,7 +94,9 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'dashboard' ? <Dashboard /> : <DesireLibrary />}
+            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'library' && <DesireLibrary />}
+            {activeTab === 'pairing' && <PairingFlow />}
           </motion.div>
         </AnimatePresence>
       </div>

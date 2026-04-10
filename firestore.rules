@@ -79,12 +79,11 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       
       // Allow a user to update their own profile, OR allow a user to update 
-      // another user's profile ONLY to set the partnerUid during pairing
+      // another user's profile ONLY to add themselves to partnerUids
       allow update: if (isOwner(userId) && isValidUser(request.resource.data)) || 
                     (isAuthenticated() && 
-                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPaired', 'partnerUid']) &&
-                     request.resource.data.partnerUid == request.auth.uid &&
-                     resource.data.isPaired == false) ||
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPaired', 'partnerUids']) &&
+                     request.auth.uid in request.resource.data.partnerUids) ||
                     isAdmin();
     }
 

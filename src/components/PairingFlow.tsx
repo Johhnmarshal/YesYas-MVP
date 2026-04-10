@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseProvider';
 import { motion } from 'motion/react';
 import { Copy, Check, Link as LinkIcon } from 'lucide-react';
@@ -26,6 +26,7 @@ export const PairingFlow: React.FC = () => {
         email: user.email,
         connectionCode: code,
         isPaired: false,
+        partnerUids: [],
         createdAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -38,7 +39,7 @@ export const PairingFlow: React.FC = () => {
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         isPaired: true,
-        partnerUid: 'demo-partner-id'
+        partnerUids: ['demo-partner-id']
       });
       toast.success("Demo mode activated! You are now 'paired'.");
     } catch (error) {
@@ -66,20 +67,20 @@ export const PairingFlow: React.FC = () => {
         return;
       }
 
-      if (partnerData.isPaired) {
-        toast.error("This partner is already paired with someone else.");
+      if (partnerData.partnerUids && partnerData.partnerUids.includes(user.uid)) {
+        toast.error("You are already paired with this partner.");
         return;
       }
 
       // Perform the pairing
       await updateDoc(doc(db, 'users', user.uid), {
         isPaired: true,
-        partnerUid: partnerDoc.id
+        partnerUids: arrayUnion(partnerDoc.id)
       });
 
       await updateDoc(doc(db, 'users', partnerDoc.id), {
         isPaired: true,
-        partnerUid: user.uid
+        partnerUids: arrayUnion(user.uid)
       });
 
       toast.success("Successfully connected with your partner!");
