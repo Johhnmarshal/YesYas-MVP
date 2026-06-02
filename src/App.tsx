@@ -5,16 +5,42 @@ import { DesireLibrary } from './components/DesireLibrary';
 import { Dashboard } from './components/Dashboard';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Library, LayoutDashboard, Heart } from 'lucide-react';
+import { Library, LayoutDashboard, Heart, LogIn, Loader2 } from 'lucide-react';
+import { auth, googleProvider } from './firebase';
+import { signInWithPopup } from 'firebase/auth';
+import { toast } from 'sonner';
 
 export default function App() {
   const { user, profile, loading } = useFirebase();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'pairing'>('dashboard');
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleSignIn = async () => {
+    if (signingIn) return;
+    setSigningIn(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      // The FirebaseProvider will pick up the new user and auto-create a profile.
+    } catch (err: any) {
+      // Pop-ups can be blocked, closed, or fail silently. Tell the tester.
+      const code = err?.code ?? '';
+      if (code === 'auth/popup-blocked') {
+        toast.error("Your browser blocked the sign-in pop-up. Please allow pop-ups for this site and try again.");
+      } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        toast.info("Sign-in cancelled. Tap the button again when you're ready.");
+      } else {
+        toast.error("Sign-in failed. Please try again, or use a different browser if this keeps happening.");
+        console.error('Sign-in error', err);
+      }
+    } finally {
+      setSigningIn(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen nature-gradient flex items-center justify-center">
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
@@ -27,19 +53,45 @@ export default function App() {
   if (!user) {
     return (
       <Layout>
-        <div className="text-center py-20">
-          <motion.h2 
+        <div className="text-center py-16">
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl font-serif mb-6 text-moonlit-cream"
           >
             Reconnect with <br /> <span className="text-sunset-gold italic">Intention</span>
           </motion.h2>
-          <p className="text-lg opacity-60 mb-12 max-w-lg mx-auto leading-relaxed">
-            Yes Yas! is a safe space for couples to explore desires, 
+          <p className="text-lg opacity-60 mb-10 max-w-lg mx-auto leading-relaxed">
+            Yes Yas! is a safe space for couples to explore desires,
             share thoughts, and build a deeper emotional connection.
           </p>
-          <div className="flex justify-center gap-4">
+
+          <motion.button
+            onClick={handleSignIn}
+            disabled={signingIn}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="inline-flex items-center gap-3 px-8 py-4 bg-sunset-gold text-oxblood rounded-full font-bold shadow-xl hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 transition-transform"
+          >
+            {signingIn ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Opening sign-in&hellip;
+              </>
+            ) : (
+              <>
+                <LogIn className="w-5 h-5" />
+                Sign in with Google to begin
+              </>
+            )}
+          </motion.button>
+
+          <p className="text-xs opacity-50 mt-6 max-w-sm mx-auto">
+            You'll need to sign in before you can pair with your partner. Both of you should sign in on your own devices.
+          </p>
+
+          <div className="flex justify-center gap-4 mt-12">
             <div className="w-4 h-4 bg-sunset-gold rounded-full" />
             <div className="w-4 h-4 bg-soft-sage rounded-full" />
             <div className="w-4 h-4 bg-deep-plum rounded-full" />
