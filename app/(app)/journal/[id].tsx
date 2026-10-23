@@ -18,13 +18,16 @@ import {
   deleteJournalEntry,
   fetchJournalEntryById,
 } from '@/lib/journal';
-import { useScreenCaptureProtection } from '@/lib/screen-capture';
+import {
+  SCREEN_CAPTURE_KEYS,
+  useScreenCaptureProtection,
+} from '@/lib/screen-capture';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export default function JournalDetailScreen() {
   const colors = useThemeColors();
-  useScreenCaptureProtection();
+  useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.journalEntry);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [entry, setEntry] = useState<JournalEntryWithBody | null>(null);
   const [loading, setLoading] = useState(true);
