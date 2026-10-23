@@ -17,6 +17,9 @@ const REFLECTIVE_PROMPTS: string[] = [
   'What would make exploring this thought feel a little safer or more comfortable over the next week?',
 ];
 
+export const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function generateDeterministicThreadId(seed: string): string {
   const hex = sha256Hex(`${seed}:${Date.now()}:${Math.random()}`);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -25,9 +28,13 @@ function generateDeterministicThreadId(seed: string): string {
 function buildLocalReflectiveReply(message: string, threadId?: string): AiCoachResponse {
   const hash = sha256Hex(message.trim().toLowerCase());
   const index = parseInt(hash.slice(0, 2), 16) % REFLECTIVE_PROMPTS.length;
+  const validThreadId =
+    typeof threadId === 'string' && UUID_REGEX.test(threadId)
+      ? threadId
+      : generateDeterministicThreadId(message);
   return {
     reply: `Thank you for putting that into words in your private space. ${REFLECTIVE_PROMPTS[index]}`,
-    threadId: threadId ?? generateDeterministicThreadId(message),
+    threadId: validThreadId,
     isFallback: true,
   };
 }
@@ -92,13 +99,18 @@ export async function createJournalEntry(
     throw new Error('Journal entry cannot be empty');
   }
 
+  const validThreadId =
+    typeof threadId === 'string' && UUID_REGEX.test(threadId)
+      ? threadId
+      : null;
+
   const encryptedBody = await encryptText(trimmed, userId);
   const { data, error } = await supabase
     .from('journal_entries')
     .insert({
       user_id: userId,
       body: encryptedBody,
-      ai_coach_thread_id: threadId ?? null,
+      ai_coach_thread_id: validThreadId,
     })
     .select('*')
     .single();
@@ -140,23 +152,30 @@ export async function sendAiCoachMessage(
   }
 
   try {
+    const sanitizedThreadId =
+      typeof threadId === 'string' && UUID_REGEX.test(threadId)
+        ? threadId
+        : null;
+
     const { data, error } = await supabase.functions.invoke('ai-coach', {
       body: {
         message: trimmed,
-        threadId: threadId ?? null,
+        threadId: sanitizedThreadId,
       },
     });
 
     if (error || !data || typeof data.reply !== 'string') {
-      return buildLocalReflectiveReply(trimmed, threadId);
+      return buildLocalReflectiveReply(trimmed, sanitizedThreadId ?? undefined);
     }
+
+    const returnedThreadId =
+      typeof data.threadId === 'string' && UUID_REGEX.test(data.threadId)
+        ? data.threadId
+        : (sanitizedThreadId ?? generateDeterministicThreadId(trimmed));
 
     return {
       reply: data.reply,
-      threadId:
-        typeof data.threadId === 'string' && data.threadId
-          ? data.threadId
-          : (threadId ?? generateDeterministicThreadId(trimmed)),
+      threadId: returnedThreadId,
       isFallback: false,
     };
   } catch {

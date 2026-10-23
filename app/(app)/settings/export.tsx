@@ -54,9 +54,9 @@ export default function TherapistExportScreen() {
         return;
       }
 
-      // Check existing consent events for this pairing within 30 days
-      const thirtyDaysAgo = new Date(
-        Date.now() - 30 * 24 * 60 * 60 * 1000,
+      // Check existing consent events for this pairing within 7 days (matching request_therapist_export RPC)
+      const sevenDaysAgo = new Date(
+        Date.now() - 7 * 24 * 60 * 60 * 1000,
       ).toISOString();
 
       const { data: events } = await supabase
@@ -64,7 +64,7 @@ export default function TherapistExportScreen() {
         .select('user_id, event_type, created_at')
         .eq('pairing_id', currentPairing.id)
         .eq('event_type', 'therapist_export')
-        .gte('created_at', thirtyDaysAgo);
+        .gte('created_at', sevenDaysAgo);
 
       const partnerId = currentPairing.partner_user_id;
       const callerHas = (events ?? []).some((e) => e.user_id === user.id);
@@ -518,6 +518,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitleContainer: {
     flex: 1,
@@ -529,6 +533,10 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   container: {
     flex: 1,
@@ -576,6 +584,8 @@ const styles = StyleSheet.create({
   primaryButton: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 14,
     width: '100%',
     alignItems: 'center',
@@ -606,7 +616,9 @@ const styles = StyleSheet.create({
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
+    minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,

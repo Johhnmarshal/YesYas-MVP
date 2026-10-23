@@ -799,6 +799,8 @@ export default function SettingsScreen() {
                   setPinInput('');
                   setPinError(null);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel PIN change"
                 style={[
                   styles.modalCancelButton,
                   { borderColor: colors.border },
@@ -813,6 +815,8 @@ export default function SettingsScreen() {
 
               <Pressable
                 onPress={handleSavePin}
+                accessibilityRole="button"
+                accessibilityLabel="Save PIN"
                 style={[
                   styles.modalConfirmButton,
                   { backgroundColor: colors.primary },
@@ -883,6 +887,8 @@ export default function SettingsScreen() {
               <Pressable
                 onPress={() => setDeleteModalVisible(false)}
                 disabled={isDeletingAccount}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel account deletion"
                 style={[
                   styles.modalCancelButton,
                   { borderColor: colors.border },
@@ -900,6 +906,8 @@ export default function SettingsScreen() {
                 disabled={
                   deleteConfirmText.trim() !== 'DELETE' || isDeletingAccount
                 }
+                accessibilityRole="button"
+                accessibilityLabel="Confirm permanent account deletion"
                 style={[
                   styles.modalConfirmButton,
                   {
@@ -1030,7 +1038,9 @@ const styles = StyleSheet.create({
   managePairingButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
+    minHeight: 44,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 8,
     borderRadius: 10,
@@ -1060,6 +1070,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    minHeight: 44,
     paddingVertical: 10,
     borderRadius: 12,
   },
@@ -1075,6 +1086,7 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     padding: SPACING.sm,
     borderRadius: 12,
     borderWidth: 1,
@@ -1107,6 +1119,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    minHeight: 44,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
@@ -1120,6 +1133,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 44,
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
   },
@@ -1142,6 +1156,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    minHeight: 44,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -1156,6 +1171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    minHeight: 44,
     paddingVertical: 10,
   },
   deleteAccountText: {
@@ -1237,6 +1253,8 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -1247,6 +1265,7 @@ const styles = StyleSheet.create({
   },
   modalConfirmButton: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',

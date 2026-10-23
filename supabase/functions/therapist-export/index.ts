@@ -99,9 +99,9 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Dual-consent check: both partners must have logged a 'therapist_export'
-  // consent event for this pairing within the past 30 days.
-  const thirtyDaysAgo = new Date(
-    Date.now() - 30 * 24 * 60 * 60 * 1000,
+  // consent event for this pairing within the past 7 days (matching request_therapist_export RPC).
+  const sevenDaysAgo = new Date(
+    Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
   const { data: consentEvents, error: consentErr } = await adminClient
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
     .select('user_id, event_type, created_at')
     .eq('pairing_id', pairingId)
     .eq('event_type', 'therapist_export')
-    .gte('created_at', thirtyDaysAgo);
+    .gte('created_at', sevenDaysAgo);
 
   if (consentErr) {
     console.error('Consent query error:', consentErr);
@@ -208,7 +208,7 @@ PARTNERS:
 
 CONSENT AUDIT STATUS:
 ✓ Dual partner consent verified via cryptographic audit trail
-✓ Consent verified within active 30-day window
+✓ Consent verified within active 7-day window
 
 REVEAL HISTORY & AGGREGATE SUMMARY:
 ${

@@ -213,6 +213,8 @@ export default function JournalDetailScreen() {
             </Text>
             <Pressable
               onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Back to Journal"
               style={[
                 styles.returnButton,
                 { backgroundColor: colors.primary },
@@ -267,6 +269,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerCenter: {
     flex: 1,
@@ -283,6 +289,10 @@ const styles = StyleSheet.create({
   },
   actionIconButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   container: {
     flex: 1,
@@ -357,6 +367,9 @@ const styles = StyleSheet.create({
   returnButton: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 20,
   },
   returnButtonText: {

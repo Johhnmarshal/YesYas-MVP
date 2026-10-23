@@ -126,6 +126,14 @@ async function main() {
     'Mutated prev_hash on row 2 must be detected at row 2',
   );
 
+  // 6. UUID thread validation regex
+  const UUID_REGEX =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  assert.ok(UUID_REGEX.test('a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d'), 'Valid v4 UUID must pass');
+  assert.ok(!UUID_REGEX.test('invalid-thread-id'), 'Malformed thread ID must fail');
+  assert.ok(!UUID_REGEX.test('1740000000-abc123'), 'Legacy timestamp-random thread ID must fail');
+  assert.ok(!UUID_REGEX.test(''), 'Empty string must fail');
+
   console.log('PASS: All crypto and consent hash-chain assertions succeeded.');
 }
 

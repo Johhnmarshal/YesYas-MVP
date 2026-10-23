@@ -229,7 +229,12 @@ export default function ConsentAuditScreen() {
                   onPress={() => toggleExpand(item.id)}
                   hitSlop={8}
                   style={styles.expandButton}
-                  accessibilityLabel="Toggle payload details"
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isExpanded
+                      ? 'Collapse payload details'
+                      : 'Expand payload details'
+                  }
                 >
                   <Ionicons
                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -321,6 +326,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitleContainer: {
     flex: 1,
@@ -332,6 +341,10 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 6,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     padding: SPACING.md,
@@ -391,6 +404,10 @@ const styles = StyleSheet.create({
   },
   expandButton: {
     padding: 4,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   hashContainer: {
     marginTop: SPACING.sm,

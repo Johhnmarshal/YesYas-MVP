@@ -46,7 +46,11 @@ const REPORT_REASONS = [
 export default function JournalScreen() {
   const colors = useThemeColors();
   const [userId, setUserId] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(() => {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : null;
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -101,11 +105,13 @@ export default function JournalScreen() {
   );
 
   useEffect(() => {
-    // Generate a fresh session threadId on mount
-    if (!threadId) {
-      setThreadId(
-        `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      );
+    // Generate a fresh session threadId on mount if supported
+    if (
+      !threadId &&
+      typeof crypto !== 'undefined' &&
+      typeof crypto.randomUUID === 'function'
+    ) {
+      setThreadId(crypto.randomUUID());
     }
   }, [threadId]);
 
@@ -132,7 +138,11 @@ export default function JournalScreen() {
         text,
         threadId ?? null,
       );
-      userMsg.journalEntryId = savedUserRow.id;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsgId ? { ...m, journalEntryId: savedUserRow.id } : m,
+        ),
+      );
 
       // 2. Request AI coach reflective reply
       const aiResponse = await sendAiCoachMessage(text, threadId ?? undefined);
@@ -356,6 +366,7 @@ export default function JournalScreen() {
                             onPress={() => setReportingMessage(msg)}
                             hitSlop={8}
                             style={styles.flagButton}
+                            accessibilityRole="button"
                             accessibilityLabel="Report this AI response"
                           >
                             <Ionicons
@@ -441,7 +452,9 @@ export default function JournalScreen() {
               <Pressable
                 onPress={() => void loadUserData()}
                 hitSlop={8}
+                accessibilityRole="button"
                 accessibilityLabel="Refresh past entries"
+                style={styles.refreshButton}
               >
                 <Ionicons name="refresh" size={16} color={colors.muted} />
               </Pressable>
@@ -680,6 +693,8 @@ export default function JournalScreen() {
             <View style={styles.modalButtonRow}>
               <Pressable
                 onPress={() => setGraduationModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Keep solo mode"
                 style={[
                   styles.modalCancelButton,
                   { borderColor: colors.border },
@@ -694,6 +709,8 @@ export default function JournalScreen() {
 
               <Pressable
                 onPress={handleGraduateToPairing}
+                accessibilityRole="button"
+                accessibilityLabel="Invite my partner to pair"
                 style={[
                   styles.modalConfirmButton,
                   { backgroundColor: colors.primary },
@@ -748,6 +765,9 @@ export default function JournalScreen() {
                   <Pressable
                     key={reason}
                     onPress={() => setSelectedReportReason(reason)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={reason}
                     style={[
                       styles.reasonOption,
                       {
@@ -789,6 +809,8 @@ export default function JournalScreen() {
               <Pressable
                 onPress={() => setReportingMessage(null)}
                 disabled={submittingReport}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel reporting"
                 style={[
                   styles.modalCancelButton,
                   { borderColor: colors.border },
@@ -804,6 +826,8 @@ export default function JournalScreen() {
               <Pressable
                 onPress={handleSubmitReport}
                 disabled={submittingReport}
+                accessibilityRole="button"
+                accessibilityLabel="Submit report"
                 style={[
                   styles.modalConfirmButton,
                   { backgroundColor: '#EF4444' },
@@ -946,13 +970,22 @@ const styles = StyleSheet.create({
   flagButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
+    minHeight: 44,
+    minWidth: 44,
     paddingVertical: 2,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
   flagButtonText: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  refreshButton: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   typingIndicatorRow: {
     flexDirection: 'row',
@@ -1053,9 +1086,11 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body.fontSize,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1077,7 +1112,9 @@ const styles = StyleSheet.create({
   graduateButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
+    minHeight: 44,
     paddingHorizontal: SPACING.md,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1144,6 +1181,8 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -1155,6 +1194,7 @@ const styles = StyleSheet.create({
   },
   modalConfirmButton: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -1175,6 +1215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.xs + 2,
     padding: SPACING.sm + 2,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
   },
