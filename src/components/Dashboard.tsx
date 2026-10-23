@@ -3,7 +3,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useFirebase } from '../FirebaseProvider';
 import { motion } from 'motion/react';
-import { Send, Lock, Unlock, MessageSquare, Sparkles, Heart } from 'lucide-react';
+import { Send, Lock, Unlock, MessageSquare, Sparkles, Heart, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Dashboard: React.FC = () => {
@@ -11,6 +11,11 @@ export const Dashboard: React.FC = () => {
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
   const [newEntry, setNewEntry] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  // Set when the journal listener is rejected. The usual cause is a pairing
+  // handshake that only one side has completed: isPaired is true on this
+  // profile, but the partner hasn't added us back yet, so the pair-scoped
+  // rules still deny access. Without this the feed just renders empty.
+  const [journalBlocked, setJournalBlocked] = useState(false);
 
   // For ENM support, we default to the first partner's journal, or a demo pair
   const firstPartnerUid = profile?.partnerUids?.[0];
@@ -23,11 +28,19 @@ export const Dashboard: React.FC = () => {
       orderBy('createdAt', 'desc')
     );
     
-    const unsub = onSnapshot(q, (snapshot) => {
-      const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setJournalEntries(entries);
-    });
-    
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setJournalEntries(entries);
+        setJournalBlocked(false);
+      },
+      (err) => {
+        console.error('Journal listener failed', err);
+        setJournalBlocked(true);
+      }
+    );
+
     return () => unsub();
   }, [user, pairId]);
 
@@ -69,6 +82,19 @@ export const Dashboard: React.FC = () => {
             <h2 className="text-xl font-serif">Shared Journal</h2>
           </div>
           
+          {journalBlocked && (
+            <div className="mb-6 flex items-start gap-3 p-4 rounded-2xl bg-sunset-gold/10 border border-sunset-gold/30">
+              <Clock className="text-sunset-gold mt-0.5 flex-shrink-0" size={18} />
+              <div>
+                <p className="text-sm font-bold">Waiting for your partner to finish pairing</p>
+                <p className="text-xs opacity-60 mt-1">
+                  Your shared journal unlocks once they've opened the app and confirmed the
+                  connection. Nothing you write is lost &mdash; it just can't be shared yet.
+                </p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSendEntry} className="mb-6 space-y-3">
             <textarea 
               value={newEntry}

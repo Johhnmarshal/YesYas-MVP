@@ -42,6 +42,39 @@ function fallbackDisplayName(user: User): string {
   return 'Friend';
 }
 
+/**
+ * Claim a connection code by writing /pairing_codes/{CODE}, where the code is
+ * the document id. Codes are no longer a queryable field on a listable
+ * collection, so the only way to resolve one is to already know it — that's
+ * what makes it usable as proof of consent when pairing.
+ *
+ * Rules deny `update` on this collection, so a setDoc onto a code somebody
+ * else already holds fails rather than silently stealing it. We treat that as
+ * a collision and try another code.
+ */
+async function claimPairingCode(uid: string, displayName: string, preferred?: string): Promise<string | null> {
+  const candidates = preferred ? [preferred] : [];
+  for (let i = candidates.length; i < 6; i++) candidates.push(generateConnectionCode());
+
+  for (const code of candidates) {
+    const ref = doc(db, 'pairing_codes', code);
+    try {
+      const existing = await getDoc(ref);
+      if (existing.exists()) {
+        // Already ours (re-provisioning, or a back-fill of an older account).
+        if (existing.data()?.uid === uid) return code;
+        continue;
+      }
+      await setDoc(ref, { uid, displayName, createdAt: new Date().toISOString() });
+      return code;
+    } catch (err) {
+      // Someone claimed this code between our read and our write. Try the next.
+      console.warn('Pairing code claim failed, retrying with a new code', code, err);
+    }
+  }
+  return null;
+}
+
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
@@ -78,26 +111,43 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const publicRef = doc(db, 'public_profiles', user.uid);
 
         if (snap.exists()) {
-          // Existing tester — back-fill /public_profiles if it doesn't exist yet,
-          // so they remain discoverable under the new lookup model. This is a
-          // one-time migration that the tester won't notice.
+          // Existing tester. Two back-fills, both invisible to them:
+          //   1. Claim /pairing_codes/{code} for the code already on their
+          //      profile, so code lookup keeps working under the new model.
+          //   2. Rewrite /public_profiles without connectionCode — codes no
+          //      longer belong in a doc that any signed-in user can read.
           const data = snap.data();
-          const publicSnap = await getDoc(publicRef);
-          if (!publicSnap.exists() && data?.connectionCode && data?.displayName) {
-            await setDoc(publicRef, {
-              uid: user.uid,
-              displayName: data.displayName,
-              connectionCode: data.connectionCode,
-              createdAt: data.createdAt ?? new Date().toISOString(),
-            });
+          const displayName = data?.displayName ?? fallbackDisplayName(user);
+
+          const code = await claimPairingCode(user.uid, displayName, data?.connectionCode);
+          if (code && code !== data?.connectionCode) {
+            // Their old code was taken by someone else in the meantime.
+            await setDoc(userRef, { ...data, connectionCode: code }, { merge: true });
           }
+
+          // setDoc without merge so the stale connectionCode field is dropped.
+          await setDoc(publicRef, {
+            uid: user.uid,
+            displayName,
+            createdAt: data?.createdAt ?? new Date().toISOString(),
+          });
+
+          setProfileError(null);
           return;
         }
 
         // No profile yet — create it now so the tester never sees a "click to create" wall.
         const displayName = fallbackDisplayName(user);
-        const code = generateConnectionCode();
         const createdAt = new Date().toISOString();
+
+        // Claim the code first, so the code on the profile always resolves.
+        const code = await claimPairingCode(user.uid, displayName);
+        if (!code) {
+          setProfileError(
+            "We couldn't reserve a connection code for you. Please refresh to try again."
+          );
+          return;
+        }
 
         await setDoc(userRef, {
           uid: user.uid,
@@ -109,12 +159,9 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           createdAt,
         });
 
-        // Mirror the lookup-able fields to /public_profiles so other users can find
-        // this account by its connection code without exposing email / partnerUids.
         await setDoc(publicRef, {
           uid: user.uid,
           displayName,
-          connectionCode: code,
           createdAt,
         });
 

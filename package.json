@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "audit": "npm audit --production --audit-level=moderate",
     "audit:fix": "npm audit fix",
-    "predeploy": "npm run audit"
+    "predeploy": "npm run audit",
+    "test:rules": "npx --yes firebase-tools@13 emulators:exec --only firestore --project yesyas-rules-test \"node test/firestore.rules.test.mjs\""
   },
   "dependencies": {
     "@google/genai": "1.29.0",
@@ -32,6 +33,7 @@
     "vite": "6.2.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",

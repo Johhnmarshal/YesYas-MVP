@@ -8,13 +8,29 @@ service cloud.firestore {
     // /users/{userId}                              PRIVATE — owner-only
     //   Fields: uid, displayName, email, connectionCode, isPaired,
     //           partnerUids[], createdAt
-    //   The full profile. Email and partnerUids are sensitive — never
-    //   exposed to anyone but the owner.
+    //   The full profile. Nobody but the owner may ever write this doc.
+    //   A user may only ever add partners to their OWN partnerUids;
+    //   pair-scoped data stays locked until the other side reciprocates
+    //   (see isMutuallyPaired), so a one-sided array entry grants nothing.
     //
-    // /public_profiles/{userId}                    LOOKUP-ABLE
-    //   Fields: uid, displayName, connectionCode, createdAt
-    //   The minimum needed to support code-based pairing lookup.
-    //   Readable by any authenticated user; writable only by owner.
+    // /pairing_codes/{CODE}                        LOOKUP-BY-CODE ONLY
+    //   Fields: uid, displayName, createdAt
+    //   The connection code IS the document id, so a code can only be
+    //   resolved by someone who already knows it. `list` is denied, which
+    //   makes codes non-enumerable — knowing a code is the proof of
+    //   consent that pairing rests on.
+    //
+    // /pair_requests/{fromUid_toUid}               CONSENT HANDSHAKE
+    //   Fields: from, to, status (pending|accepted|declined), createdAt
+    //   Created by the inviter (who learned `to` from a pairing code),
+    //   answered by the invitee. Readable only by the two parties.
+    //   This collection signals intent; it is NOT what enforces privacy.
+    //
+    // /public_profiles/{userId}                    DISPLAY NAME ONLY
+    //   Fields: uid, displayName, createdAt
+    //   Lets a paired user render "You're connected with Sam" instead of
+    //   a raw uid. No connection code here any more, and `list` is denied
+    //   so the user base cannot be enumerated.
     //
     // /desires/{desireId}                          PUBLIC LIBRARY
     //   Fields: id, title, description, category
@@ -56,6 +72,9 @@ service cloud.firestore {
 
     function pairIdContainsMe(pairId) {
       // Cheap pre-check: caller's uid is one of the two halves of pairId.
+      // NOTE: this assumes uids never contain '_'. Firebase Auth uids are
+      // 28-char alphanumeric so that holds, but if uids ever come from
+      // somewhere else, the split() below silently breaks every pair rule.
       let parts = pairId.split('_');
       return isAuthenticated() && parts.size() == 2 &&
         (parts[0] == request.auth.uid || parts[1] == request.auth.uid);
@@ -68,8 +87,12 @@ service cloud.firestore {
 
     function isMutuallyPaired(pairId) {
       // Both users must list each other in partnerUids before any pair-scoped
-      // writes are allowed. get() bypasses read rules, so this works even
-      // though /users is otherwise owner-only.
+      // access is allowed. get() bypasses read rules, so this works even
+      // though /users is owner-only.
+      //
+      // This is the load-bearing check for the whole privacy model: because
+      // no user can write another user's doc, both halves of this condition
+      // can only be satisfied by two deliberate, independent actions.
       let me = request.auth.uid;
       let other = otherUidInPair(pairId);
       return pairIdContainsMe(pairId) &&
@@ -79,18 +102,50 @@ service cloud.firestore {
         me in get(/databases/$(database)/documents/users/$(other)).data.partnerUids;
     }
 
-    function isValidUser(data) {
+    function isValidUser(data, userId) {
+      // Note: an empty email is tolerated. Google occasionally returns no
+      // email for a federated account, and a strict regex here would lock
+      // that user out of every write to their own profile — including pairing.
       return data.keys().hasAll(['uid', 'displayName', 'email']) &&
-             data.uid is string && data.uid.size() > 0 &&
+             data.uid is string && data.uid == userId &&
              data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
-             data.email is string && data.email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+             data.email is string &&
+             (data.email.size() == 0 ||
+              data.email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$')) &&
+             (!('partnerUids' in data) || (
+               data.partnerUids is list &&
+               data.partnerUids.size() <= 20 &&
+               !(userId in data.partnerUids)
+             ));
     }
 
-    function isValidPublicProfile(data) {
-      return data.keys().hasAll(['uid', 'displayName', 'connectionCode']) &&
+    function isValidPublicProfile(data, userId) {
+      // Deliberately no connectionCode — codes live in /pairing_codes.
+      return data.keys().hasOnly(['uid', 'displayName', 'createdAt']) &&
+             data.keys().hasAll(['uid', 'displayName']) &&
+             data.uid is string && data.uid == userId &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100;
+    }
+
+    function isValidPairingCode(data, code) {
+      return data.keys().hasOnly(['uid', 'displayName', 'createdAt']) &&
+             data.keys().hasAll(['uid', 'displayName']) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
-             data.connectionCode is string && data.connectionCode.size() >= 4 && data.connectionCode.size() <= 16;
+             code.size() >= 6 && code.size() <= 16 &&
+             code.matches('^[A-Z0-9]+$');
+    }
+
+    function isValidPairRequest(data, requestId) {
+      // The document id is "<from>_<to>" so a request can't be filed at an
+      // arbitrary path, and a duplicate request collides instead of piling up.
+      return data.keys().hasOnly(['from', 'to', 'status', 'createdAt']) &&
+             data.keys().hasAll(['from', 'to', 'status']) &&
+             data.from is string && data.from == request.auth.uid &&
+             data.to is string && data.to.size() > 0 &&
+             data.to != request.auth.uid &&
+             data.status == 'pending' &&
+             requestId == data.from + '_' + data.to;
     }
 
     function isValidPreference(data) {
@@ -110,37 +165,72 @@ service cloud.firestore {
     // Collection Rules
     // ===============================================================
 
-    // /users — full private profile, owner-only by default.
+    // /users — full private profile, owner-only for every operation.
+    //
+    // There is deliberately NO cross-user write branch here. An earlier
+    // version let any authenticated caller write { isPaired, partnerUids }
+    // onto anyone else's doc so long as their own uid ended up in the array.
+    // Combined with an enumerable profile collection that allowed a stranger
+    // to force a mutual pairing and then read a victim's journal, and to
+    // overwrite partnerUids outright and drop a victim's real partners.
+    // Pairing now happens by each side writing only its own document.
     match /users/{userId} {
-      // Read: owner only. Admins may read for support purposes.
-      allow read: if isOwner(userId) || isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
 
-      // Create: only the owner can create their own profile doc.
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-
-      // Update: owner can update freely (provided the result is still valid),
-      // OR a partner can perform a narrow pairing update on the other user's
-      // doc — but only changing { isPaired, partnerUids } and only if the
-      // caller's UID ends up inside partnerUids.
-      allow update: if (
-        isOwner(userId) && isValidUser(request.resource.data)
-      ) || (
-        isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPaired', 'partnerUids']) &&
-        request.auth.uid in request.resource.data.partnerUids
-      ) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data, userId)) || isAdmin();
 
       // Delete: not allowed from the client. Account deletion flows through
       // a backend / admin tool.
       allow delete: if isAdmin();
     }
 
-    // /public_profiles — lookup-able (auth-only). Strictly only the fields
-    // needed for code-based partner lookup.
+    // /pairing_codes — resolvable only by someone who already knows the code.
+    // `list` is denied, so codes and the user base cannot be enumerated.
+    match /pairing_codes/{code} {
+      allow get: if isAuthenticated();
+      allow list: if false;
+
+      // Create-only: `update` is denied, so a setDoc onto an existing code
+      // fails and the client can detect the collision and pick a new code.
+      // A squatter can claim an unused code, but that only ever maps the
+      // code to their own uid — it grants no access to anybody.
+      allow create: if isAuthenticated() && isValidPairingCode(request.resource.data, code);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource != null && resource.data.uid == request.auth.uid;
+    }
+
+    // /pair_requests — the consent handshake. Visible only to the two parties.
+    match /pair_requests/{requestId} {
+      // The `resource != null` guards matter: without them the evaluator
+      // dereferences a null resource on some writes and the rule *throws*
+      // rather than returning false. Rules fail closed, so that's not a
+      // security hole, but a throwing rule also rejects legitimate requests.
+      allow read: if isAuthenticated() && resource != null &&
+                  (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+
+      allow create: if isAuthenticated() && isValidPairRequest(request.resource.data, requestId);
+
+      // Only the invitee may answer, and only by moving pending -> accepted
+      // or pending -> declined. from/to can never be rewritten.
+      allow update: if isAuthenticated() && resource != null &&
+                    resource.data.to == request.auth.uid &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt']) &&
+                    resource.data.status == 'pending' &&
+                    request.resource.data.status in ['accepted', 'declined'];
+
+      // Either party may clear a request once it has served its purpose.
+      allow delete: if isAuthenticated() && resource != null &&
+                    (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+
+    // /public_profiles — display name only, fetched by uid. Not listable.
     match /public_profiles/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidPublicProfile(request.resource.data);
-      allow update: if isOwner(userId) && isValidPublicProfile(request.resource.data);
+      allow get: if isAuthenticated();
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidPublicProfile(request.resource.data, userId);
+      allow update: if isOwner(userId) && isValidPublicProfile(request.resource.data, userId);
       allow delete: if isOwner(userId) || isAdmin();
     }
 
@@ -160,8 +250,7 @@ service cloud.firestore {
     // /pairs/{pairId}/matches/{desireId} — only after mutual consent.
     // NOTE: in v2 these writes should move server-side (a Cloud Function or
     // SECURITY DEFINER equivalent) so a malicious client can't fabricate
-    // matches that don't reflect a real mutual Yes. For now we require both
-    // partners to have paired, which prevents the "fake pair" attack.
+    // matches that don't reflect a real mutual Yes.
     match /pairs/{pairId}/matches/{desireId} {
       allow read: if isMutuallyPaired(pairId);
       allow write: if isMutuallyPaired(pairId);
