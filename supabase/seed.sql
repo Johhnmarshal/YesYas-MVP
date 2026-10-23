@@ -122,7 +122,7 @@ insert into public.desire_library_items (slug, title, description, tier, tone_ta
   ('show-me-how-you-like-it',      'Show me how you touch yourself',
    'Watch or guide each other''s hands to share the exact rhythm and pressure that feels best.',
    'explicit',   array['direct','romantic'], 'en-US'),
-  ('talking-through-it-in-bed',    'dirty-talk or praise in the moment',
+  ('talking-through-it-in-bed',    'Dirty talk or praise in the moment',
    'Share spoken praise, descriptions of what feels good, or what you want next while together.',
    'explicit',   array['direct','playful'],  'en-US'),
   ('morning-intimacy-before-words','Morning intimacy before checking phones',

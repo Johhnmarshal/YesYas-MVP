@@ -355,21 +355,31 @@ set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
 set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
 
 -- 22. User D calling preview_pairing_invite(code) returns C's pairing preview; accept_pairing_invite(code) activates the pairing and consumes invite_code.
+do $$
+declare
+  v_inviter_name text;
+  v_pair_id uuid;
+begin
+  select inviter_display_name into v_inviter_name
+  from public.preview_pairing_invite(current_setting('yesyas.test_invite_code'));
+
+  select public.accept_pairing_invite(current_setting('yesyas.test_invite_code'))
+    into v_pair_id;
+
+  perform set_config('yesyas.preview_inviter_name', coalesce(v_inviter_name, ''), true);
+  perform set_config('yesyas.accepted_pair_id', v_pair_id::text, true);
+end;
+$$;
+
 select is(
   (
-    with preview as (
-      select * from public.preview_pairing_invite(current_setting('yesyas.test_invite_code'))
-    ),
-    accepted as (
-      select public.accept_pairing_invite(current_setting('yesyas.test_invite_code')) as pair_id
-    )
     select
-      preview.inviter_display_name = 'Casey'
+      current_setting('yesyas.preview_inviter_name') = 'Casey'
       and p.status = 'active'
       and p.invite_code is null
       and p.invitee_user_id = '44444444-4444-4444-4444-444444444444'::uuid
-    from preview, accepted
-    join public.pairings p on p.id = accepted.pair_id
+    from public.pairings p
+    where p.id = current_setting('yesyas.accepted_pair_id')::uuid
   ),
   true,
   'User D previews and accepts invite, activating pairing and consuming invite_code'

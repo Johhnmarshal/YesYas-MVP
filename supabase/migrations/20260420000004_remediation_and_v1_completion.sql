@@ -93,6 +93,8 @@ begin
 end;
 $$;
 
+revoke all on function public.handle_new_user() from public;
+
 create or replace function public.is_pairing_member(p_pairing_id uuid, p_user_id uuid)
 returns boolean
 language sql
@@ -160,6 +162,8 @@ begin
   return new;
 end;
 $$;
+
+revoke all on function public.consent_events_chain() from public;
 
 create or replace function public.consent_events_immutable()
 returns trigger
@@ -706,8 +710,7 @@ begin
     -- Partner is not ready yet: ensure exactly one 'pending' reveal row exists.
     insert into public.reveals (pairing_id, status, triggered_by)
     values (p_pairing_id, 'pending'::public.reveal_status, v_user)
-    on conflict (pairing_id) where status in ('pending'::public.reveal_status, 'both_ready'::public.reveal_status)
-    do nothing
+    on conflict do nothing
     returning id into v_reveal_id;
 
     if v_reveal_id is null then
