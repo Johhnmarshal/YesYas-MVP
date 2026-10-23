@@ -101,7 +101,7 @@
   - RPC `public.request_therapist_export(p_pairing_id uuid) -> TABLE(both_consented boolean, export_event_id uuid)`
   - Updated `Database` interface in `lib/database.types.ts`
 
-- [ ] **Step 1: Expand `supabase/tests/rls_test.sql` from `plan(8)` to `plan(24)` with failing security & RPC assertions**
+- [x] **Step 1: Expand `supabase/tests/rls_test.sql` from `plan(8)` to `plan(24)` with failing security & RPC assertions**
 
 Add assertions 9–24 in `supabase/tests/rls_test.sql` testing:
 ```sql
@@ -123,7 +123,7 @@ SELECT throws_ok(
 -- 22-24. withdraw_reveal() cancels a pending reveal; consent_events blocks UPDATE and DELETE.
 ```
 
-- [ ] **Step 2: Write `supabase/migrations/20260420000004_remediation_and_v1_completion.sql`**
+- [x] **Step 2: Write `supabase/migrations/20260420000004_remediation_and_v1_completion.sql`**
 
 Implement in `supabase/migrations/20260420000004_remediation_and_v1_completion.sql`:
 1. Schema additions: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete boolean NOT NULL DEFAULT false;`, `ALTER TABLE public.pairings ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz;`, `ALTER TABLE public.reveals ADD COLUMN IF NOT EXISTS triggered_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;`, `ALTER TABLE public.desires DROP CONSTRAINT IF EXISTS desires_pairing_fk_consistency;`.
@@ -140,16 +140,16 @@ Implement in `supabase/migrations/20260420000004_remediation_and_v1_completion.s
    - `public.withdraw_reveal(p_pairing_id uuid)`
    - `public.request_therapist_export(p_pairing_id uuid)`
 
-- [ ] **Step 3: Expand `supabase/seed.sql` to 45 curated items and update `lib/database.types.ts` + `scripts/lockdown-legacy-firebase.firestore.rules`**
+- [x] **Step 3: Expand `supabase/seed.sql` to 45 curated items and update `lib/database.types.ts` + `scripts/lockdown-legacy-firebase.firestore.rules`**
 
 Add 30 additional non-explicit/appropriately tiered desire items across `sensory`, `suggestive`, and `explicit` tiers and `romantic`, `playful`, `direct` tone tags in `supabase/seed.sql` (total 45 items, keeping `written-note-of-appreciation` intact for `rls_test.sql`). Update `lib/database.types.ts` with all new columns, tables, and `Functions` signatures. Create `scripts/lockdown-legacy-firebase.firestore.rules` with a deny-all Firestore ruleset for legacy project `gen-lang-client-0707391511`.
 
-- [ ] **Step 4: Verify TypeScript compilation and SQL syntax**
+- [x] **Step 4: Verify TypeScript compilation and SQL syntax**
 
 Run: `npx tsc --noEmit`
 Expected: Exits with code 0 and zero output.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add supabase/ lib/database.types.ts scripts/lockdown-legacy-firebase.firestore.rules
@@ -181,7 +181,7 @@ git commit -m "fix(supabase): remediate RLS/reveal vulnerabilities, harden RPCs,
   - `lib/journal.ts`: `fetchJournalEntries(userId: string)`, `createJournalEntry(userId: string, body: string, threadId?: string | null)`, `sendAiCoachMessage(message: string, threadId?: string)`, `reportAiMessage(userId: string, journalEntryId: string, reason: string)`
   - `lib/consent.ts`: `fetchConsentEvents(userId: string)`, `verifyConsentChain(events: ConsentEventRow[]): { valid: boolean; brokenAtId: string | null }`
 
-- [ ] **Step 1: Write the verification test script `scripts/verify-domain-logic.ts`**
+- [x] **Step 1: Write the verification test script `scripts/verify-domain-logic.ts`**
 
 Create `scripts/verify-domain-logic.ts` asserting:
 1. `encryptText('My secret desire note', userA)` produces an `enc:v1:`-prefixed string that does not contain `'secret'`.
@@ -190,21 +190,21 @@ Create `scripts/verify-domain-logic.ts` asserting:
 4. `decryptText('legacy plaintext note', userA)` returns `'legacy plaintext note'` unchanged.
 5. `verifyConsentChain(validChain)` returns `{ valid: true, brokenAtId: null }`, and mutating any row's `payload` or `prev_hash` returns `{ valid: false, brokenAtId: mutatedRow.id }`.
 
-- [ ] **Step 2: Run verification script to confirm it fails before implementation**
+- [x] **Step 2: Run verification script to confirm it fails before implementation**
 
 Run: `npx tsx scripts/verify-domain-logic.ts` (or `node --experimental-strip-types scripts/verify-domain-logic.ts`)
 Expected: FAIL with module not found `../lib/crypto`.
 
-- [ ] **Step 3: Implement `lib/theme.ts`, `lib/crypto.ts`, `lib/pairing.ts`, `lib/desires.ts`, `lib/reveal.ts`, `lib/journal.ts`, and `lib/consent.ts`**
+- [x] **Step 3: Implement `lib/theme.ts`, `lib/crypto.ts`, `lib/pairing.ts`, `lib/desires.ts`, `lib/reveal.ts`, `lib/journal.ts`, and `lib/consent.ts`**
 
 Implement pure TypeScript SHA-256 + HMAC-SHA256 + CTR authenticated encryption (`enc:v1:<iv_hex>:<ciphertext_hex>:<hmac_hex>`) in `lib/crypto.ts` backed by a 256-bit per-user key persisted in `AsyncStorage` under `@yesyas/key/v1/${userId}`, plus `sha256Hex` matching PostgreSQL `encode(digest(..., 'sha256'), 'hex')` for `verifyConsentChain` in `lib/consent.ts`. Implement the typed Supabase service wrappers in `lib/pairing.ts`, `lib/desires.ts`, `lib/reveal.ts`, and `lib/journal.ts`.
 
-- [ ] **Step 4: Run verification script and TypeScript compiler**
+- [x] **Step 4: Run verification script and TypeScript compiler**
 
 Run: `node --experimental-strip-types scripts/verify-domain-logic.ts && npx tsc --noEmit`
 Expected: PASS all assertions and exit with code 0.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```bash
 git add lib/ scripts/verify-domain-logic.ts
@@ -231,20 +231,20 @@ git commit -m "feat(lib): add design system tokens, authenticated encryption, an
   - Onboarding flow (`tone` -> `tier` -> `mode`) writing `tone_preference`, `content_tier_preference`, and `onboarding_complete = true` to `public.profiles`
   - `BiometricGate` component using `expo-local-authentication` + 6-digit PIN fallback stored in `AsyncStorage`
 
-- [ ] **Step 1: Implement `components/BiometricGate.tsx` and update `app/_layout.tsx` + `app/(app)/_layout.tsx`**
+- [x] **Step 1: Implement `components/BiometricGate.tsx` and update `app/_layout.tsx` + `app/(app)/_layout.tsx`**
 
 Update `app/_layout.tsx` to fetch `profiles.onboarding_complete` on session establishment and route first-time users to `/(app)/onboarding/tone`. Configure `app/(app)/_layout.tsx` using Expo Router `<Tabs>` with 4 visible tabs (`Home`, `Library`, `Journal`, `Settings`) using `@expo/vector-icons` (`Ionicons`) and hide detail/modal routes (`onboarding/*`, `library/[id]`, `pairing/*`, `reveal/index`, `journal/[id]`, `settings/consent`, `settings/export`) with `href: null`.
 
-- [ ] **Step 2: Implement the 3 Onboarding Screens (`tone.tsx`, `tier.tsx`, `mode.tsx`)**
+- [x] **Step 2: Implement the 3 Onboarding Screens (`tone.tsx`, `tier.tsx`, `mode.tsx`)**
 
 Build `app/(app)/onboarding/tone.tsx`, `tier.tsx`, and `mode.tsx` matching the exact wireframes in `docs/UI_UX_Design.md`. On `mode.tsx`, selecting "Explore solo" or "Invite my partner now" updates `public.profiles` with `tone_preference`, `content_tier_preference`, and `onboarding_complete = true`, then navigates to `/(app)/journal` or `/(app)/pairing/invite`.
 
-- [ ] **Step 3: Verify TypeScript and ESLint**
+- [x] **Step 3: Verify TypeScript and ESLint**
 
 Run: `npx tsc --noEmit && npx eslint app/ components/`
 Expected: Exits with code 0.
 
-- [ ] **Step 4: Commit Task 3**
+- [x] **Step 4: Commit Task 3**
 
 ```bash
 git add app/ components/BiometricGate.tsx
@@ -269,20 +269,20 @@ git commit -m "feat(onboarding): add 4-tab navigation shell, biometric lock gate
   - `app/(app)/library/index.tsx` (segmented tier filter `Sensory` / `Suggestive` / `Explicit` + tone filter, loading/empty/error states)
   - `app/(app)/library/[id].tsx` (full-screen item view with synchronized rating and encrypted note)
 
-- [ ] **Step 1: Implement `components/StarRating.tsx` and `components/LibraryItemCard.tsx`**
+- [x] **Step 1: Implement `components/StarRating.tsx` and `components/LibraryItemCard.tsx`**
 
 Build `StarRating.tsx` and `LibraryItemCard.tsx` with 800ms debounced note encryption via `upsertDesireNote` and immediate rating persistence via `upsertDesireRating` (writing to both solo and active `pairing_id` when paired).
 
-- [ ] **Step 2: Implement `app/(app)/library/index.tsx` and `app/(app)/library/[id].tsx`**
+- [x] **Step 2: Implement `app/(app)/library/index.tsx` and `app/(app)/library/[id].tsx`**
 
 Build the Library list screen with tier filtering (defaulting to the user's `content_tier_preference`), search/tone tag pills, rated count summary header, and full-screen `[id].tsx` detail view.
 
-- [ ] **Step 3: Verify TypeScript and ESLint**
+- [x] **Step 3: Verify TypeScript and ESLint**
 
 Run: `npx tsc --noEmit && npx eslint app/ components/`
 Expected: Exits with code 0.
 
-- [ ] **Step 4: Commit Task 4**
+- [x] **Step 4: Commit Task 4**
 
 ```bash
 git add components/StarRating.tsx components/LibraryItemCard.tsx app/\(app\)/library/
@@ -309,24 +309,24 @@ git commit -m "feat(library): add Desire Library screens, star rating, and encry
   - `app/(app)/reveal/index.tsx` (full state machine: `no_reveal` -> `pending` with 72h countdown & withdraw button -> `computed` with match cards, Curiosity Bridge modal trigger, and 24h expiry countdown -> `expired` summary)
   - `app/(app)/home.tsx` (Today surface showing Pairing status card, Start/View Reveal CTA, unrated Library count CTA, and Solo Journal CTA)
 
-- [ ] **Step 1: Implement `components/PairingManageModal.tsx`, `app/(app)/pairing/invite.tsx`, and `app/(app)/pairing/accept.tsx`**
+- [x] **Step 1: Implement `components/PairingManageModal.tsx`, `app/(app)/pairing/invite.tsx`, and `app/(app)/pairing/accept.tsx`**
 
 Build the pairing invite and accept screens wired to the hardened RPCs in `lib/pairing.ts`, plus `PairingManageModal.tsx` for pausing, resuming, or ending a pairing with confirmation dialogs.
 
-- [ ] **Step 2: Implement `components/MismatchBridgeModal.tsx` and `app/(app)/reveal/index.tsx`**
+- [x] **Step 2: Implement `components/MismatchBridgeModal.tsx` and `app/(app)/reveal/index.tsx`**
 
 Build the Reveal state machine screen with Supabase Realtime subscription on `public.reveals` (plus 30s fallback poll), live countdown timers for the 72h readiness window and 24h reveal expiry, iOS background blur protection (`AppState` listener), and `MismatchBridgeModal.tsx` displaying therapist-vetted Curiosity Bridge conversation scripts.
 
-- [ ] **Step 3: Upgrade `app/(app)/home.tsx` to the complete Today Dashboard**
+- [x] **Step 3: Upgrade `app/(app)/home.tsx` to the complete Today Dashboard**
 
 Replace the placeholder `home.tsx` with the full Today surface displaying the user's display name, active/pending/paused pairing card (or "Invite a partner" card), Reveal status badge, Desire Library progress card, and Journal shortcut card.
 
-- [ ] **Step 4: Verify TypeScript and ESLint**
+- [x] **Step 4: Verify TypeScript and ESLint**
 
 Run: `npx tsc --noEmit && npx eslint app/ components/`
 Expected: Exits with code 0.
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 
 ```bash
 git add components/PairingManageModal.tsx components/MismatchBridgeModal.tsx app/\(app\)/pairing/ app/\(app\)/reveal/ app/\(app\)/home.tsx
@@ -357,24 +357,24 @@ git commit -m "feat(pairing,reveal): implement pairing handshake, reveal state m
   - `app/(app)/settings/index.tsx`, `consent.tsx`, `export.tsx` (profile/tone/tier editor, biometric/PIN lock setup, live SHA-256 hash-chain audit viewer, dual-consent therapist export screen, sign-out & account deletion)
   - `.github/workflows/ci.yml` (automated typecheck, lint, domain test suite, and audit workflow)
 
-- [ ] **Step 1: Implement `supabase/functions/ai-coach/` and `supabase/functions/therapist-export/`**
+- [x] **Step 1: Implement `supabase/functions/ai-coach/` and `supabase/functions/therapist-export/`**
 
 Create `supabase/functions/ai-coach/system-prompt.ts` (with the 6 mandatory safety rules from `docs/Implementation_Plan.md`), `supabase/functions/ai-coach/index.ts`, and `supabase/functions/therapist-export/index.ts`.
 
-- [ ] **Step 2: Implement `app/(app)/journal/index.tsx` and `app/(app)/journal/[id].tsx`**
+- [x] **Step 2: Implement `app/(app)/journal/index.tsx` and `app/(app)/journal/[id].tsx`**
 
 Build the Solo Journal screen with `"🔒 Private to you — encrypted before saving"`, AI Coach reflective chat (calling `sendAiCoachMessage`), long-press response flagging (`reportAiMessage`), decrypted past entry cards, and the "Invite my partner" graduation modal.
 
-- [ ] **Step 3: Implement `app/(app)/settings/index.tsx`, `consent.tsx`, `export.tsx`, and `.github/workflows/ci.yml`**
+- [x] **Step 3: Implement `app/(app)/settings/index.tsx`, `consent.tsx`, `export.tsx`, and `.github/workflows/ci.yml`**
 
 Build the Settings hub (display name, tone, content tier, PIN/biometric lock toggle, pairing management), `consent.tsx` (displaying the chronological `consent_events` log with a live `"✓ Hash chain verified"` integrity badge from `verifyConsentChain`), `export.tsx` (dual-consent therapist summary generator with native `Share.share`), and `.github/workflows/ci.yml`.
 
-- [ ] **Step 4: Run full project verification (TypeScript, ESLint, Domain Logic Tests, Web Bundle Export)**
+- [x] **Step 4: Run full project verification (TypeScript, ESLint, Domain Logic Tests, Web Bundle Export)**
 
 Run: `node --experimental-strip-types scripts/verify-domain-logic.ts && npx tsc --noEmit && npx eslint app/ components/ lib/ && npx expo export -p web`
 Expected: All unit tests pass, 0 TypeScript errors, 0 ESLint errors, and `dist/` static web bundle exports cleanly.
 
-- [ ] **Step 5: Commit Task 6**
+- [x] **Step 5: Commit Task 6**
 
 ```bash
 git add supabase/functions/ app/\(app\)/journal/ app/\(app\)/settings/ .github/workflows/ci.yml
