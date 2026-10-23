@@ -375,6 +375,10 @@ export interface Database {
     };
     Views: { [key: string]: never };
     Functions: {
+      delete_user_account: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       create_pairing_invite: {
         Args: Record<PropertyKey, never>;
         Returns: {

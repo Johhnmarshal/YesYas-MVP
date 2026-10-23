@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -23,6 +22,7 @@ import {
 } from '@/components/BiometricGate';
 import { PairingManageModal } from '@/components/PairingManageModal';
 import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
+import { clearMasterKey } from '@/lib/crypto';
 import type {
   Database,
   DesireTier,
@@ -33,7 +33,6 @@ import {
   type PairingWithPartner,
   fetchActivePairings,
   getActiveOrPendingPairing,
-  updatePairingStatus,
 } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
 import {
@@ -253,25 +252,17 @@ export default function SettingsScreen() {
     }
     setIsDeletingAccount(true);
     try {
-      // 1. Delete user desires, journal entries, and AI flags
-      await supabase.from('journal_entries').delete().eq('user_id', userId);
-      await supabase.from('desires').delete().eq('user_id', userId);
-      await supabase.from('ai_flags').delete().eq('user_id', userId);
-
-      // 2. End pairing if active
-      if (pairing) {
-        try {
-          await updatePairingStatus(pairing.id, 'ended');
-        } catch {
-          // ignore error if already ended
-        }
+      // 1. Execute UK GDPR erasure RPC on backend (deletes desires, journal, key backup, consent logs, profile, auth user)
+      const { error: rpcError } = await supabase.rpc('delete_user_account');
+      if (rpcError) {
+        throw new Error(rpcError.message);
       }
 
-      // 3. Clear local encryption key & biometric lock
+      // 2. Clear local encryption key from memory, SecureStore, and AsyncStorage
+      await clearMasterKey(userId);
       await saveBiometricSettings(false, '');
-      await AsyncStorage.removeItem(`@yesyas/enc_key_v1:${userId}`);
 
-      // 4. Sign out
+      // 3. Sign out of session
       await supabase.auth.signOut();
       setDeleteModalVisible(false);
       router.replace('/(auth)/sign-in');
@@ -706,6 +697,30 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Privacy Audit & Clinical Export
               </Text>
+
+              <Pressable
+                onPress={() => router.push('/(app)/settings/privacy-model' as Href)}
+                style={[styles.navRow, { borderBottomColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel="Navigate to plain-english privacy model"
+              >
+                <View style={styles.navRowLeft}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <View>
+                    <Text style={[styles.navRowTitle, { color: colors.text }]}>
+                      Privacy Model (Plain English)
+                    </Text>
+                    <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+                      What the server can and cannot see
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
 
               <Pressable
                 onPress={() => router.push('/(app)/settings/consent' as Href)}

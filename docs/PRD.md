@@ -69,9 +69,11 @@ The result: couples discover shared interests they were too embarrassed to raise
 **Reveal Engine**
 - Either partner triggers a reveal
 - Partner has 72 hours to tap "I'm ready"
-- Once both are ready: Edge Function computes intersection (both rated ≥ 4), writes reveal result
-- Matched items are shown to both users simultaneously
-- Mismatch bridge: where one rated ≥ 4 and other rated ≤ 2, a therapist-vetted script appears
+- Once both are ready: Hardened PostgreSQL function `trigger_reveal()` computes intersection (both rated ≥ 4) in SQL, writes reveal result
+- Matched items are shown to both users simultaneously with zero numeric scores revealed
+- Curiosity Bridge: where one rated ≥ 4 and other rated = 3 (Curious/Open), a therapist-vetted conversation script appears with direction concealed
+- Zero-Deduction Hard Veto: items rated ≤ 2 by either partner are strictly excluded so no rejection can ever be deduced
+- Cadence limit: standard cadence permits at most 1 reveal per 7 days
 - Reveal expires after 24 hours; a summary ("you had 7 matches") persists, specific items do not
 
 **Therapist Export**
@@ -139,5 +141,5 @@ These are explicitly NOT in v1. Do not scope them in, do not add UI hooks for th
 ## Monetization Model
 
 **Free tier:** Solo journaling + one reveal per week  
-**Premium ($7.99/mo or $49/yr):** Unlimited reveals + mismatch bridges + therapist export  
+**Premium ($7.99/mo or $49/yr):** Unlimited reveals + curiosity bridges + therapist export  
 **Therapist tier ($19/mo):** Referral tracking + therapist dashboard (v1.1)

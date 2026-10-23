@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(27);
+select plan(29);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -485,6 +485,27 @@ select throws_ok(
   '42501',
   null,
   'A cannot write a wrapped key backup for another user'
+);
+
+-- ---------- 28. Reveal Cadence Enforcement (R-03) ----------
+-- The pairing between A and B already has a computed reveal in the test fixtures.
+-- Calling trigger_reveal again must immediately throw the 7-day cadence exception.
+select throws_ok(
+  $$select * from public.trigger_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')$$,
+  'P0001',
+  null,
+  'trigger_reveal rejects repeated reveals within 7-day cadence limit'
+);
+
+-- ---------- 29. Real Account Deletion under UK GDPR (R-02) ----------
+-- Act as user D (44444444-4444-4444-4444-444444444444).
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+
+select is(
+  (select public.delete_user_account()),
+  true,
+  'delete_user_account succeeds and cleans up user D'
 );
 
 select * from finish();

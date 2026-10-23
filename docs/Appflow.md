@@ -159,13 +159,13 @@ Reveal (state: waiting — current user ready, partner not)
 
 Reveal (state: both_ready — partner just tapped ready)
   ├─ "Both of you are ready!"
-  ├─ [See our matches] → triggers Edge Function (reveal computation)
+  ├─ [See our matches] → triggers trigger_reveal() SQL RPC (reveal computation)
                           └─ Reveal (state: computed)
 
 Reveal (state: computed — matches exist)
   ├─ "✨ You have N matches"
-  ├─ Matched items list
-  ├─ Mismatch bridge card (if applicable)
+  ├─ Matched items list (both rated ≥ 4)
+  ├─ Curiosity Bridge card (if applicable: one rated ≥ 4, other = 3; items ≤ 2 excluded)
   │    └─ [Explore together] → modal: therapist-vetted script + "Park this" option
   ├─ Countdown: expires in Xh Xm
   └─ [Done] → Home
@@ -175,10 +175,10 @@ Reveal (state: expired)
        └─ [Start a new reveal] → Reveal (state: no active reveal)
 ```
 
-**Mismatch bridge modal:**
+**Curiosity Bridge modal:**
 ```
-Mismatch Bridge Modal
-  ├─ Item title (anonymized which partner rated which way)
+Curiosity Bridge Modal
+  ├─ Item title (direction concealed: neither partner knows who rated which)
   ├─ Therapist-vetted conversation script (2–3 sentences)
   ├─ [Park this for now] → closes modal, logs consent event
   └─ [Talk about it] → closes modal (no further in-app action; script is the tool)
@@ -300,7 +300,7 @@ Every screen that fetches data must implement three states:
 |-------|---------|----|
 | `pending` | One user taps "I'm ready" | Waiting screen with countdown |
 | `both_ready` | Second user taps "I'm ready" | Both see "See our matches" prompt |
-| `computed` | Edge Function writes matches | Reveal moment screen |
+| `computed` | trigger_reveal() SQL RPC writes matches | Reveal moment screen |
 | `expired` | 24h after `computed` | Summary only (match count, no items) |
 
 ### Pairing States

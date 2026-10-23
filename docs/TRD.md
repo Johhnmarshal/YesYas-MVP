@@ -28,7 +28,7 @@
 |-------|--------|--------|
 | Database | **Supabase Postgres (managed)** | Relational model fits pairs + desires + audit logs; RLS is the auth enforcement layer |
 | Auth | **Supabase Auth** | Email OTP (magic link) + passkeys + session management |
-| Server logic | **Supabase Edge Functions (Deno)** | Reveal engine computation, AI proxy, audit writes — keeps secrets off the client |
+| Server logic | **Postgres RPCs + Supabase Edge Functions** | Reveal engine computation in hardened SQL, AI proxy & therapist export in Edge Functions — keeps secrets off the client |
 | Realtime | **Supabase Realtime** | "Partner tapped ready" nudge without polling |
 | Storage | **Supabase Storage** | Therapist export PDFs only; auto-purge after 30 days |
 | Rate limiting | **Supabase built-in + pg_net guard** | All write endpoints rate-limited |
@@ -173,7 +173,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 | Requirement | Target |
 |-------------|--------|
 | App cold start (JS bundle parse) | < 2s on a 3-year-old mid-range device |
-| Reveal computation (Edge Function) | < 1s for up to 200 rated items |
+| Reveal computation (SQL RPC) | < 1s for up to 200 rated items |
 | Supabase RLS query overhead | < 50ms added per query |
 | Availability | 99.5% (Supabase SLA is 99.9%; Vercel CDN is 99.99%) |
 | WCAG compliance | 2.1 AA from day one |

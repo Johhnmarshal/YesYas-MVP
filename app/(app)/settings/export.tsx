@@ -249,6 +249,14 @@ export default function TherapistExportScreen() {
     }
   }
 
+  function handlePrintPdf() {
+    if (typeof window !== 'undefined' && typeof window.print === 'function') {
+      window.print();
+    } else {
+      void handleShareReport();
+    }
+  }
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: colors.bg }]}
@@ -457,19 +465,34 @@ export default function TherapistExportScreen() {
                       Match counts & curiosity zone metrics
                     </Text>
                   </View>
-                  <Pressable
-                    onPress={handleShareReport}
-                    disabled={!reportText}
-                    style={[
-                      styles.shareButton,
-                      { backgroundColor: colors.primary },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Share therapist summary report"
-                  >
-                    <Ionicons name="share-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.shareButtonText}>Share Report</Text>
-                  </Pressable>
+                  <View style={styles.actionButtonGroup}>
+                    <Pressable
+                      onPress={handlePrintPdf}
+                      disabled={!reportText}
+                      style={[
+                        styles.printButton,
+                        { borderColor: colors.border, backgroundColor: colors.surface },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Print or save PDF report"
+                    >
+                      <Ionicons name="print-outline" size={16} color={colors.text} />
+                      <Text style={[styles.printButtonText, { color: colors.text }]}>PDF</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleShareReport}
+                      disabled={!reportText}
+                      style={[
+                        styles.shareButton,
+                        { backgroundColor: colors.primary },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Share therapist summary report"
+                    >
+                      <Ionicons name="share-outline" size={16} color="#FFFFFF" />
+                      <Text style={styles.shareButtonText}>Share</Text>
+                    </Pressable>
+                  </View>
                 </View>
 
                 {generatingReport ? (
@@ -614,6 +637,27 @@ const styles = StyleSheet.create({
   },
   reportSubheading: {
     fontSize: 12,
+  },
+  actionButtonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  printButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  printButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   shareButton: {
     flexDirection: 'row',
