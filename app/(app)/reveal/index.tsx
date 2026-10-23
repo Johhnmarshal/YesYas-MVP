@@ -1141,23 +1141,6 @@ export default function RevealScreen() {
                   Start a new reveal
                 </Text>
               </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Withdraw reveal readiness"
-                disabled={actionBusy}
-                onPress={() => void handleWithdrawReveal()}
-                style={styles.secondaryLinkButton}
-              >
-                <Text
-                  style={[
-                    styles.secondaryLinkText,
-                    { color: colors.secondary },
-                  ]}
-                >
-                  Withdraw Reveal
-                </Text>
-              </Pressable>
             </View>
           </View>
         ) : null}
@@ -1326,7 +1309,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   retryLink: {
-    minHeight: 40,
+    minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 8,
   },

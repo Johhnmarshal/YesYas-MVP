@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   },
   itemPill: {
     maxWidth: 220,
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: SPACING.sm,
     borderRadius: 20,
     borderWidth: 1,

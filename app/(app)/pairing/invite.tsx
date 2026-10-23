@@ -154,7 +154,7 @@ export default function PairingInviteScreen() {
 
   const handleShareInvite = useCallback(async () => {
     if (!invite?.invite_code) return;
-    const deepLink = `yesyasapp://pair?code=${encodeURIComponent(invite.invite_code)}`;
+    const deepLink = `yesyasapp://pairing/accept?code=${encodeURIComponent(invite.invite_code)}`;
     try {
       await Share.share({
         title: 'Pair with me on YesYas!',

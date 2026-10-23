@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   inlineLinkButton: {
-    minHeight: 40,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
