@@ -4,11 +4,38 @@ import type { ConsentEventRow } from '../lib/consent';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { computeConsentPayloadHash, verifyConsentChain } from '../lib/consent.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
-import { decryptForUser, decryptText, encryptForUser, encryptText, hashUserIdForLogging, sha256Hex } from '../lib/crypto.ts';
+import { MasterKeyUnavailableError, adoptMasterKey, bytesToHex, clearMasterKey, decryptForUser, decryptText, encryptForUser, encryptText, exportMasterKey, generateRecoveryCode, hasMasterKey, hashUserIdForLogging, isValidRecoveryCode, normalizeRecoveryCode, provisionMasterKey, sha256Hex, unwrapMasterKey, wrapMasterKey } from '../lib/crypto.ts';
 
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
+
+  // 0. A device with no key must refuse to encrypt rather than mint a new one.
+  //    Silent key generation is what made reinstalls destroy journals.
+  assert.equal(await hasMasterKey(userA), false, 'Fresh user must start with no device key');
+  await assert.rejects(
+    async () => encryptText('anything', userA),
+    (err: unknown) => err instanceof MasterKeyUnavailableError,
+    'Encrypting without a device key must throw MasterKeyUnavailableError',
+  );
+  await assert.rejects(
+    async () => decryptText('enc:v1:00:00:00', userA),
+    (err: unknown) => err instanceof MasterKeyUnavailableError,
+    'Decrypting without a device key must throw MasterKeyUnavailableError',
+  );
+
+  await provisionMasterKey(userA);
+  await provisionMasterKey(userB);
+  assert.ok(await hasMasterKey(userA), 'Provisioning must leave a usable device key');
+
+  // Provisioning twice must not replace an existing key.
+  const keyBeforeReprovision = bytesToHex(await exportMasterKey(userA));
+  await provisionMasterKey(userA);
+  assert.equal(
+    bytesToHex(await exportMasterKey(userA)),
+    keyBeforeReprovision,
+    'Re-provisioning must not rotate an existing key',
+  );
 
   // 1. Encrypt produces enc:v1: ciphertext and hides plaintext
   const plain = 'My secret desire note';
@@ -67,6 +94,73 @@ async function main() {
   assert.equal(hashedUser.length, 64, 'User ID hash must be 64-char hex SHA-256');
   assert.equal(hashedUser, hashUserIdForLogging(userA), 'User ID hash must be deterministic');
   assert.notEqual(hashedUser, hashUserIdForLogging(userB), 'Different users must yield distinct hashes');
+
+  // 4c. Recovery codes: format, checksum, normalisation, and key round-trip
+  const recoveryCode = generateRecoveryCode();
+  assert.match(
+    recoveryCode,
+    /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){5}$/,
+    'Recovery code must be six hyphenated groups of four Crockford base32 characters',
+  );
+  assert.ok(isValidRecoveryCode(recoveryCode), 'A generated code must pass its own checksum');
+  assert.ok(
+    isValidRecoveryCode(recoveryCode.toLowerCase().replace(/-/g, ' ')),
+    'Codes must validate case-insensitively and ignore separators',
+  );
+  assert.ok(
+    !isValidRecoveryCode(recoveryCode.slice(0, -1)),
+    'A truncated code must fail the checksum',
+  );
+  assert.equal(
+    normalizeRecoveryCode('o0-il1'),
+    '00111',
+    'O must fold to 0 and I/L must fold to 1',
+  );
+
+  // Wrapping and unwrapping must return the very same key bytes. Uses a lower
+  // iteration count than production so CI stays fast; the stored parameter is
+  // what unwrap honours.
+  const TEST_ITERATIONS = 1000;
+  const masterKeyHex = bytesToHex(await exportMasterKey(userA));
+  const wrapped = await wrapMasterKey(await exportMasterKey(userA), recoveryCode, TEST_ITERATIONS);
+  assert.ok(wrapped.wrappedKey.startsWith('enc:v1:'), 'Wrapped key must use the enc:v1: envelope');
+  assert.ok(!wrapped.wrappedKey.includes(masterKeyHex), 'Wrapped blob must not contain the raw key');
+  assert.equal(wrapped.iterations, TEST_ITERATIONS);
+  assert.match(wrapped.salt, /^[0-9a-f]{32}$/, 'Salt must be 16 bytes of hex');
+
+  assert.equal(
+    bytesToHex(await unwrapMasterKey(wrapped, recoveryCode)),
+    masterKeyHex,
+    'Unwrapping with the right code must recover the exact key',
+  );
+  assert.equal(
+    bytesToHex(await unwrapMasterKey(wrapped, recoveryCode.toLowerCase())),
+    masterKeyHex,
+    'Unwrapping must accept a lowercased code',
+  );
+
+  const otherCode = generateRecoveryCode();
+  await assert.rejects(
+    async () => unwrapMasterKey(wrapped, otherCode),
+    (err: unknown) => err instanceof Error && err.message.includes('Decryption authentication failed'),
+    'Unwrapping with the wrong code must fail authentication',
+  );
+
+  // The point of the whole exercise: a wiped device recovers old ciphertext.
+  const preWipeCipher = await encryptText('note written before the reinstall', userA);
+  await clearMasterKey(userA);
+  assert.equal(await hasMasterKey(userA), false, 'Clearing must remove the device key');
+  await assert.rejects(
+    async () => decryptText(preWipeCipher, userA),
+    (err: unknown) => err instanceof MasterKeyUnavailableError,
+    'A wiped device must report a missing key, not a corrupt note',
+  );
+  await adoptMasterKey(userA, await unwrapMasterKey(wrapped, recoveryCode));
+  assert.equal(
+    await decryptText(preWipeCipher, userA),
+    'note written before the reinstall',
+    'Recovery code must restore access to content written before the wipe',
+  );
 
   // 5. Consent hash chain verification
   const event1Base = {

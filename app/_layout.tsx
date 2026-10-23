@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { BiometricGate } from '@/components/BiometricGate';
+import { EncryptionKeyGate } from '@/components/EncryptionKeyGate';
 import { supabase } from '@/lib/supabase';
 import { useThemeColors } from '@/lib/theme';
 
@@ -145,11 +146,13 @@ export default function RootLayout() {
 
   return (
     <BiometricGate active={userId !== null}>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(app)" />
-      </Stack>
+      <EncryptionKeyGate userId={userId}>
+        <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(app)" />
+        </Stack>
+      </EncryptionKeyGate>
     </BiometricGate>
   );
 }

@@ -17,7 +17,7 @@ import { LibraryItemCard } from '@/components/LibraryItemCard';
 import type { DesireTier, ToneLabel } from '@/lib/database.types';
 import {
   type DesireLibraryItem,
-  type DesireRow,
+  type DesireWithNote,
   TIER_ORDER,
   fetchLibraryItems,
   fetchUserDesires,
@@ -67,7 +67,7 @@ export default function DesireLibraryScreen() {
 
   const [allItems, setAllItems] = useState<DesireLibraryItem[]>([]);
   const [desiresByItemId, setDesiresByItemId] = useState<
-    Record<string, DesireRow>
+    Record<string, DesireWithNote>
   >({});
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -130,7 +130,7 @@ export default function DesireLibraryScreen() {
           : Promise.resolve([]),
       ]);
 
-      const mergedMap: Record<string, DesireRow> = {};
+      const mergedMap: Record<string, DesireWithNote> = {};
       for (const row of soloDesires) {
         mergedMap[row.library_item_id] = row;
       }
@@ -157,7 +157,7 @@ export default function DesireLibraryScreen() {
     }, [allItems.length, loadLibraryData]),
   );
 
-  const handleDesireUpdated = useCallback((updated: DesireRow) => {
+  const handleDesireUpdated = useCallback((updated: DesireWithNote) => {
     setDesiresByItemId((prev) => ({
       ...prev,
       [updated.library_item_id]: updated,

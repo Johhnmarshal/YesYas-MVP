@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(24);
+select plan(27);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -433,6 +433,58 @@ select is(
   ),
   true,
   'request_therapist_export returns both_consented=false for first partner and true for second partner'
+);
+
+-- ---------- user_key_recovery: wrapped-key backups are self-only (assertions 25-27) ----------
+-- A and B are an ACTIVE pairing, so these also prove the table did not inherit
+-- the partner-read policy that public.profiles deliberately has.
+reset role;
+
+insert into public.user_key_recovery (user_id, wrapped_key, salt, iterations)
+values
+  (
+    '11111111-1111-1111-1111-111111111111',
+    'enc:v1:' || repeat('a', 32) || ':' || repeat('b', 64) || ':' || repeat('c', 64),
+    repeat('0', 32),
+    150000
+  ),
+  (
+    '22222222-2222-2222-2222-222222222222',
+    'enc:v1:' || repeat('d', 32) || ':' || repeat('e', 64) || ':' || repeat('f', 64),
+    repeat('1', 32),
+    150000
+  );
+
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+-- 25. A sees exactly one wrapped key: their own.
+select is(
+  (select count(*)::int from public.user_key_recovery),
+  1,
+  'A sees only their own wrapped key backup (1 of 2)'
+);
+
+-- 26. A cannot read their active partner's wrapped key, even by explicit id.
+select is(
+  (
+    select count(*)::int from public.user_key_recovery
+    where user_id = '22222222-2222-2222-2222-222222222222'
+  ),
+  0,
+  'A cannot read an active partner''s wrapped key backup'
+);
+
+-- 27. A cannot plant a wrapped key for anybody else.
+select throws_ok(
+  $$insert into public.user_key_recovery (user_id, wrapped_key, salt, iterations)
+    values ('33333333-3333-3333-3333-333333333333',
+            'enc:v1:00000000000000000000000000000000:aa:bb',
+            '00000000000000000000000000000000', 150000)$$,
+  '42501',
+  null,
+  'A cannot write a wrapped key backup for another user'
 );
 
 select * from finish();
