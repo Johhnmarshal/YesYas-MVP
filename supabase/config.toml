@@ -1,0 +1,23 @@
+# Supabase local-dev config. Run `supabase init` once to generate the full
+# file if you want to tweak ports/seeds — this minimal version is enough for
+# `supabase db push` / `supabase test db` / `supabase start` out of the box.
+project_id = "yesyas"
+
+[db]
+port = 54322
+# Match the Postgres major version of the linked staging project so local dev
+# behaves identically to production. If you re-link to a project on a newer
+# Postgres major, bump this and run `supabase db reset`.
+major_version = 17
+
+[auth]
+enable_signup = true
+enable_anonymous_sign_ins = false
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["yesyasapp://"]
+
+[auth.email]
+enable_confirmations = true
+
+[studio]
+port = 54323
