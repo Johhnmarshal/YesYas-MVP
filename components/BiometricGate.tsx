@@ -69,6 +69,11 @@ export async function saveBiometricSettings(
       throw new Error('PIN must be a 6-digit number.');
     }
     await AsyncStorage.setItem(PIN_CODE_KEY, trimmed);
+  } else {
+    const existingPin = await AsyncStorage.getItem(PIN_CODE_KEY);
+    if (!existingPin || !/^\d{6}$/.test(existingPin)) {
+      throw new Error('Cannot enable lock without configuring a PIN.');
+    }
   }
 
   await AsyncStorage.setItem(LOCK_ENABLED_KEY, 'true');
@@ -102,6 +107,7 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const wasInBackgroundRef = useRef(false);
 
   const triggerBiometricPrompt = useCallback(async () => {
     if (Platform.OS === 'web') return;
@@ -167,10 +173,12 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      const previousState = appStateRef.current;
       appStateRef.current = nextState;
 
-      if (previousState === 'background' && nextState === 'active') {
+      if (nextState === 'background' || nextState === 'inactive') {
+        wasInBackgroundRef.current = true;
+      } else if (nextState === 'active' && wasInBackgroundRef.current) {
+        wasInBackgroundRef.current = false;
         void evaluateLockState();
       }
     });

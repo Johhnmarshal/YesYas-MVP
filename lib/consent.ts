@@ -94,26 +94,3 @@ export async function fetchConsentEvents(userId: string): Promise<ConsentEventRo
   return data ?? [];
 }
 
-export async function logConsentEvent(
-  userId: string,
-  eventType: ConsentEventType,
-  pairingId?: string | null,
-  payload?: Json | null,
-): Promise<ConsentEventRow> {
-  const { supabase } = await import('./supabase');
-  const { data, error } = await supabase
-    .from('consent_events')
-    .insert({
-      user_id: userId,
-      event_type: eventType,
-      pairing_id: pairingId ?? null,
-      payload: payload ?? {},
-    })
-    .select('*')
-    .single();
-
-  if (error) {
-    throw error;
-  }
-  return data;
-}

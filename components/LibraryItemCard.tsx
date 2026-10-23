@@ -84,23 +84,27 @@ export function LibraryItemCard({
           setErrorMsg(null);
         }
 
-        const saved = await upsertDesireNote({
-          userId,
-          pairingId,
-          libraryItemId: item.id,
-          note: textToSave,
-          defaultRating: currentRating ?? 3,
-        });
-
-        if (pairingId !== null) {
-          await upsertDesireNote({
+        const promises = [
+          upsertDesireNote({
             userId,
-            pairingId: null,
+            pairingId,
             libraryItemId: item.id,
             note: textToSave,
             defaultRating: currentRating ?? 3,
-          });
-        }
+          }),
+          ...(pairingId !== null
+            ? [
+                upsertDesireNote({
+                  userId,
+                  pairingId: null,
+                  libraryItemId: item.id,
+                  note: textToSave,
+                  defaultRating: currentRating ?? 3,
+                }),
+              ]
+            : []),
+        ];
+        const [saved] = await Promise.all(promises);
 
         if (!isMountedRef.current) return;
 
@@ -129,23 +133,27 @@ export function LibraryItemCard({
       setErrorMsg(null);
 
       try {
-        const saved = await upsertDesireRating({
-          userId,
-          pairingId,
-          libraryItemId: item.id,
-          rating: nextRating,
-          note: note.trim() ? note : undefined,
-        });
-
-        if (pairingId !== null) {
-          await upsertDesireRating({
+        const promises = [
+          upsertDesireRating({
             userId,
-            pairingId: null,
+            pairingId,
             libraryItemId: item.id,
             rating: nextRating,
             note: note.trim() ? note : undefined,
-          });
-        }
+          }),
+          ...(pairingId !== null
+            ? [
+                upsertDesireRating({
+                  userId,
+                  pairingId: null,
+                  libraryItemId: item.id,
+                  rating: nextRating,
+                  note: note.trim() ? note : undefined,
+                }),
+              ]
+            : []),
+        ];
+        const [saved] = await Promise.all(promises);
 
         if (!isMountedRef.current) return;
         onDesireUpdated?.(saved);

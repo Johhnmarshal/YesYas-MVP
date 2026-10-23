@@ -134,6 +134,18 @@ async function main() {
   assert.ok(!UUID_REGEX.test('1740000000-abc123'), 'Legacy timestamp-random thread ID must fail');
   assert.ok(!UUID_REGEX.test(''), 'Empty string must fail');
 
+  // 7. Therapist export count fallback logic (curiosity_count / mismatch_count)
+  const calcCuriosity = (summaryObj: Record<string, unknown>) =>
+    typeof summaryObj.curiosity_count === 'number'
+      ? summaryObj.curiosity_count
+      : typeof summaryObj.mismatch_count === 'number'
+        ? summaryObj.mismatch_count
+        : 0;
+  assert.equal(calcCuriosity({ curiosity_count: 5, mismatch_count: 2 }), 5);
+  assert.equal(calcCuriosity({ mismatch_count: 3 }), 3);
+  assert.equal(calcCuriosity({}), 0);
+  assert.equal(calcCuriosity({ mismatch_count: 'invalid' }), 0);
+
   console.log('PASS: All crypto and consent hash-chain assertions succeeded.');
 }
 

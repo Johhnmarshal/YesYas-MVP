@@ -159,7 +159,9 @@ export default function TherapistExportScreen() {
           const curiosityCount =
             typeof summaryObj.curiosity_count === 'number'
               ? summaryObj.curiosity_count
-              : 0;
+              : typeof summaryObj.mismatch_count === 'number'
+                ? summaryObj.mismatch_count
+                : 0;
 
           const rDate = r.revealed_at || r.triggered_at;
           const formatted = rDate

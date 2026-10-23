@@ -159,15 +159,12 @@ export function hmacSha256Bytes(key: Uint8Array, message: Uint8Array): Uint8Arra
 }
 
 function randomBytes(length: number): Uint8Array {
-  const out = new Uint8Array(length);
   if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.getRandomValues === 'function') {
+    const out = new Uint8Array(length);
     globalThis.crypto.getRandomValues(out);
     return out;
   }
-  for (let i = 0; i < length; i += 1) {
-    out[i] = Math.floor(Math.random() * 256);
-  }
-  return out;
+  throw new Error('Cryptographically secure PRNG unavailable: globalThis.crypto.getRandomValues is required.');
 }
 
 const memoryKeyStore = new Map<string, string>();

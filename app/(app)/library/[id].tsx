@@ -52,6 +52,16 @@ export default function DesireLibraryItemDetailScreen() {
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef<boolean>(true);
+  const noteRef = useRef<string>('');
+  const ratingRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    noteRef.current = note;
+  }, [note]);
+
+  useEffect(() => {
+    ratingRef.current = rating;
+  }, [rating]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -140,14 +150,6 @@ export default function DesireLibraryItemDetailScreen() {
     void loadItemDetail();
   }, [loadItemDetail]);
 
-  const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(app)/library' as Href);
-    }
-  }, []);
-
   const persistNote = useCallback(
     async (textToSave: string, currentRating: number | null) => {
       if (!userId || !item) return;
@@ -157,23 +159,27 @@ export default function DesireLibraryItemDetailScreen() {
           setActionError(null);
         }
 
-        const saved = await upsertDesireNote({
-          userId,
-          pairingId,
-          libraryItemId: item.id,
-          note: textToSave,
-          defaultRating: currentRating ?? 3,
-        });
-
-        if (pairingId !== null) {
-          await upsertDesireNote({
+        const promises = [
+          upsertDesireNote({
             userId,
-            pairingId: null,
+            pairingId,
             libraryItemId: item.id,
             note: textToSave,
             defaultRating: currentRating ?? 3,
-          });
-        }
+          }),
+          ...(pairingId !== null
+            ? [
+                upsertDesireNote({
+                  userId,
+                  pairingId: null,
+                  libraryItemId: item.id,
+                  note: textToSave,
+                  defaultRating: currentRating ?? 3,
+                }),
+              ]
+            : []),
+        ];
+        const [saved] = await Promise.all(promises);
 
         if (!isMountedRef.current) return;
         if (saved) {
@@ -191,35 +197,58 @@ export default function DesireLibraryItemDetailScreen() {
     [item, pairingId, userId],
   );
 
+  const flushPendingNote = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+      void persistNote(noteRef.current, ratingRef.current);
+    }
+  }, [persistNote]);
+
+  const handleBack = useCallback(() => {
+    flushPendingNote();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(app)/library' as Href);
+    }
+  }, [flushPendingNote]);
+
   const handleRatingChange = useCallback(
     async (nextRating: number) => {
       if (!userId || !item) return;
       const previousRating = rating;
       setRating(nextRating);
+      ratingRef.current = nextRating;
       setRatingSaving(true);
       setActionError(null);
 
       try {
-        await upsertDesireRating({
-          userId,
-          pairingId,
-          libraryItemId: item.id,
-          rating: nextRating,
-          note: note.trim() ? note : undefined,
-        });
-
-        if (pairingId !== null) {
-          await upsertDesireRating({
+        const promises = [
+          upsertDesireRating({
             userId,
-            pairingId: null,
+            pairingId,
             libraryItemId: item.id,
             rating: nextRating,
             note: note.trim() ? note : undefined,
-          });
-        }
+          }),
+          ...(pairingId !== null
+            ? [
+                upsertDesireRating({
+                  userId,
+                  pairingId: null,
+                  libraryItemId: item.id,
+                  rating: nextRating,
+                  note: note.trim() ? note : undefined,
+                }),
+              ]
+            : []),
+        ];
+        await Promise.all(promises);
       } catch (err) {
         if (!isMountedRef.current) return;
         setRating(previousRating);
+        ratingRef.current = previousRating;
         setActionError(
           err instanceof Error ? err.message : 'Failed to save rating.',
         );
@@ -235,6 +264,7 @@ export default function DesireLibraryItemDetailScreen() {
   const handleNoteChange = useCallback(
     (nextText: string) => {
       setNote(nextText);
+      noteRef.current = nextText;
       setNoteSaveState('saving');
       setActionError(null);
 
@@ -244,10 +274,10 @@ export default function DesireLibraryItemDetailScreen() {
 
       debounceTimerRef.current = setTimeout(() => {
         debounceTimerRef.current = null;
-        void persistNote(nextText, rating);
+        void persistNote(nextText, ratingRef.current);
       }, 800);
     },
-    [persistNote, rating],
+    [persistNote],
   );
 
   const handleSavePrivatelyNow = useCallback(async () => {
@@ -263,23 +293,27 @@ export default function DesireLibraryItemDetailScreen() {
     setActionError(null);
 
     try {
-      const saved = await upsertDesireRating({
-        userId,
-        pairingId,
-        libraryItemId: item.id,
-        rating: effectiveRating,
-        note,
-      });
-
-      if (pairingId !== null) {
-        await upsertDesireRating({
+      const promises = [
+        upsertDesireRating({
           userId,
-          pairingId: null,
+          pairingId,
           libraryItemId: item.id,
           rating: effectiveRating,
           note,
-        });
-      }
+        }),
+        ...(pairingId !== null
+          ? [
+              upsertDesireRating({
+                userId,
+                pairingId: null,
+                libraryItemId: item.id,
+                rating: effectiveRating,
+                note,
+              }),
+            ]
+          : []),
+      ];
+      const [saved] = await Promise.all(promises);
 
       if (!isMountedRef.current) return;
       setRating(saved.rating);
@@ -535,6 +569,7 @@ export default function DesireLibraryItemDetailScreen() {
               <TextInput
                 value={note}
                 onChangeText={handleNoteChange}
+                onBlur={flushPendingNote}
                 placeholder="Write a boundary, memory, or what would make this feel safe and exciting…"
                 placeholderTextColor={colors.muted}
                 multiline

@@ -20,6 +20,9 @@ export interface PairingWithPartner extends PairingRow {
   partner_display_name: string | null;
 }
 
+export const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export async function createPairingInvite(): Promise<PairingInviteResult> {
   const { data, error } = await supabase.rpc('create_pairing_invite');
   if (error) {
@@ -80,6 +83,9 @@ export async function updatePairingStatus(
 export async function getActiveOrPendingPairing(
   userId: string,
 ): Promise<PairingWithPartner | null> {
+  if (!userId || !UUID_REGEX.test(userId)) {
+    return null;
+  }
   const { data, error } = await supabase
     .from('pairings')
     .select('*')
@@ -130,6 +136,9 @@ export async function getActiveOrPendingPairing(
 export async function fetchActivePairings(
   userId: string,
 ): Promise<PairingWithPartner[]> {
+  if (!userId || !UUID_REGEX.test(userId)) {
+    return [];
+  }
   const { data, error } = await supabase
     .from('pairings')
     .select('*')
