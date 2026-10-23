@@ -7,30 +7,36 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(8);
+select plan(24);
 
 -- ---------- fixtures ----------
--- Create two auth users directly in auth.users. The on_auth_user_created
+-- Create four auth users directly in auth.users. The on_auth_user_created
 -- trigger will create matching profiles rows.
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
 values
   ('11111111-1111-1111-1111-111111111111', 'a@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated'),
-  ('22222222-2222-2222-2222-222222222222', 'b@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
+  ('22222222-2222-2222-2222-222222222222', 'b@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated'),
+  ('33333333-3333-3333-3333-333333333333', 'c@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated'),
+  ('44444444-4444-4444-4444-444444444444', 'd@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
+
+update public.profiles set display_name = 'Alex' where id = '11111111-1111-1111-1111-111111111111';
+update public.profiles set display_name = 'Blair' where id = '22222222-2222-2222-2222-222222222222';
+update public.profiles set display_name = 'Casey' where id = '33333333-3333-3333-3333-333333333333';
+update public.profiles set display_name = 'Devon' where id = '44444444-4444-4444-4444-444444444444';
 
 -- Grab a library item to rate.
 -- (Seed was applied; pick the first suggestive item.)
 do $$
 declare
   v_item uuid;
-  v_pair uuid;
+  v_pair uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 begin
   select id into v_item from public.desire_library_items where slug = 'written-note-of-appreciation';
 
   -- Create an active pairing between A and B.
   insert into public.pairings (id, inviter_user_id, invitee_user_id, status)
-  values (gen_random_uuid(), '11111111-1111-1111-1111-111111111111',
-                             '22222222-2222-2222-2222-222222222222', 'active')
-  returning id into v_pair;
+  values (v_pair, '11111111-1111-1111-1111-111111111111',
+                  '22222222-2222-2222-2222-222222222222', 'active');
 
   -- Insert a desire rating as each user (bypassing RLS here — we're setting
   -- up data as the superuser running the test).
@@ -108,10 +114,315 @@ set local "request.jwt.claim.sub" = '';
 set local "request.jwt.claims" = '';
 set local role anon;
 
+-- 8. Unauthenticated users see zero desires.
 select is(
   (select count(*)::int from public.desires),
   0,
   'Unauthenticated users see zero desires'
+);
+
+-- ---------- security & RPC remediation tests (assertions 9-24) ----------
+-- Add additional desires as superuser to test Curiosity Bridge (5 vs 3) and hard veto (5 vs 1).
+reset role;
+do $$
+declare
+  v_pair uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  v_bridge_item uuid;
+  v_veto_item uuid;
+begin
+  select id into v_bridge_item from public.desire_library_items where slug = 'unrushed-kissing';
+  select id into v_veto_item from public.desire_library_items where slug = 'slow-undressing';
+
+  -- Curiosity Bridge item: A rates 5, B rates 3
+  insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+  values
+    ('11111111-1111-1111-1111-111111111111', v_pair, v_bridge_item, 5, 'A bridge note'),
+    ('22222222-2222-2222-2222-222222222222', v_pair, v_bridge_item, 3, 'B bridge note');
+
+  -- Hard Veto item: A rates 5, B rates 1 (rejection!)
+  insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+  values
+    ('11111111-1111-1111-1111-111111111111', v_pair, v_veto_item, 5, 'A veto note'),
+    ('22222222-2222-2222-2222-222222222222', v_pair, v_veto_item, 1, 'B veto note');
+end;
+$$;
+
+-- Switch back to user A
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+-- 9. Direct client INSERT into public.consent_events is denied by RLS.
+select throws_ok(
+  $$insert into public.consent_events (user_id, event_type, payload_hash)
+    values ('11111111-1111-1111-1111-111111111111', 'reveal_triggered', 'fake')$$,
+  '42501',
+  null,
+  'Direct client INSERT into consent_events is denied by RLS'
+);
+
+-- 10. Direct client INSERT into public.pairings is denied by RLS.
+select throws_ok(
+  $$insert into public.pairings (inviter_user_id, status)
+    values ('11111111-1111-1111-1111-111111111111', 'pending')$$,
+  '42501',
+  null,
+  'Direct client INSERT into pairings is denied by RLS'
+);
+
+-- 11. Calling public.trigger_reveal(v_pair) as User A succeeds without SQLSTATE 42702 and returns status = 'pending'.
+select is(
+  (select r.status from public.trigger_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) r),
+  'pending'::public.reveal_status,
+  'trigger_reveal as User A succeeds without SQLSTATE 42702 and returns pending'
+);
+
+-- 12. Calling public.trigger_reveal(v_pair) a second time as User A is idempotent.
+select is(
+  (
+    with second_call as (
+      select r.reveal_id from public.trigger_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) r
+    )
+    select count(*)::int
+    from public.reveals rev
+    join second_call sc on sc.reveal_id = rev.id
+    where rev.pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and rev.status = 'pending'
+  ),
+  1,
+  'Second trigger_reveal call by User A is idempotent (1 pending reveal row with same reveal_id)'
+);
+
+-- 13. Calling public.withdraw_reveal(v_pair) as User A removes the pending reveal (count(*) = 0).
+select public.withdraw_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid);
+select is(
+  (select count(*)::int from public.reveals where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid and status = 'pending'),
+  0,
+  'withdraw_reveal removes the pending reveal row'
+);
+
+-- Re-trigger as User A, then switch to User B and call trigger_reveal(v_pair).
+select public.trigger_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid);
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+
+-- 14. Calling public.trigger_reveal(v_pair) as User B transitions the existing reveal row to status = 'computed'.
+select is(
+  (select r.status from public.trigger_reveal('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) r),
+  'computed'::public.reveal_status,
+  'trigger_reveal as User B transitions existing reveal row to computed'
+);
+
+-- 15. reveals.matches contains the mutually high-rated item (both >= 4) with expected keys and NO a_rating or b_rating.
+select is(
+  (
+    select
+      jsonb_array_length(matches) = 1
+      and (matches->0->>'slug') = 'written-note-of-appreciation'
+      and (matches->0 ? 'library_item_id')
+      and (matches->0 ? 'title')
+      and (matches->0 ? 'description')
+      and (matches->0 ? 'tier')
+      and not (matches->0 ? 'a_rating')
+      and not (matches->0 ? 'b_rating')
+    from public.reveals
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and status = 'computed'
+  ),
+  true,
+  'reveals.matches contains mutual >=4 item with metadata and excludes a_rating/b_rating'
+);
+
+-- 16. reveals.mismatches (Curiosity Bridge) includes the (5, 3) item without a_rating, b_rating, or direction.
+select is(
+  (
+    select
+      jsonb_array_length(mismatches) = 1
+      and (mismatches->0->>'slug') = 'unrushed-kissing'
+      and (mismatches->0 ? 'library_item_id')
+      and (mismatches->0 ? 'title')
+      and (mismatches->0 ? 'tier')
+      and not (mismatches->0 ? 'a_rating')
+      and not (mismatches->0 ? 'b_rating')
+      and not (mismatches->0 ? 'direction')
+    from public.reveals
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and status = 'computed'
+  ),
+  true,
+  'reveals.mismatches (Curiosity Bridge) includes (5,3) item without ratings or direction'
+);
+
+-- 17. Non-negotiable rejection privacy: when A rates 5 and B rates 1 (or 2), item is completely excluded from BOTH matches and mismatches.
+select is(
+  (
+    select
+      not exists (
+        select 1 from jsonb_array_elements(matches) m where m->>'slug' = 'slow-undressing'
+      )
+      and not exists (
+        select 1 from jsonb_array_elements(mismatches) mm where mm->>'slug' = 'slow-undressing'
+      )
+    from public.reveals
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and status = 'computed'
+  ),
+  true,
+  'Rejection privacy: (5,1) item is completely excluded from both matches and mismatches'
+);
+
+-- 18. trigger_reveal writes reveal_triggered and reveal_revealed rows to public.consent_events with valid non-null payload_hash and prev_hash chain.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+select is(
+  (
+    with events as (
+      select event_type, payload_hash, prev_hash,
+             row_number() over (order by created_at asc, id asc) as rn
+      from public.consent_events
+      where user_id = '11111111-1111-1111-1111-111111111111'::uuid
+    )
+    select
+      count(*) >= 2
+      and bool_and(payload_hash is not null and length(payload_hash) = 64)
+      and exists (select 1 from events where event_type = 'reveal_triggered')
+      and exists (select 1 from events where event_type = 'reveal_revealed' and prev_hash is not null)
+    from events
+  ),
+  true,
+  'trigger_reveal writes hash-chained reveal_triggered and reveal_revealed consent_events'
+);
+
+-- 19. UPDATE and DELETE on public.consent_events raise exception 'consent_events is append-only'.
+reset role;
+select throws_ok(
+  $$update public.consent_events set payload_hash = 'tampered'$$,
+  'P0001',
+  'consent_events is append-only',
+  'consent_events blocks UPDATE and DELETE as append-only'
+);
+
+-- ---------- User C & User D pairing handshake & solo graduation (assertions 20-24) ----------
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+
+-- User C rates a solo desire (pairing_id IS NULL)
+insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+select
+  '33333333-3333-3333-3333-333333333333'::uuid,
+  null,
+  id,
+  5,
+  'C solo note'
+from public.desire_library_items
+where slug = 'written-note-of-appreciation';
+
+-- 20. User C calls create_pairing_invite(), returning a non-null 8-char invite_code.
+select is(
+  (select length(invite_code) from public.create_pairing_invite()),
+  8,
+  'User C create_pairing_invite returns a non-null 8-character invite_code'
+);
+
+-- 21. User C attempting accept_pairing_invite(code) on their own invite raises an exception ('inviter cannot accept own invite').
+select throws_ok(
+  $$select public.accept_pairing_invite(
+      (select invite_code from public.pairings where inviter_user_id = '33333333-3333-3333-3333-333333333333'::uuid and status = 'pending' limit 1)
+    )$$,
+  '22023',
+  'inviter cannot accept own invite',
+  'Inviter cannot accept their own pairing invite'
+);
+
+-- Switch to User D to preview and accept User C's invite.
+do $$
+declare
+  v_code text;
+begin
+  select invite_code into v_code
+  from public.pairings
+  where inviter_user_id = '33333333-3333-3333-3333-333333333333'::uuid
+    and status = 'pending'
+  limit 1;
+  perform set_config('yesyas.test_invite_code', v_code, true);
+end;
+$$;
+
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+
+-- 22. User D calling preview_pairing_invite(code) returns C's pairing preview; accept_pairing_invite(code) activates the pairing and consumes invite_code.
+select is(
+  (
+    with preview as (
+      select * from public.preview_pairing_invite(current_setting('yesyas.test_invite_code'))
+    ),
+    accepted as (
+      select public.accept_pairing_invite(current_setting('yesyas.test_invite_code')) as pair_id
+    )
+    select
+      preview.inviter_display_name = 'Casey'
+      and p.status = 'active'
+      and p.invite_code is null
+      and p.invitee_user_id = '44444444-4444-4444-4444-444444444444'::uuid
+    from preview, accepted
+    join public.pairings p on p.id = accepted.pair_id
+  ),
+  true,
+  'User D previews and accepts invite, activating pairing and consuming invite_code'
+);
+
+-- 23. Accepting the pairing automatically graduates User C's solo desire into the new pairing_id.
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+
+select is(
+  (
+    select count(*)::int
+    from public.desires d
+    join public.pairings p on p.id = d.pairing_id
+    where d.user_id = '33333333-3333-3333-3333-333333333333'::uuid
+      and p.inviter_user_id = '33333333-3333-3333-3333-333333333333'::uuid
+      and p.status = 'active'
+  ),
+  1,
+  'Accepting pairing automatically graduates User C''s solo desire into the active pairing_id'
+);
+
+-- 24. Calling request_therapist_export(new_pair_id) as User C returns both_consented = false, and then calling it as User D returns both_consented = true.
+do $$
+declare
+  v_new_pair uuid;
+  v_c_both boolean;
+begin
+  select id into v_new_pair
+  from public.pairings
+  where inviter_user_id = '33333333-3333-3333-3333-333333333333'::uuid
+    and status = 'active'
+  limit 1;
+
+  perform set_config('yesyas.new_pair_id', v_new_pair::text, true);
+  select both_consented into v_c_both from public.request_therapist_export(v_new_pair);
+  perform set_config('yesyas.c_both_consented', v_c_both::text, true);
+end;
+$$;
+
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+
+select is(
+  (
+    select
+      current_setting('yesyas.c_both_consented') = 'false'
+      and r.both_consented = true
+      and r.export_event_id is not null
+    from public.request_therapist_export(current_setting('yesyas.new_pair_id')::uuid) r
+  ),
+  true,
+  'request_therapist_export returns both_consented=false for first partner and true for second partner'
 );
 
 select * from finish();
