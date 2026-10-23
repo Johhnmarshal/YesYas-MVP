@@ -25,7 +25,7 @@ import {
 } from '@/lib/journal';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 interface ChatMessage {
   id: string;
@@ -345,6 +345,8 @@ export default function JournalScreen() {
                               {
                                 backgroundColor: colors.surface,
                                 borderColor: colors.border,
+                                borderLeftWidth: 3,
+                                borderLeftColor: colors.accentWarm,
                               },
                             ],
                       ]}
@@ -411,6 +413,8 @@ export default function JournalScreen() {
                       {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
+                        borderLeftWidth: 3,
+                        borderLeftColor: colors.accentWarm,
                       },
                     ]}
                   >
@@ -876,7 +880,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   lockBadgeText: {
@@ -892,9 +896,10 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     padding: SPACING.md,
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     marginBottom: SPACING.md,
+    ...SHADOWS.subtle,
   },
   welcomeHeader: {
     flexDirection: 'row',
@@ -949,13 +954,14 @@ const styles = StyleSheet.create({
     maxWidth: '82%',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 2,
-    borderRadius: 18,
+    borderRadius: RADII.lg,
+    ...SHADOWS.subtle,
   },
   bubbleUser: {
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: RADII.xs,
   },
   bubbleAi: {
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: RADII.xs,
     borderWidth: 1,
   },
   bubbleText: {
@@ -1016,7 +1022,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     padding: SPACING.lg,
-    borderRadius: 16,
+    borderRadius: RADII.xl,
     borderWidth: 1,
     alignItems: 'center',
     gap: SPACING.xs,
@@ -1036,8 +1042,9 @@ const styles = StyleSheet.create({
   },
   entryCard: {
     padding: SPACING.md,
-    borderRadius: 14,
+    borderRadius: RADII.lg,
     borderWidth: 1,
+    ...SHADOWS.subtle,
   },
   entryCardHeader: {
     flexDirection: 'row',
@@ -1080,7 +1087,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
     maxHeight: 100,
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: RADII.xl,
     paddingHorizontal: SPACING.md,
     paddingVertical: 10,
     fontSize: TYPOGRAPHY.body.fontSize,
@@ -1117,7 +1124,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: SPACING.md,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: RADII.pill,
   },
   graduateButtonText: {
     color: '#FFFFFF',
@@ -1134,10 +1141,11 @@ const styles = StyleSheet.create({
   modalBox: {
     width: '100%',
     maxWidth: 420,
-    borderRadius: 20,
+    borderRadius: RADII.xl,
     borderWidth: 1,
     padding: SPACING.lg,
     alignItems: 'center',
+    ...SHADOWS.elevated,
   },
   modalIconCircle: {
     width: 56,
@@ -1164,7 +1172,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: SPACING.xs,
     padding: SPACING.md,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     marginBottom: SPACING.lg,
     width: '100%',
@@ -1184,7 +1192,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1196,7 +1204,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1216,7 +1224,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs + 2,
     padding: SPACING.sm + 2,
     minHeight: 44,
-    borderRadius: 10,
+    borderRadius: RADII.md,
     borderWidth: 1,
   },
   reasonOptionText: {

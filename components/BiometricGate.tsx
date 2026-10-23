@@ -13,6 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  hapticError,
+  hapticLight,
+  hapticSelection,
+  hapticSuccess,
+} from '@/lib/haptics';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export const LOCK_ENABLED_KEY = '@yesyas/lock_enabled';
@@ -134,11 +140,13 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
       });
 
       if (result.success) {
+        void hapticSuccess();
         setLocked(false);
         setPinInput('');
         setErrorMessage(null);
       }
     } catch {
+      void hapticError();
       setErrorMessage('Biometric check unavailable. Please enter your 6-digit PIN.');
     } finally {
       setAuthenticating(false);
@@ -190,6 +198,7 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
 
   const handleKeyPress = useCallback(
     (key: string) => {
+      void hapticSelection();
       if (key === 'clear') {
         setPinInput('');
         setErrorMessage(null);
@@ -207,10 +216,12 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
         const next = prev + key;
         if (next.length === 6) {
           if (storedPin && next === storedPin) {
+            void hapticSuccess();
             setLocked(false);
             setErrorMessage(null);
             return '';
           }
+          void hapticError();
           setErrorMessage('Incorrect PIN. Please try again.');
           return '';
         }
@@ -327,7 +338,10 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
                 accessibilityRole="button"
                 accessibilityLabel="Unlock with biometrics"
                 disabled={authenticating}
-                onPress={() => void triggerBiometricPrompt()}
+                onPress={() => {
+                  void hapticLight();
+                  void triggerBiometricPrompt();
+                }}
                 style={({ pressed }) => [
                   styles.biometricButton,
                   {

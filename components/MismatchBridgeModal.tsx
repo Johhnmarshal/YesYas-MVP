@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import type { RevealMismatchItem } from '@/lib/database.types';
+import { hapticLight } from '@/lib/haptics';
 import { CURIOSITY_BRIDGE_SCRIPTS } from '@/lib/reveal';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -182,7 +183,10 @@ export function MismatchBridgeModal({
                       accessibilityRole="button"
                       accessibilityState={{ selected: isSelected }}
                       accessibilityLabel={`Select Curiosity Bridge item ${idx + 1}: ${entry.title}`}
-                      onPress={() => setSelectedId(entry.library_item_id)}
+                      onPress={() => {
+                        void hapticLight();
+                        setSelectedId(entry.library_item_id);
+                      }}
                       style={[
                         styles.itemPill,
                         {

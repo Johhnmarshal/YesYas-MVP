@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export const RATING_LABELS: Record<number, string> = {
@@ -22,8 +23,8 @@ export interface StarRatingProps {
 const STARS = [1, 2, 3, 4, 5] as const;
 
 /**
- * Accessible 1–5 star selector with 44x44pt minimum touch targets and warm
- * terracotta (`#C9856B`) highlight for selected stars.
+ * Accessible 1–5 star selector with 44x44pt minimum touch targets, sensory
+ * haptic feedback, and warm terracotta (`#C9856B`) highlight for selected stars.
  */
 export function StarRating({
   value,
@@ -33,6 +34,16 @@ export function StarRating({
   size = 26,
 }: StarRatingProps) {
   const colors = useThemeColors();
+
+  const handlePress = (star: number) => {
+    if (disabled) return;
+    if (star >= 4) {
+      void hapticMedium();
+    } else {
+      void hapticLight();
+    }
+    onChange(star);
+  };
 
   return (
     <View style={styles.container}>
@@ -56,11 +67,12 @@ export function StarRating({
                 disabled,
               }}
               accessibilityLabel={`Rate ${star} out of 5 stars: ${label}`}
-              onPress={() => onChange(star)}
+              onPress={() => handlePress(star)}
               style={({ pressed }) => [
                 styles.starButton,
                 {
-                  opacity: disabled ? 0.5 : pressed ? 0.7 : 1,
+                  opacity: disabled ? 0.5 : pressed ? 0.75 : 1,
+                  transform: [{ scale: pressed ? 0.88 : 1 }],
                 },
               ]}
             >

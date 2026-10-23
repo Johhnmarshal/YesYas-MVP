@@ -16,7 +16,7 @@ import {
   upsertDesireNote,
   upsertDesireRating,
 } from '@/lib/desires';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export interface LibraryItemCardProps {
   item: DesireLibraryItem;
@@ -375,10 +375,11 @@ export function LibraryItemCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    padding: SPACING.sm,
+    padding: SPACING.sm + 2,
     marginBottom: SPACING.sm,
+    ...SHADOWS.subtle,
   },
   headerPressable: {
     minHeight: 44,
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
   tierBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: RADII.xs,
   },
   tierBadgeText: {
     color: '#FFFFFF',
@@ -403,9 +404,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tonePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   tonePillText: {
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     minHeight: 76,
-    borderRadius: 10,
+    borderRadius: RADII.md,
     borderWidth: 1,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,

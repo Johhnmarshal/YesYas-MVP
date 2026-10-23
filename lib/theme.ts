@@ -3,36 +3,82 @@ import { useColorScheme } from 'react-native';
 import type { DesireTier, ToneLabel } from './database.types';
 
 export const COLORS = {
-  bg: '#FBF8F4',
+  bg: '#FAF7F2',
   surface: '#FFFFFF',
-  primary: '#2C3E50',
-  secondary: '#5B6A7A',
-  muted: '#9AA3AE',
-  border: '#E1E5EA',
+  surfaceElevated: '#FFFDFB',
+  primary: '#1E293B',
+  secondary: '#5A6878',
+  muted: '#94A3B8',
+  border: '#E8E2D9',
   accentWarm: '#C9856B',
-  accentCool: '#4A90B8',
+  accentWarmSubtle: '#F6ECE7',
+  accentGold: '#D4AF37',
+  accentCool: '#4A85A3',
   error: '#B23A48',
-  success: '#3A7D44',
-  text: '#2C3E50',
+  success: '#2E7D4E',
+  text: '#1E293B',
 } as const;
 
 export const DARK_COLORS = {
-  bg: '#1A1F26',
-  surface: '#252B34',
-  primary: '#ECF0F1',
-  secondary: '#A0AAB4',
-  muted: '#6C7A89',
-  border: '#343D4B',
-  accentWarm: '#C9856B',
-  accentCool: '#4A90B8',
+  bg: '#0F1318',
+  surface: '#181E26',
+  surfaceElevated: '#212934',
+  primary: '#F1EDE6',
+  secondary: '#9BA7B6',
+  muted: '#5F6D7E',
+  border: '#28323E',
+  accentWarm: '#D99880',
+  accentWarmSubtle: '#2E221E',
+  accentGold: '#E6C665',
+  accentCool: '#5A96B4',
   error: '#D9534F',
-  success: '#4CAE4C',
-  text: '#ECF0F1',
+  success: '#3FB950',
+  text: '#F1EDE6',
 } as const;
 
 export type ThemeColors = {
   [K in keyof typeof COLORS]: string;
 };
+
+export const SHADOWS = {
+  subtle: {
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  elevated: {
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  goldGlow: {
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  terracottaGlow: {
+    shadowColor: '#C9856B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+} as const;
+
+export const RADII = {
+  xs: 4,
+  sm: 8,
+  md: 14,
+  lg: 20,
+  xl: 28,
+  pill: 9999,
+} as const;
 
 export const SPACING = {
   xs: 8,

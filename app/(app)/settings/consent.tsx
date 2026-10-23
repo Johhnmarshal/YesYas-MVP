@@ -18,7 +18,7 @@ import {
   verifyConsentChain,
 } from '@/lib/consent';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export default function ConsentAuditScreen() {
   const colors = useThemeColors();
@@ -359,9 +359,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
     padding: SPACING.md,
-    borderRadius: 14,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     marginBottom: SPACING.md,
+    ...SHADOWS.subtle,
   },
   verificationTitle: {
     fontSize: 14,
@@ -379,8 +380,9 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     padding: SPACING.md,
-    borderRadius: 14,
+    borderRadius: RADII.lg,
     borderWidth: 1,
+    ...SHADOWS.subtle,
   },
   eventCardHeader: {
     flexDirection: 'row',
@@ -389,6 +391,9 @@ const styles = StyleSheet.create({
   },
   eventIndexBadge: {
     paddingTop: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: RADII.pill,
   },
   eventIndexText: {
     fontSize: 12,
@@ -427,12 +432,12 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: RADII.xs,
   },
   payloadContainer: {
     marginTop: SPACING.sm,
     padding: SPACING.sm,
-    borderRadius: 8,
+    borderRadius: RADII.md,
     borderWidth: 1,
   },
   payloadTitle: {
@@ -447,7 +452,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     padding: SPACING.xl,
-    borderRadius: 16,
+    borderRadius: RADII.xl,
     borderWidth: 1,
     alignItems: 'center',
     gap: SPACING.xs,

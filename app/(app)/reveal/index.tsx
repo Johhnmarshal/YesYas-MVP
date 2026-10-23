@@ -34,7 +34,8 @@ import {
   withdrawReveal,
 } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { hapticLight, hapticMedium, hapticSuccess } from '@/lib/haptics';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -230,9 +231,12 @@ export default function RevealScreen() {
       setConfirmingWithdraw(false);
 
       if (result.status === 'computed') {
+        void hapticSuccess();
         setStatusBanner(
           '✨ Both partners are ready! Your mutual matches have been computed.',
         );
+      } else {
+        void hapticMedium();
       }
     } catch (err) {
       setErrorMessage(
@@ -353,6 +357,7 @@ export default function RevealScreen() {
   }, [nowMs, reveal]);
 
   const handleOpenBridgeItem = useCallback((item: RevealMismatchItem) => {
+    void hapticLight();
     setSelectedBridgeItem(item);
     setBridgeModalVisible(true);
   }, []);
@@ -1275,9 +1280,9 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
   },
   privacyPill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   privacyPillText: {
@@ -1285,7 +1290,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bannerCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.sm,
@@ -1299,7 +1304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: SPACING.sm,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -1319,10 +1324,11 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   card: {
-    borderRadius: 12,
+    borderRadius: RADII.xl,
     borderWidth: 1,
     padding: SPACING.md,
     marginBottom: SPACING.md,
+    ...SHADOWS.elevated,
   },
   centeredCard: {
     minHeight: 200,
@@ -1332,6 +1338,7 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     ...TYPOGRAPHY.h1,
+    letterSpacing: -0.5,
     marginBottom: SPACING.xs,
   },
   subtitle: {
@@ -1346,10 +1353,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   reassuranceCard: {
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1,
     padding: SPACING.md,
     marginBottom: SPACING.md,
+    ...SHADOWS.subtle,
   },
   reassuranceTitle: {
     ...TYPOGRAPHY.h3,
@@ -1469,14 +1477,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   celebrationHeaderCard: {
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: RADII.xl,
+    borderWidth: 1.5,
     padding: SPACING.md,
     marginBottom: SPACING.md,
     alignItems: 'center',
+    ...SHADOWS.goldGlow,
   },
   celebrationTitle: {
     ...TYPOGRAPHY.h1,
+    letterSpacing: -0.5,
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -1491,7 +1501,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   ephemeralPillText: {
@@ -1500,6 +1510,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     ...TYPOGRAPHY.h2,
+    letterSpacing: -0.3,
     marginBottom: SPACING.xs,
   },
   emptyMatchTitle: {
@@ -1511,9 +1522,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   matchCard: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: SPACING.sm,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    padding: SPACING.sm + 2,
+    ...SHADOWS.goldGlow,
   },
   matchBadgeRow: {
     flexDirection: 'row',
@@ -1524,7 +1536,7 @@ const styles = StyleSheet.create({
   tierBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: RADII.xs,
   },
   tierBadgeText: {
     color: '#FFFFFF',
@@ -1553,9 +1565,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   bridgeCard: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: SPACING.sm,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    padding: SPACING.sm + 2,
+    ...SHADOWS.terracottaGlow,
   },
   bridgeTagText: {
     fontSize: 12,

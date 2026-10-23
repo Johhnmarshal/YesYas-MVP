@@ -24,7 +24,7 @@ import {
 } from '@/lib/pairing';
 import { type RevealRow, fetchCurrentReveal } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 function deriveDisplayName(
   profileDisplayName: string | null | undefined,
@@ -850,9 +850,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   privacyShieldText: {
@@ -860,9 +860,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tierPill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   tierPillText: {
@@ -872,16 +872,18 @@ const styles = StyleSheet.create({
   },
   greetingTitle: {
     ...TYPOGRAPHY.h1,
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   greetingSubtitle: {
     ...TYPOGRAPHY.body,
   },
   card: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: SPACING.sm,
+    borderRadius: RADII.xl,
+    borderWidth: 1,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
+    ...SHADOWS.elevated,
   },
   loadingCard: {
     minHeight: 180,
@@ -912,9 +914,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: RADII.pill,
     borderWidth: 1,
   },
   statusBadgeText: {
@@ -922,15 +924,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   codeBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: RADII.sm,
     borderWidth: 1,
   },
   codeBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 2,
   },
   pairingMetaText: {
     ...TYPOGRAPHY.body,
@@ -941,7 +943,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,
@@ -952,7 +954,7 @@ const styles = StyleSheet.create({
   },
   managePairingButton: {
     minHeight: 44,
-    borderRadius: 10,
+    borderRadius: RADII.md,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -971,7 +973,7 @@ const styles = StyleSheet.create({
   dualPrimaryButton: {
     flex: 1,
     minHeight: 50,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.xs,
@@ -979,7 +981,7 @@ const styles = StyleSheet.create({
   dualSecondaryButton: {
     flex: 1,
     minHeight: 50,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1002,11 +1004,12 @@ const styles = StyleSheet.create({
   progressSummaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.sm + 2,
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.md,
+    ...SHADOWS.subtle,
   },
   metricColumn: {
     flex: 1,
@@ -1034,17 +1037,19 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.h2,
+    letterSpacing: -0.3,
     marginBottom: SPACING.xs,
   },
   quickActionsColumn: {
     gap: SPACING.sm,
   },
   actionCard: {
-    borderRadius: 12,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    padding: SPACING.sm,
+    padding: SPACING.sm + 2,
     minHeight: 84,
     justifyContent: 'center',
+    ...SHADOWS.subtle,
   },
   actionCardHeader: {
     flexDirection: 'row',
