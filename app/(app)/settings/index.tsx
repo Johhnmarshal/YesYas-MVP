@@ -22,11 +22,13 @@ import {
   saveBiometricSettings,
 } from '@/components/BiometricGate';
 import { PairingManageModal } from '@/components/PairingManageModal';
+import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
 import type {
   Database,
   DesireTier,
   ToneLabel,
 } from '@/lib/database.types';
+import { hasRecoveryBackup } from '@/lib/key-recovery';
 import {
   type PairingWithPartner,
   fetchActivePairings,
@@ -68,6 +70,10 @@ export default function SettingsScreen() {
   // Pairing Modal state
   const [pairingModalVisible, setPairingModalVisible] = useState(false);
 
+  // Encryption recovery-code state
+  const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
+  const [hasBackup, setHasBackup] = useState<boolean | null>(null);
+
   // Account Deletion Modal state
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -107,6 +113,15 @@ export default function SettingsScreen() {
       // Fetch lock / biometric settings
       const bio = await getBiometricSettings();
       setBiometricSettings(bio);
+
+      // Does this account have an encryption recovery code on file?
+      try {
+        setHasBackup(await hasRecoveryBackup(user.id));
+      } catch {
+        // Unknown rather than false — never imply a backup is missing when we
+        // simply could not check.
+        setHasBackup(null);
+      }
     } catch (err) {
       console.warn('Failed to load settings data:', err);
     } finally {
@@ -633,6 +648,54 @@ export default function SettingsScreen() {
               )}
             </View>
 
+            {/* Encryption Recovery Code */}
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Encryption Recovery Code
+              </Text>
+
+              <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+                {hasBackup === null
+                  ? 'We could not check whether you have a recovery code. Reopen this screen when you are back online.'
+                  : hasBackup
+                    ? 'A recovery code is on file. Keep it in your password manager — it is what restores your journal and private notes on a new device.'
+                    : 'Your journal and private notes are encrypted with a key held only on this device. Without a recovery code, reinstalling the app or signing in elsewhere loses them permanently.'}
+              </Text>
+
+              <Pressable
+                onPress={() => setRecoveryModalVisible(true)}
+                style={[
+                  styles.changePinButton,
+                  { borderColor: colors.border, backgroundColor: colors.bg },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  hasBackup
+                    ? 'Replace encryption recovery code'
+                    : 'Create encryption recovery code'
+                }
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={16}
+                  color={hasBackup ? colors.primary : colors.accentWarm}
+                />
+                <Text
+                  style={[
+                    styles.changePinText,
+                    { color: hasBackup ? colors.primary : colors.accentWarm },
+                  ]}
+                >
+                  {hasBackup ? 'Replace Recovery Code' : 'Create Recovery Code'}
+                </Text>
+              </Pressable>
+            </View>
+
             {/* Audit & Legal Summary Navigation */}
             <View
               style={[
@@ -744,6 +807,17 @@ export default function SettingsScreen() {
         pairing={pairing}
         onClose={() => setPairingModalVisible(false)}
         onUpdated={() => void loadSettingsData()}
+      />
+
+      <RecoveryCodeModal
+        visible={recoveryModalVisible}
+        userId={userId}
+        replacing={hasBackup === true}
+        onClose={() => {
+          setRecoveryModalVisible(false);
+          void loadSettingsData();
+        }}
+        onCreated={() => setHasBackup(true)}
       />
 
       {/* 6-Digit PIN Setup Modal */}

@@ -1,4 +1,5 @@
-// Hand-written types matching the v1 schema in supabase/migrations/20260420000001..0004.sql.
+// Hand-written types matching the v1 schema in supabase/migrations/20260420000001..0004.sql
+// plus 20261023000001_key_recovery.sql.
 // Compatible with @supabase/supabase-js v2 generic Database schema.
 
 export type Json =
@@ -338,6 +339,36 @@ export interface Database {
           prompt_tokens?: number;
           completion_tokens?: number;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_key_recovery: {
+        Row: {
+          user_id: string;
+          wrapped_key: string;
+          salt: string;
+          iterations: number;
+          kdf: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          wrapped_key: string;
+          salt: string;
+          iterations: number;
+          kdf?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          wrapped_key?: string;
+          salt?: string;
+          iterations?: number;
+          kdf?: string;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

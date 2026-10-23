@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  type JournalEntryRow,
+  type JournalEntryWithBody,
   fetchJournalEntries,
   reportAiMessage,
   saveJournalEntry,
@@ -54,7 +54,7 @@ export default function JournalScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [pastEntries, setPastEntries] = useState<JournalEntryRow[]>([]);
+  const [pastEntries, setPastEntries] = useState<JournalEntryWithBody[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [isPaired, setIsPaired] = useState(false);
   const [checkingPairing, setCheckingPairing] = useState(true);
@@ -550,9 +550,19 @@ export default function JournalScreen() {
                     </View>
                     <Text
                       numberOfLines={2}
-                      style={[styles.entryCardSnippet, { color: colors.text }]}
+                      style={[
+                        styles.entryCardSnippet,
+                        {
+                          color:
+                            entry.bodyState === 'ok' ? colors.text : colors.muted,
+                        },
+                      ]}
                     >
-                      {entry.body}
+                      {entry.bodyState === 'ok'
+                        ? entry.body
+                        : entry.bodyState === 'locked'
+                          ? 'This entry is still encrypted. Unlock this device with your recovery code in Settings to read it.'
+                          : 'This entry can no longer be decrypted on this account.'}
                     </Text>
                   </Pressable>
                 ))}

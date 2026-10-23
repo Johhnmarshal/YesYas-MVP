@@ -12,7 +12,7 @@ import {
 import { StarRating } from '@/components/StarRating';
 import {
   type DesireLibraryItem,
-  type DesireRow,
+  type DesireWithNote,
   upsertDesireNote,
   upsertDesireRating,
 } from '@/lib/desires';
@@ -22,8 +22,8 @@ export interface LibraryItemCardProps {
   item: DesireLibraryItem;
   userId: string;
   pairingId: string | null;
-  desire?: DesireRow;
-  onDesireUpdated?: (updated: DesireRow) => void;
+  desire?: DesireWithNote;
+  onDesireUpdated?: (updated: DesireWithNote) => void;
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -326,6 +326,17 @@ export function LibraryItemCard({
                 </Text>
               ) : null}
             </View>
+
+            {desire && desire.noteState !== 'ok' ? (
+              <Text
+                style={[styles.saveStatus, { color: colors.error }]}
+                accessibilityLiveRegion="polite"
+              >
+                {desire.noteState === 'locked'
+                  ? 'You saved a note here, but this device cannot read it yet. Unlock with your recovery code in Settings.'
+                  : 'You saved a note here, but it can no longer be decrypted. Anything you type now replaces it.'}
+              </Text>
+            ) : null}
 
             <TextInput
               value={note}

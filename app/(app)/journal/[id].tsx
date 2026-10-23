@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  type JournalEntryRow,
+  type JournalEntryWithBody,
   deleteJournalEntry,
   fetchJournalEntryById,
 } from '@/lib/journal';
@@ -24,7 +24,7 @@ import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 export default function JournalDetailScreen() {
   const colors = useThemeColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [entry, setEntry] = useState<JournalEntryRow | null>(null);
+  const [entry, setEntry] = useState<JournalEntryWithBody | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export default function JournalDetailScreen() {
   }
 
   async function handleShare() {
-    if (!entry) return;
+    if (!entry || entry.bodyState !== 'ok') return;
     try {
       await Share.share({
         message: entry.body,
@@ -245,9 +245,17 @@ export default function JournalDetailScreen() {
               style={[styles.divider, { backgroundColor: colors.border }]}
             />
 
-            <Text style={[styles.entryBody, { color: colors.text }]}>
-              {entry.body}
-            </Text>
+            {entry.bodyState === 'ok' ? (
+              <Text style={[styles.entryBody, { color: colors.text }]}>
+                {entry.body}
+              </Text>
+            ) : (
+              <Text style={[styles.entryBody, { color: colors.muted }]}>
+                {entry.bodyState === 'locked'
+                  ? 'This entry is still encrypted. Unlock this device with your recovery code in Settings to read it.'
+                  : 'This entry can no longer be decrypted on this account.'}
+              </Text>
+            )}
           </View>
         ) : null}
       </ScrollView>

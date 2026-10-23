@@ -20,6 +20,7 @@ import {
   upsertDesireNote,
   upsertDesireRating,
 } from '@/lib/desires';
+import type { EncryptedFieldState } from '@/lib/crypto';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -42,6 +43,8 @@ export default function DesireLibraryItemDetailScreen() {
 
   const [rating, setRating] = useState<number | null>(null);
   const [note, setNote] = useState<string>('');
+  // 'ok' unless a note exists that this device could not decrypt.
+  const [noteState, setNoteState] = useState<EncryptedFieldState>('ok');
 
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -133,6 +136,7 @@ export default function DesireLibraryItemDetailScreen() {
       setItem(fetchedItem);
       setRating(chosenDesire?.rating ?? null);
       setNote(chosenDesire?.note ?? '');
+      setNoteState(chosenDesire?.noteState ?? 'ok');
       setNoteSaveState(chosenDesire?.note ? 'saved' : 'idle');
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -565,6 +569,17 @@ export default function DesireLibraryItemDetailScreen() {
                 Encrypted on your device (`enc:v1:`) before reaching the
                 database. Your partner never sees this note.
               </Text>
+
+              {noteState !== 'ok' ? (
+                <Text
+                  style={[styles.saveStatus, { color: colors.error }]}
+                  accessibilityLiveRegion="polite"
+                >
+                  {noteState === 'locked'
+                    ? 'You saved a note here, but this device cannot read it yet. Unlock with your recovery code in Settings to see it again.'
+                    : 'You saved a note here, but it can no longer be decrypted. Anything you type now replaces it.'}
+                </Text>
+              ) : null}
 
               <TextInput
                 value={note}

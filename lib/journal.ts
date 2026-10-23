@@ -1,8 +1,26 @@
-import { decryptText, encryptText, sha256Hex } from './crypto';
+import {
+  classifyDecryptionFailure,
+  decryptText,
+  encryptText,
+  sha256Hex,
+  type EncryptedFieldState,
+} from './crypto';
 import type { Database } from './database.types';
 import { supabase } from './supabase';
 
 export type JournalEntryRow = Database['public']['Tables']['journal_entries']['Row'];
+
+/**
+ * A journal entry plus whether its body could be read on this device.
+ *
+ * `bodyState` replaces the old practice of putting a human-readable sentinel
+ * into `body`, which the UI could not tell apart from something the user had
+ * actually written. When it is not `ok`, `body` is empty and the caller is
+ * expected to render a locked state instead of the text.
+ */
+export interface JournalEntryWithBody extends JournalEntryRow {
+  bodyState: EncryptedFieldState;
+}
 
 export interface AiCoachResponse {
   reply: string;
@@ -39,7 +57,9 @@ function buildLocalReflectiveReply(message: string, threadId?: string): AiCoachR
   };
 }
 
-export async function fetchJournalEntries(userId: string): Promise<JournalEntryRow[]> {
+export async function fetchJournalEntries(
+  userId: string,
+): Promise<JournalEntryWithBody[]> {
   const { data, error } = await supabase
     .from('journal_entries')
     .select('*')
@@ -54,10 +74,11 @@ export async function fetchJournalEntries(userId: string): Promise<JournalEntryR
   return Promise.all(
     rows.map(async (row) => {
       try {
-        const decryptedBody = await decryptText(row.body, userId);
-        return { ...row, body: decryptedBody };
-      } catch {
-        return { ...row, body: '[Unable to decrypt entry on this device]' };
+        return { ...row, body: await decryptText(row.body, userId), bodyState: 'ok' };
+      } catch (err) {
+        // The ciphertext stays in the database untouched; a recovery-code
+        // unlock brings it back.
+        return { ...row, body: '', bodyState: classifyDecryptionFailure(err) };
       }
     }),
   );
@@ -66,7 +87,7 @@ export async function fetchJournalEntries(userId: string): Promise<JournalEntryR
 export async function fetchJournalEntryById(
   userId: string,
   entryId: string,
-): Promise<JournalEntryRow | null> {
+): Promise<JournalEntryWithBody | null> {
   const { data, error } = await supabase
     .from('journal_entries')
     .select('*')
@@ -82,10 +103,9 @@ export async function fetchJournalEntryById(
   }
 
   try {
-    const decryptedBody = await decryptText(data.body, userId);
-    return { ...data, body: decryptedBody };
-  } catch {
-    return { ...data, body: '[Unable to decrypt entry on this device]' };
+    return { ...data, body: await decryptText(data.body, userId), bodyState: 'ok' };
+  } catch (err) {
+    return { ...data, body: '', bodyState: classifyDecryptionFailure(err) };
   }
 }
 
@@ -93,7 +113,7 @@ export async function createJournalEntry(
   userId: string,
   body: string,
   threadId?: string | null,
-): Promise<JournalEntryRow> {
+): Promise<JournalEntryWithBody> {
   const trimmed = body.trim();
   if (!trimmed) {
     throw new Error('Journal entry cannot be empty');
@@ -122,6 +142,7 @@ export async function createJournalEntry(
   return {
     ...data,
     body: trimmed,
+    bodyState: 'ok',
   };
 }
 

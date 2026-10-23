@@ -1,9 +1,44 @@
-import { decryptText, encryptText } from './crypto';
+import {
+  MasterKeyUnavailableError,
+  classifyDecryptionFailure,
+  decryptText,
+  encryptText,
+  hasMasterKey,
+  type EncryptedFieldState,
+} from './crypto';
 import type { Database, DesireTier } from './database.types';
 import { supabase } from './supabase';
 
 export type DesireLibraryItem = Database['public']['Tables']['desire_library_items']['Row'];
 export type DesireRow = Database['public']['Tables']['desires']['Row'];
+
+/**
+ * A rating plus whether its private note could actually be read on this
+ * device. When `noteState` is not `ok`, `note` is null rather than an empty
+ * string — the old behaviour made a locked note indistinguishable from a note
+ * the user had deleted, and let the editor save the blank back over it.
+ */
+export interface DesireWithNote extends DesireRow {
+  noteState: EncryptedFieldState;
+}
+
+function readableNote(row: DesireRow, note: string | null): DesireWithNote {
+  return { ...row, note, noteState: 'ok' };
+}
+
+/**
+ * Any write that touches the `note` column needs the device key — including
+ * clearing it. Encrypting a value would fail on its own, but writing `null`
+ * would not, and that would silently discard a note the user cannot currently
+ * read but could still recover.
+ */
+async function requireUnlockedForNoteWrite(userId: string): Promise<void> {
+  if (!(await hasMasterKey(userId))) {
+    throw new MasterKeyUnavailableError(
+      'This device cannot read your private notes yet, so it will not change them. Unlock with your recovery code first.',
+    );
+  }
+}
 
 export const TIER_ORDER: Record<DesireTier, number> = {
   sensory: 1,
@@ -56,7 +91,7 @@ export async function fetchLibraryItemById(id: string): Promise<DesireLibraryIte
 export async function fetchUserDesires(
   userId: string,
   pairingId: string | null,
-): Promise<DesireRow[]> {
+): Promise<DesireWithNote[]> {
   let query = supabase
     .from('desires')
     .select('*')
@@ -77,13 +112,14 @@ export async function fetchUserDesires(
   return Promise.all(
     rows.map(async (row) => {
       if (!row.note) {
-        return row;
+        return readableNote(row, null);
       }
       try {
-        const decryptedNote = await decryptText(row.note, userId);
-        return { ...row, note: decryptedNote };
-      } catch {
-        return { ...row, note: '' };
+        return readableNote(row, await decryptText(row.note, userId));
+      } catch (err) {
+        // Keep the row, drop the unreadable text, and say why. The ciphertext
+        // in the database is untouched, so a recovery-code unlock restores it.
+        return { ...row, note: null, noteState: classifyDecryptionFailure(err) };
       }
     }),
   );
@@ -121,7 +157,15 @@ export interface UpsertDesireRatingParams {
   note?: string | null;
 }
 
-export async function upsertDesireRating(params: UpsertDesireRatingParams): Promise<DesireRow> {
+/**
+ * Writes a rating, and the note alongside it when `note` is provided.
+ * Encryption requires the device key, so on a locked device this throws
+ * MasterKeyUnavailableError before touching the row rather than replacing a
+ * readable note with an unreadable one.
+ */
+export async function upsertDesireRating(
+  params: UpsertDesireRatingParams,
+): Promise<DesireWithNote> {
   const { userId, pairingId, libraryItemId, rating, note } = params;
   if (rating < 1 || rating > 5) {
     throw new Error('Rating must be between 1 and 5');
@@ -130,6 +174,7 @@ export async function upsertDesireRating(params: UpsertDesireRatingParams): Prom
   const existing = await findExistingDesire(userId, pairingId, libraryItemId);
   let encryptedNote: string | null | undefined;
   if (note !== undefined) {
+    await requireUnlockedForNoteWrite(userId);
     const trimmed = note?.trim() ?? '';
     encryptedNote = trimmed ? await encryptText(trimmed, userId) : null;
   }
@@ -149,8 +194,7 @@ export async function upsertDesireRating(params: UpsertDesireRatingParams): Prom
     if (error) {
       throw error;
     }
-    const decryptedNote = data.note ? await decryptText(data.note, userId) : null;
-    return { ...data, note: decryptedNote };
+    return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
   }
 
   const { data, error } = await supabase
@@ -168,8 +212,7 @@ export async function upsertDesireRating(params: UpsertDesireRatingParams): Prom
   if (error) {
     throw error;
   }
-  const decryptedNote = data.note ? await decryptText(data.note, userId) : null;
-  return { ...data, note: decryptedNote };
+  return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
 }
 
 export interface UpsertDesireNoteParams {
@@ -182,8 +225,9 @@ export interface UpsertDesireNoteParams {
 
 export async function upsertDesireNote(
   params: UpsertDesireNoteParams,
-): Promise<DesireRow | null> {
+): Promise<DesireWithNote | null> {
   const { userId, pairingId, libraryItemId, note, defaultRating = 3 } = params;
+  await requireUnlockedForNoteWrite(userId);
   const trimmed = note.trim();
   const encryptedNote = trimmed ? await encryptText(trimmed, userId) : null;
 
@@ -200,7 +244,7 @@ export async function upsertDesireNote(
     if (error) {
       throw error;
     }
-    return { ...data, note: trimmed || null };
+    return readableNote(data, trimmed || null);
   }
 
   if (!trimmed) {
@@ -222,5 +266,5 @@ export async function upsertDesireNote(
   if (error) {
     throw error;
   }
-  return { ...data, note: trimmed };
+  return readableNote(data, trimmed);
 }
