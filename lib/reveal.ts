@@ -72,6 +72,19 @@ export async function triggerReveal(
   return row;
 }
 
+export async function fetchPairReveals(pairingId: string): Promise<RevealRow[]> {
+  const { data, error } = await supabase
+    .from('reveals')
+    .select('*')
+    .eq('pairing_id', pairingId)
+    .order('triggered_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+  return data ?? [];
+}
+
 export async function withdrawReveal(pairingId: string): Promise<void> {
   const { error } = await supabase.rpc('withdraw_reveal', {
     p_pairing_id: pairingId,

@@ -113,6 +113,23 @@ export async function createJournalEntry(
   };
 }
 
+export const saveJournalEntry = createJournalEntry;
+
+export async function deleteJournalEntry(
+  userId: string,
+  entryId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('journal_entries')
+    .delete()
+    .eq('id', entryId)
+    .eq('user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function sendAiCoachMessage(
   message: string,
   threadId?: string,

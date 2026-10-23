@@ -277,6 +277,8 @@ export async function encryptText(plaintext: string, userId: string): Promise<st
   return `enc:v1:${ivHex}:${cipherHex}:${macHex}`;
 }
 
+export const encryptForUser = encryptText;
+
 export async function decryptText(payload: string, userId: string): Promise<string> {
   if (!payload.startsWith('enc:v1:')) {
     return payload;
@@ -307,3 +309,10 @@ export async function decryptText(payload: string, userId: string): Promise<stri
   const plainBytes = xorCtrKeystream(cipherBytes, encKey, iv);
   return bytesToUtf8(plainBytes);
 }
+
+export const decryptForUser = decryptText;
+
+export function hashUserIdForLogging(userId: string): string {
+  return sha256Hex(`ai_logs:${userId.trim().toLowerCase()}`);
+}
+

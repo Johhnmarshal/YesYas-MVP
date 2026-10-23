@@ -4,7 +4,7 @@ import type { ConsentEventRow } from '../lib/consent';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { computeConsentPayloadHash, verifyConsentChain } from '../lib/consent.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
-import { decryptText, encryptText, sha256Hex } from '../lib/crypto.ts';
+import { decryptForUser, decryptText, encryptForUser, encryptText, hashUserIdForLogging, sha256Hex } from '../lib/crypto.ts';
 
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
@@ -56,6 +56,17 @@ async function main() {
   // 4. Legacy plaintext note returns unchanged
   const legacy = 'legacy plaintext note';
   assert.equal(await decryptText(legacy, userA), legacy, 'Legacy plaintext must pass through unchanged');
+
+  // 4b. encryptForUser / decryptForUser and hashUserIdForLogging
+  const journalNote = 'Private solo journal entry with reflections';
+  const journalCipher = await encryptForUser(journalNote, userA);
+  assert.ok(journalCipher.startsWith('enc:v1:'));
+  assert.equal(await decryptForUser(journalCipher, userA), journalNote);
+
+  const hashedUser = hashUserIdForLogging(userA);
+  assert.equal(hashedUser.length, 64, 'User ID hash must be 64-char hex SHA-256');
+  assert.equal(hashedUser, hashUserIdForLogging(userA), 'User ID hash must be deterministic');
+  assert.notEqual(hashedUser, hashUserIdForLogging(userB), 'Different users must yield distinct hashes');
 
   // 5. Consent hash chain verification
   const event1Base = {

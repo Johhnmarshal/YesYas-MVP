@@ -13,6 +13,7 @@ export const COLORS = {
   accentCool: '#4A90B8',
   error: '#B23A48',
   success: '#3A7D44',
+  text: '#2C3E50',
 } as const;
 
 export const DARK_COLORS = {
@@ -26,6 +27,7 @@ export const DARK_COLORS = {
   accentCool: '#4A90B8',
   error: '#D9534F',
   success: '#4CAE4C',
+  text: '#ECF0F1',
 } as const;
 
 export type ThemeColors = {

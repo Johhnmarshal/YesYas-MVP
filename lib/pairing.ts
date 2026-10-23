@@ -126,3 +126,40 @@ export async function getActiveOrPendingPairing(
     partner_display_name: partnerDisplayName,
   };
 }
+
+export async function fetchActivePairings(
+  userId: string,
+): Promise<PairingWithPartner[]> {
+  const { data, error } = await supabase
+    .from('pairings')
+    .select('*')
+    .or(`inviter_user_id.eq.${userId},invitee_user_id.eq.${userId}`)
+    .in('status', ['active', 'paused'])
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+  if (!data) return [];
+
+  return Promise.all(
+    data.map(async (row) => {
+      const partnerUserId =
+        row.inviter_user_id === userId ? row.invitee_user_id : row.inviter_user_id;
+      let partnerDisplayName: string | null = null;
+      if (partnerUserId) {
+        const { data: partnerProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', partnerUserId)
+          .maybeSingle();
+        partnerDisplayName = partnerProfile?.display_name ?? null;
+      }
+      return {
+        ...row,
+        partner_user_id: partnerUserId,
+        partner_display_name: partnerDisplayName,
+      };
+    }),
+  );
+}
