@@ -15,10 +15,20 @@
 --
 --   * `is_pairing_member(uuid, uuid)` has no auth check and returns whether a
 --     given user belongs to a given pairing — an unauthenticated membership
---     oracle for anyone holding the two UUIDs. The client never calls it; it
---     exists for `withdraw_reveal`, which invokes it as SECURITY DEFINER, so
---     EXECUTE is checked against the function owner and revoking it from both
---     `anon` and `authenticated` changes nothing internally.
+--     oracle for anyone holding the two UUIDs.
+--
+--     Revoked from `anon` only. An earlier version of this migration also
+--     revoked it from `authenticated`, on the reasoning that `withdraw_reveal`
+--     calls it as SECURITY DEFINER so EXECUTE would be checked against the
+--     owner. The pgTAP suite disproved that: withdraw_reveal failed with
+--     `permission denied for function is_pairing_member`. Keeping the
+--     `authenticated` grant is what the calling path actually needs.
+--
+--     That leaves a residual, smaller leak: a signed-in user can still probe
+--     whether two arbitrary UUIDs are paired. Closing it properly means adding
+--     `and p_user_id = auth.uid()` inside the function, which is a behaviour
+--     change for every caller and belongs in its own migration with its own
+--     test, not bolted onto a permissions fix.
 --
 --   * `expire_old_reveals()` has no auth check and writes: it expires reveals
 --     across every pairing. It is idempotent and only touches rows already
@@ -36,7 +46,8 @@ revoke all on function public.handle_new_user() from public, anon, authenticated
 revoke all on function public.touch_updated_at() from public, anon, authenticated;
 
 -- ---------- Internal helper: not part of the client API ----------
-revoke all on function public.is_pairing_member(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.is_pairing_member(uuid, uuid) from public, anon;
+grant execute on function public.is_pairing_member(uuid, uuid) to authenticated;
 
 -- ---------- Signed-in only RPCs ----------
 -- Each is revoked from anon and PUBLIC, then re-granted to authenticated so the
