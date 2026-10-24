@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { BiometricGate } from '@/components/BiometricGate';
 import { EncryptionKeyGate } from '@/components/EncryptionKeyGate';
-import { supabase } from '@/lib/supabase';
+import { consumeInitialUrlAuth, supabase } from '@/lib/supabase';
 import { useThemeColors } from '@/lib/theme';
 
 type OnboardingListener = () => void;
@@ -71,19 +71,21 @@ export default function RootLayout() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user?.id ?? null;
+      void syncSessionProfile(uid);
+    });
+
+    void (async () => {
+      await consumeInitialUrlAuth();
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       const uid = data.session?.user?.id ?? null;
       await syncSessionProfile(uid);
       if (mounted) {
         setReady(true);
       }
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const uid = session?.user?.id ?? null;
-      void syncSessionProfile(uid);
-    });
+    })();
 
     return () => {
       mounted = false;

@@ -8,10 +8,26 @@
 import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  type EmailOtpType,
+  type SupabaseClient,
+} from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
 import type { Database } from './database.types';
+
+// Capture the initial browser URL query & hash at module-evaluation time BEFORE
+// Expo Router's root <Redirect> or router.replace('/(auth)/sign-in') strips them.
+const initialWebLocation =
+  Platform.OS === 'web' && typeof window !== 'undefined'
+    ? {
+        search: window.location.search,
+        hash: window.location.hash,
+      }
+    : null;
+
+let initialAuthHandled = false;
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -46,7 +62,7 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: Platform.OS === 'web',
-      flowType: 'pkce',
+      flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
     },
     global: {
       headers: {
@@ -55,6 +71,73 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
     },
   },
 );
+
+/**
+ * Processes magic-link / OTP parameters from the initial browser URL
+ * (`?token_hash=...&type=...`, `#access_token=...&refresh_token=...`, or `?code=...`)
+ * before Expo Router redirects away from the entry URL.
+ */
+export async function consumeInitialUrlAuth(): Promise<void> {
+  if (initialAuthHandled || !initialWebLocation) {
+    return;
+  }
+  initialAuthHandled = true;
+
+  try {
+    const searchParams = new URLSearchParams(initialWebLocation.search);
+    const hashRaw = initialWebLocation.hash.replace(/^#/, '');
+    const hashParams = new URLSearchParams(hashRaw);
+
+    // 1. Direct token_hash verification (works across devices & in-app browsers)
+    const tokenHash =
+      searchParams.get('token_hash') ?? hashParams.get('token_hash');
+    const rawType = (searchParams.get('type') ??
+      hashParams.get('type') ??
+      'email') as EmailOtpType;
+
+    if (tokenHash) {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: rawType,
+      });
+      if (error && rawType !== 'email') {
+        await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'email',
+        });
+      }
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      return;
+    }
+
+    // 2. Implicit flow (#access_token=...&refresh_token=...)
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      return;
+    }
+
+    // 3. PKCE code flow (?code=...)
+    const code = searchParams.get('code');
+    if (code) {
+      await supabase.auth.exchangeCodeForSession(code);
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  } catch (err) {
+    console.warn('[YesYas] Failed to process initial auth URL:', err);
+  }
+}
 
 /**
  * Convenience: returns the current user or throws. Use in server-side
