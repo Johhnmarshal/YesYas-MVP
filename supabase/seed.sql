@@ -1,12 +1,16 @@
 -- YesYas! v1 — Desire Library seed
--- 180 curated items across the three tiers (60 sensory, 60 suggestive, 60
+-- 45 curated items across the three tiers (15 sensory, 15 suggestive, 15
 -- explicit) and three tones ('romantic', 'playful', 'direct').
 --
+-- This branch predates 671a255, which expanded the library to 180 (60 per
+-- tier) on main.
+--
 -- NOTE: this file runs on `supabase db reset` (local) and in the CI db-test
--- job. It does NOT run on `supabase db push`, so a remote project seeded
--- before the library grew keeps whatever it had — the live project was still
--- on 15 items after the migrations were applied. Re-run this file against the
--- remote explicitly after expanding the library.
+-- job. It does NOT run on `supabase db push`, so a remote project keeps
+-- whatever it was last seeded with. The live project was still serving 15
+-- items after every migration had been applied, because nothing in the push
+-- path seeds content. Growing the library means seeding the remote as a
+-- separate, explicit step.
 
 insert into public.desire_library_items (slug, title, description, tier, tone_tags, locale) values
   -- ==================== Sensory (15 items — entry tier) ====================
