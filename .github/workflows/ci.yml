@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+  # Every pull request, not only those targeting main. Stacked PRs based on
+  # another branch were silently getting no CI at all: PR #6 opened against
+  # fix/screen-capture-keys-and-deletion-flag ran the Vercel checks and nothing
+  # else, so neither the typecheck nor the pgTAP suite covered it.
   pull_request:
-    branches: [main]
 
 jobs:
   verify:
