@@ -35,7 +35,10 @@ import {
 } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
 import { hapticLight, hapticMedium, hapticSuccess } from '@/lib/haptics';
-import { useScreenCaptureProtection } from '@/lib/screen-capture';
+import {
+  SCREEN_CAPTURE_KEYS,
+  useScreenCaptureProtection,
+} from '@/lib/screen-capture';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
@@ -65,7 +68,7 @@ function formatRemainingDuration(targetMs: number, nowMs: number): string {
  */
 export default function RevealScreen() {
   const colors = useThemeColors();
-  useScreenCaptureProtection();
+  useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.reveal);
 
   const [userId, setUserId] = useState<string>('');
   const [pairing, setPairing] = useState<PairingWithPartner | null>(null);

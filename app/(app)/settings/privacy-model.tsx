@@ -210,8 +210,9 @@ export default function PrivacyModelScreen() {
           >
             <Text style={[styles.osNote, { color: colors.muted }]}>
               <Text style={{ fontWeight: '700', color: colors.text }}>Android: </Text>
-              Screen recording and screenshots are hardware-blocked on reveal and
-              journal screens via FLAG_SECURE.{"\n\n"}
+              Screen recording and screenshots are blocked by the operating
+              system on reveal and journal screens, using the FLAG_SECURE
+              window flag.{"\n\n"}
               <Text style={{ fontWeight: '700', color: colors.text }}>iOS: </Text>
               Apple does not allow third-party apps to block screenshots at the
               operating system level. YesYas! applies an automated privacy blur

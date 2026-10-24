@@ -68,16 +68,32 @@ export default function TherapistExportScreen() {
 
       const partnerId = currentPairing.partner_user_id;
       const callerHas = (events ?? []).some((e) => e.user_id === user.id);
-      const partnerHas =
+      const partnerHasFromRls =
         partnerId !== null &&
         (events ?? []).some((e) => e.user_id === partnerId);
 
       setCallerConsented(callerHas);
-      setBothConsented(callerHas && partnerHas);
 
-      if (callerHas && partnerHas) {
-        // Both consented: automatically fetch or generate report
+      if (callerHas && partnerHasFromRls) {
+        setBothConsented(true);
         void fetchOrGenerateReport(currentPairing, user.id);
+      } else if (callerHas) {
+        // Because consent_events is self-read-only under RLS, probe the
+        // therapist-export Edge Function (which verifies both partners via service_role)
+        const { data, error } = await supabase.functions.invoke(
+          'therapist-export',
+          {
+            body: { pairingId: currentPairing.id },
+          },
+        );
+        if (!error && data && typeof data.formattedText === 'string') {
+          setBothConsented(true);
+          setReportText(data.formattedText);
+        } else {
+          setBothConsented(false);
+        }
+      } else {
+        setBothConsented(false);
       }
     } catch (err) {
       console.warn('Error loading export status:', err);

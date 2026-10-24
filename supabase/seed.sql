@@ -1,6 +1,11 @@
 -- YesYas! v1 — Desire Library seed
 -- 180 curated items across the three tiers (60 sensory, 60 suggestive, 60 explicit)
 -- and three tones ('romantic', 'playful', 'direct'). Authored for queer & trauma-informed inclusivity.
+--
+-- NOTE: this file runs on supabase db reset (local) and in the CI db-test
+-- job. For supabase db push against remote environments, the identical 180
+-- items are also seeded idempotently by migration
+-- 61024000005_expand_desire_library.sql.
 
 insert into public.desire_library_items (slug, title, description, tier, tone_tags, locale) values
   -- ==================== Sensory (60 items) ====================

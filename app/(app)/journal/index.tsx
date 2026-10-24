@@ -24,7 +24,10 @@ import {
   sendAiCoachMessage,
 } from '@/lib/journal';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
-import { useScreenCaptureProtection } from '@/lib/screen-capture';
+import {
+  SCREEN_CAPTURE_KEYS,
+  useScreenCaptureProtection,
+} from '@/lib/screen-capture';
 import { supabase } from '@/lib/supabase';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -46,7 +49,7 @@ const REPORT_REASONS = [
 
 export default function JournalScreen() {
   const colors = useThemeColors();
-  useScreenCaptureProtection();
+  useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.journalList);
   const [userId, setUserId] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(() => {
     return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
