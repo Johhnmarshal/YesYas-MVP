@@ -10,14 +10,69 @@ port = 54322
 # Postgres major, bump this and run `supabase db reset`.
 major_version = 17
 
+# IMPORTANT: this [auth] block configures the LOCAL stack only. The hosted
+# project has its own settings and does not read this file. On 2026-10-24 the
+# hosted project was still on Supabase's default Site URL of
+# http://localhost:3000, so every production magic link redirected there:
+# the client sends emailRedirectTo = window.location.origin
+# (https://yesyas.vercel.app), Supabase found it was not allowlisted, and
+# silently fell back to Site URL.
+#
+# The hosted project must be set, in Dashboard -> Authentication -> URL
+# Configuration, to:
+#   Site URL      https://yesyas.vercel.app
+#   Redirect URLs https://yesyas.vercel.app
+#                 https://yesyas.vercel.app/**
+#                 yesyasapp://
+#                 yesyasapp://**
+#                 http://localhost:8081   (local web dev)
+#                 http://localhost:8081/**
+# Preview deployments need https://*.vercel.app as well, or their magic links
+# will fall back the same way.
 [auth]
 enable_signup = true
 enable_anonymous_sign_ins = false
 site_url = "http://localhost:8081"
-additional_redirect_urls = ["yesyasapp://"]
+additional_redirect_urls = [
+  "http://localhost:8081",
+  "http://localhost:8081/**",
+  "yesyasapp://",
+  "yesyasapp://**",
+]
 
 [auth.email]
 enable_confirmations = true
 
 [studio]
 port = 54323
+
+# ---------------------------------------------------------------------------
+# Hosted project overrides.
+#
+# The [auth] block above is the LOCAL stack. This block is what
+# `supabase config push --project-ref flauqfikspnywcvtevnq` sends to the hosted
+# project, so the production URL configuration lives in version control rather
+# than as undocumented dashboard state that nobody can diff or review.
+#
+# This exists because the hosted project sat on Supabase's default Site URL
+# (http://localhost:3000) from April until 2026-10-24, which silently broke
+# every production magic link.
+# ---------------------------------------------------------------------------
+[remotes.production]
+project_id = "flauqfikspnywcvtevnq"
+
+[remotes.production.auth]
+enable_signup = true
+enable_anonymous_sign_ins = false
+site_url = "https://yesyas.vercel.app"
+additional_redirect_urls = [
+  "https://yesyas.vercel.app",
+  "https://yesyas.vercel.app/**",
+  "yesyasapp://",
+  "yesyasapp://**",
+  "http://localhost:8081",
+  "http://localhost:8081/**",
+]
+
+[remotes.production.auth.email]
+enable_confirmations = true

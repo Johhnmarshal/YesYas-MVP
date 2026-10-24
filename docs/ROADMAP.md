@@ -37,26 +37,37 @@ Anything that reveals how much B has rated (progress bars, "B has rated 40 items
 
 ---
 
-## Where things stand (as of 2026-10-23)
+## Where things stand (as of 2026-10-24)
 
-Verified by running the checks against `main` at `4b7d78f`, not only by reading.
+Two columns, because conflating them is what let four breakages hide. **Repo**
+is what `main` contains. **Live** is what the hosted project and
+`yesyas.vercel.app` actually do, checked by querying them. Every earlier
+version of this table reported only the first and read as if it meant the
+second.
 
-| Area | State | Evidence |
-|---|---|---|
-| App shell, onboarding, 4 tabs | `[x]` | 3-step onboarding, Home / Library / Journal / Settings |
-| Auth | `[~]` | Magic link works; passkeys deferred to v1.1; biometric + PIN lock built |
-| Desire Library | `[~]` | 45 items; PRD target is 150–200 |
-| Pairing handshake | `[x]` | Hardened RPCs, `SET search_path = ''`, atomic accept |
-| Double-blind reveal | `[x]` | Computed in SQL (`trigger_reveal`); `≥ 4` match, `≥ 4` vs `= 3` bridge; `≤ 2` excluded; 7-day cadence |
-| Solo journal + AI coach | `[x]` | Encrypted entries; coach behind an Edge Function with 3px Tuscan accent border |
-| Consent log | `[x]` | Append-only, hash-chained, user-viewable, client verifier |
-| Therapist export | `[x]` | Dual-consent check, clinical text & PDF/Print summary generator (R-19) |
-| Typecheck / lint / domain tests | `[x]` | `tsc`, `eslint`, crypto + hash-chain tests all clean; 0 `any` |
-| **Database tests in CI** | `[x]` | Added to `.github/workflows/ci.yml` via `supabase test db` (R-01) |
-| **Encryption key recovery** | `[x]` | Merged via PR #2 (`b593bc1`) with SecureStore & Crockford recovery codes (R-00) |
-| Sentry, PostHog, push, EAS builds | `[~]` | `eas.json` & store config built (R-12); Sentry/PostHog open |
-| Screen-capture protection | `[x]` | `expo-screen-capture` on Android with web-safe hook on reveal and journal (R-13) |
-| Web hosting | `[x]` | `vercel.json` verified with clean static export of 34 routes (R-07) |
+Repo verified against `main` at `671a255`; live verified against project
+`flauqfikspnywcvtevnq` and the production bundle.
+
+| Area | Repo | Live | Note |
+|---|---|---|---|
+| App shell, onboarding, 4 tabs | `[x]` | `[x]` | Loads, routes to sign-in, no console errors |
+| Auth — magic link | `[x]` | `[ ]` | **Broken.** Hosted Site URL is still Supabase's default `http://localhost:3000`, so every link redirects there. Client is correct; fix is `supabase config push` |
+| Auth — biometric + PIN lock | `[x]` | `[x]` | Passkeys deferred to v1.1 |
+| Desire Library | `[x]` | `[ ]` | 180 items in the repo, **15 on the hosted project**. `db push` never seeds |
+| Pairing handshake | `[x]` | `[x]` | Fixed 2026-10-24 — the RPCs did not exist on the hosted project until five migrations were applied |
+| Double-blind reveal | `[x]` | `[x]` | ≥4 match, ≥4 vs =3 bridge, ≤2 excluded, 7-day cadence |
+| Solo journal (encrypted) | `[x]` | `[x]` | |
+| AI coach | `[x]` | `[ ]` | **Edge Function not deployed.** Falls back to four canned prompts chosen by hashing the message; UI does not say so |
+| Consent log | `[~]` | `[~]` | Append-only and hash-chained. Account-deletion FK fix and restored `reveal_revealed` rows are in unmerged PR #5 |
+| Therapist export | `[x]` | `[ ]` | **Cannot complete.** Function not deployed, and `consent_events` is self-read only so the client gate's `partnerHas` is always false |
+| Encryption key recovery | `[x]` | `[x]` | PR #2 (`b593bc1`), SecureStore + Crockford recovery codes |
+| Screen-capture protection | `[~]` | `[~]` | Shared-key bug fixed in unmerged PR #5 |
+| Typecheck / lint / domain tests | `[x]` | n/a | 0 `any` |
+| Database tests in CI | `[~]` | n/a | 33/33 pgTAP green on the branch; `main` is red |
+| Anon RPC lockdown | `[~]` | `[ ]` | Revoke + hardening migrations written and CI-green, **not applied**: 13 SECURITY DEFINER functions remain callable by `anon` |
+| Sentry, PostHog, push | `[ ]` | `[ ]` | Open |
+| EAS builds | `[~]` | `[ ]` | `eas.json` and icons done; needs `eas init` and an Apple account |
+| Web hosting | `[x]` | `[x]` | 34 static routes, bundle targets the real project |
 
 ---
 
