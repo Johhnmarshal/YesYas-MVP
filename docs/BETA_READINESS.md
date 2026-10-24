@@ -86,9 +86,24 @@ select tier, count(*) from public.desire_library_items group by tier order by ti
 
 ---
 
-## 4. Auth redirect allowlist — do this before inviting anyone
+## 4. Auth redirect allowlist — CONFIRMED BROKEN, fix before inviting anyone
 
-**This is the most likely thing to break sign-in on day one, and it is a two-minute fix.**
+**This is not a risk any more, it is the observed behaviour.** On 2026-10-24 a
+magic link sent from `https://yesyas.vercel.app` arrived pointing at:
+
+```
+http://localhost:3000/?code=a533669e-606c-4d42-95e2-8506e93f3e69
+```
+
+`http://localhost:3000` is Supabase's *default* Site URL, which means the
+hosted project's URL configuration was never changed from the day it was
+created. Sign-in is impossible for every tester until it is.
+
+The client is not at fault and needs no change: it sends
+`emailRedirectTo: window.location.origin`, the deployed bundle does contain
+that call, and `detectSessionInUrl` is on for web so the `?code=` exchange
+works once the redirect lands in the right place. Supabase found the origin
+was not allowlisted and silently fell back to Site URL.
 
 `supabase/config.toml` declares `site_url = "http://localhost:8081"` and allowlists only `yesyasapp://`. That file configures the *local* stack. The remote project has its own setting, and the web app sends `emailRedirectTo: window.location.origin` — which in production is `https://yesyas.vercel.app`.
 
