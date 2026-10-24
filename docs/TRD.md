@@ -30,14 +30,14 @@
 | Auth | **Supabase Auth** | Email OTP (magic link) + passkeys + session management |
 | Server logic | **Postgres RPCs + Supabase Edge Functions** | Reveal engine computation in hardened SQL, AI proxy & therapist export in Edge Functions — keeps secrets off the client |
 | Realtime | **Supabase Realtime** | "Partner tapped ready" nudge without polling |
-| Storage | **Supabase Storage** | Therapist export PDFs only; auto-purge after 30 days |
+| Storage | **Supabase Storage** | *Planned, not built.* Intended for therapist export PDFs with a 30-day purge. Today the export is text: `window.print()` on web, `Share.share()` on native. No bucket, upload, signed URL or TTL exists |
 | Rate limiting | **Supabase built-in + pg_net guard** | All write endpoints rate-limited |
 
 ### AI
 
 | Layer | Choice | Reason |
 |-------|--------|--------|
-| Model | **Anthropic Claude Sonnet** (preferred) or OpenAI GPT-4-class | Better safety posture for sensitive intimacy content; decide before Week 7 |
+| Model | **Anthropic Claude** (preferred), OpenAI as fallback | Better safety posture for sensitive intimacy content. `supabase/functions/ai-coach/index.ts` currently pins `claude-3-5-sonnet-20241022` with `gpt-4o-mini` as fallback — both are old generations and due an upgrade |
 | Access pattern | **Server-side only** — called from Edge Functions, never from the client | Client never holds API keys |
 | System prompt | Version-controlled in `supabase/functions/ai-coach/system-prompt.ts` | Safety-reviewed before every deploy |
 | Logging | All AI calls logged with hashed user ID to `ai_logs` table | Weekly safety-rubric review |
@@ -85,10 +85,10 @@
 
 ### Backend (Supabase)
 
-- **Primary region:** `us-east-1`
+- **Primary region:** `eu-west-1` — this is what the live project `flauqfikspnywcvtevnq` actually runs on. The doc previously said `us-east-1`. EU residency suits the UK GDPR erasure path the app implements, so the region is right and the doc was wrong.
 - **Staging project:** separate Supabase project (not a branch) — full isolation
 - **Production project:** separate from staging; no manual SQL runs in prod, migrations only
-- **EU region:** added in v1.1 for GDPR data-residency
+- **US region:** only if US demand justifies a second project; data residency currently sits in the EU by default
 
 ### CI/CD
 
@@ -126,7 +126,7 @@ GitHub Actions pipeline:
 | Database at rest | AES-256 via Supabase managed KMS |
 | `desires.note` column | Application-level encryption before write (column-level) |
 | `journal_entries.body` column | Application-level encryption before write |
-| Therapist export PDFs | Encrypted in Supabase Storage; signed URL, 30-day TTL |
+| Therapist export PDFs | *Not implemented.* Target is encrypted in Supabase Storage, signed URL, 30-day TTL (R-19) |
 
 ### Row-Level Security (RLS)
 

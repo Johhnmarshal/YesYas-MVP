@@ -37,25 +37,29 @@ Anything that reveals how much B has rated (progress bars, "B has rated 40 items
 
 ---
 
-## Where things stand (as of 2026-10-23)
+## Where things stand (as of 2026-10-24)
 
-Verified by running the checks against `main` at `4b7d78f`, not only by reading.
+Verified against `main` at `671a255` by running the checks, not by reading.
+
+`[x]` means proven on `main`. Work that exists only on an unmerged branch is
+`[~]` with the PR named — the earlier version of this table marked several of
+those `[x]`, which made `main` look healthier than it was.
 
 | Area | State | Evidence |
 |---|---|---|
 | App shell, onboarding, 4 tabs | `[x]` | 3-step onboarding, Home / Library / Journal / Settings |
 | Auth | `[~]` | Magic link works; passkeys deferred to v1.1; biometric + PIN lock built |
-| Desire Library | `[~]` | 45 items; PRD target is 150–200 |
+| Desire Library | `[x]` | 180 items (60 sensory / 60 suggestive / 60 explicit) in `671a255`; PRD target is 150–200 |
 | Pairing handshake | `[x]` | Hardened RPCs, `SET search_path = ''`, atomic accept |
 | Double-blind reveal | `[x]` | Computed in SQL (`trigger_reveal`); `≥ 4` match, `≥ 4` vs `= 3` bridge; `≤ 2` excluded; 7-day cadence |
-| Solo journal + AI coach | `[x]` | Encrypted entries; coach behind an Edge Function with 3px Tuscan accent border |
-| Consent log | `[x]` | Append-only, hash-chained, user-viewable, client verifier |
-| Therapist export | `[x]` | Dual-consent check, clinical text & PDF/Print summary generator (R-19) |
+| Solo journal + AI coach | `[~]` | Encrypted entries; coach behind an Edge Function. Coach sends no conversation history, so it cannot follow a thought across turns, and pins `claude-3-5-sonnet-20241022`, two generations old |
+| Consent log | `[~]` | Append-only, hash-chained, user-viewable, client verifier — but on `main` the trigger blocks `ON DELETE SET NULL`, so account deletion fails, and `trigger_reveal` no longer writes `reveal_revealed`. Both fixed in PR #5 |
+| Therapist export | `[~]` | Dual-consent check and clinical text summary work. There is no PDF: `window.print()` on web, `Share.share()` of plain text on native. PRD asks for a PDF in Supabase Storage with a signed URL and 30-day purge (R-19 reopened) |
 | Typecheck / lint / domain tests | `[x]` | `tsc`, `eslint`, crypto + hash-chain tests all clean; 0 `any` |
-| **Database tests in CI** | `[x]` | Added to `.github/workflows/ci.yml` via `supabase test db` (R-01) |
+| **Database tests in CI** | `[~]` | `db-test` job exists (R-01), but `main`'s last completed run **failed** — it caught two real regressions in `77a25b1`. Green on PR #5, which fixes them |
 | **Encryption key recovery** | `[x]` | Merged via PR #2 (`b593bc1`) with SecureStore & Crockford recovery codes (R-00) |
-| Sentry, PostHog, push, EAS builds | `[~]` | `eas.json` & store config built (R-12); Sentry/PostHog open |
-| Screen-capture protection | `[x]` | `expo-screen-capture` on Android with web-safe hook on reveal and journal (R-13) |
+| Sentry, PostHog, push, EAS builds | `[~]` | `eas.json` & store config built (R-12), but no `eas init` (no project id) and all six icons are 1×1 placeholders, so no build can be produced yet; Sentry/PostHog open |
+| Screen-capture protection | `[~]` | `expo-screen-capture` wired on reveal and journal (R-13), but on `main` all three screens share the default key, so leaving a journal entry unprotects the list. Fixed in PR #5 |
 | Web hosting | `[x]` | `vercel.json` verified with clean static export of 34 routes (R-07) |
 
 ---
