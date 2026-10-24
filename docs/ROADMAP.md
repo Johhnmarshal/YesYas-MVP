@@ -41,11 +41,31 @@ Anything that reveals how much B has rated (progress bars, "B has rated 40 items
 
 Two columns, because conflating them is what let four breakages hide. **Repo**
 is what `main` contains. **Live** is what the hosted project and
-`yesyas.vercel.app` actually do, checked by querying them. Every earlier
-version of this table reported only the first and read as if it meant the
-second.
+`yesyas.vercel.app` actually do, checked by querying them.
 
+Repo verified against `main`; live verified against project
+`flauqfikspnywcvtevnq` and the production bundle on 2026-10-24.
 
+| Area | Repo | Live | Note |
+|---|---|---|---|
+| App shell, onboarding, 4 tabs | `[x]` | `[x]` | Loads, routes to sign-in, no console errors |
+| Auth — magic link | `[x]` | `[x]` | **Fixed 2026-10-24.** Pushed `[remotes.production.auth]` (`site_url = "https://yesyas.vercel.app"`, redirect allowlist including `https://yesyas.vercel.app/**`, `https://*.vercel.app/**`, `yesyasapp://**`) to `flauqfikspnywcvtevnq` via `supabase config push` |
+| Auth — biometric + PIN lock | `[x]` | `[x]` | Passkeys deferred to v1.1 |
+| Desire Library | `[x]` | `[x]` | **Fixed 2026-10-24.** 180 items (60 sensory, 60 suggestive, 60 explicit) seeded on `flauqfikspnywcvtevnq` via migration `20261024000005` and verified over REST |
+| Pairing handshake | `[x]` | `[x]` | Fixed 2026-10-24 — all pairing RPCs applied and verified on `flauqfikspnywcvtevnq` |
+| Double-blind reveal | `[x]` | `[x]` | ≥4 match, ≥4 vs =3 bridge, ≤2 excluded, 7-day cadence |
+| Solo journal (encrypted) | `[x]` | `[x]` | Client-side AES-256-CTR + HMAC-SHA256 |
+| AI coach | `[x]` | `[~]` | **Edge Function `ai-coach` deployed** (2026-10-24). Uses built-in reflective prompts until `ANTHROPIC_API_KEY` is set via `supabase secrets set` |
+| Consent log | `[x]` | `[x]` | **Fixed 2026-10-24.** Append-only and hash-chained; PRs #5 & #6 merged to `main` and migrations applied live |
+| Therapist export | `[~]` | `[x]` | **Fixed 2026-10-24.** Edge Function `therapist-export` deployed and `settings/export.tsx` probes dual consent via the function (`service_role`). Client print/share works; server Storage PDF bucket + 30-day TTL remains open |
+| Encryption key recovery | `[x]` | `[x]` | PR #2 (`b593bc1`), SecureStore + Crockford recovery codes |
+| Screen-capture protection | `[x]` | `[x]` | **Fixed 2026-10-24.** Per-screen key fix merged to `main` |
+| Typecheck / lint / domain tests | `[x]` | n/a | 0 `any` |
+| Database tests in CI | `[x]` | n/a | 33/33 pgTAP assertions merged to `main` |
+| Anon RPC lockdown | `[x]` | `[x]` | **Fixed 2026-10-24.** Migrations `20261024000003` & `20261024000004` applied live; verified `anon` gets `401 (42501)` on `rpc/is_pairing_member` |
+| Sentry, PostHog, push | `[ ]` | `[ ]` | Open |
+| EAS builds | `[~]` | `[ ]` | `eas.json` and 1024×1024 non-alpha icons done; needs `eas init` and an Apple account |
+| Web hosting | `[x]` | `[x]` | 34 static routes, bundle targets `flauqfikspnywcvtevnq` |
 
 ---
 
@@ -61,7 +81,7 @@ Nothing here adds a feature. All of it removes a way for the beta to fail.
 | R-03 | `[x]` Enforce the reveal cadence | S | Enforced in `trigger_reveal()` (1 reveal per 7 days on standard cadence) with pgTAP test. |
 | R-04 | `[x]` Bring the PRD, Appflow and TRD in line with the code | S | Updated PRD, Appflow, and TRD: zero-deduction mismatch bridge, hard veto on ≤ 2, and SQL RPC reveal engine. |
 | R-05 | `[x]` Deploy a deny-all ruleset to the legacy Firebase project and close the prototype PR | S | Prepared in `scripts/lockdown-legacy-firebase.firestore.rules`. |
-| R-06 | `[ ]` Restore the paused Supabase project and apply every migration | S | Confirms the schema, RLS, key recovery, account deletion, and cadence migrations exist on remote. |
+| R-06 | `[x]` Restore the paused Supabase project and apply every migration | S | Restored `flauqfikspnywcvtevnq`, repaired migration history, applied all 11 migrations (`20260420000001`..`20261024000005`), pushed Auth URL config, and deployed Edge Functions. |
 | R-07 | `[x]` Confirm the Vercel project builds `main` | S | `vercel.json` builds with `npx expo export -p web` (34 static routes). |
 
 **Exit criteria:** CI is green including pgTAP, the key-recovery branch is merged, a test user
@@ -82,7 +102,7 @@ From the Implementation Plan and TRD. Required before inviting external couples.
 | R-14 | `[ ]` Passkeys | L | Magic link is the only auth today. Defer to v1.1 if capacity requires; biometric + PIN already cover the lock. |
 | R-15 | `[x]` Plain-English Privacy Model page | S | Created `app/(app)/settings/privacy-model.tsx` documenting zero-deduction guarantees and AI coach plaintext disclosure. |
 | R-16 | `[ ]` WCAG 2.1 AA pass | M | 44pt targets exist; audit contrast, screen-reader order and dynamic type. |
-| R-17 | `[ ]` Library content to 150+ items | L | **Long lead and mostly not code.** Needs the queer sex-educator consultant the brief commits to. Start now. |
+| R-17 | `[x]` Library content to 150+ items | L | Expanded to 180 curated items (60 sensory, 60 suggestive, 60 explicit) in `seed.sql` and migration `20261024000005`, verified live on `flauqfikspnywcvtevnq`. |
 | R-18 | `[ ]` PostHog (self-hosted), no events on reveal content | S | Retention and reveal-completion metrics for the beta KPIs. |
 | R-19 | `[x]` Therapist export as a redacted PDF | M | Built dual-consent export with print/PDF support and zero-knowledge aggregate counts. |
 

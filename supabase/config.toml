@@ -23,12 +23,12 @@ major_version = 17
 #   Site URL      https://yesyas.vercel.app
 #   Redirect URLs https://yesyas.vercel.app
 #                 https://yesyas.vercel.app/**
+#                 https://*.vercel.app
+#                 https://*.vercel.app/**
 #                 yesyasapp://
 #                 yesyasapp://**
 #                 http://localhost:8081   (local web dev)
 #                 http://localhost:8081/**
-# Preview deployments need https://*.vercel.app as well, or their magic links
-# will fall back the same way.
 [auth]
 enable_signup = true
 enable_anonymous_sign_ins = false
@@ -53,10 +53,6 @@ port = 54323
 # `supabase config push --project-ref flauqfikspnywcvtevnq` sends to the hosted
 # project, so the production URL configuration lives in version control rather
 # than as undocumented dashboard state that nobody can diff or review.
-#
-# This exists because the hosted project sat on Supabase's default Site URL
-# (http://localhost:3000) from April until 2026-10-24, which silently broke
-# every production magic link.
 # ---------------------------------------------------------------------------
 [remotes.production]
 project_id = "flauqfikspnywcvtevnq"
@@ -68,6 +64,8 @@ site_url = "https://yesyas.vercel.app"
 additional_redirect_urls = [
   "https://yesyas.vercel.app",
   "https://yesyas.vercel.app/**",
+  "https://*.vercel.app",
+  "https://*.vercel.app/**",
   "yesyasapp://",
   "yesyasapp://**",
   "http://localhost:8081",
@@ -76,3 +74,9 @@ additional_redirect_urls = [
 
 [remotes.production.auth.email]
 enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[remotes.production.auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
