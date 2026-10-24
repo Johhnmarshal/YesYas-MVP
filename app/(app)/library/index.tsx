@@ -49,7 +49,7 @@ const TONE_FILTER_PILLS: { value: ToneFilterValue; label: string }[] = [
 
 /**
  * Desire Library screen (`/(app)/library`).
- * Displays the 45 curated intimacy items filtered by content tier, tone tags,
+ * Displays the 180 curated intimacy items filtered by content tier, tone tags,
  * and search query, with inline star ratings and encrypted private notes.
  */
 export default function DesireLibraryScreen() {

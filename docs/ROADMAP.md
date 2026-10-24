@@ -45,7 +45,7 @@ Verified by running the checks against `main` at `4b7d78f`, not only by reading.
 |---|---|---|
 | App shell, onboarding, 4 tabs | `[x]` | 3-step onboarding, Home / Library / Journal / Settings |
 | Auth | `[~]` | Magic link works; passkeys deferred to v1.1; biometric + PIN lock built |
-| Desire Library | `[~]` | 45 items; PRD target is 150–200 |
+| Desire Library | `[x]` | 180 items; PRD target is 150–200 (completed) |
 | Pairing handshake | `[x]` | Hardened RPCs, `SET search_path = ''`, atomic accept |
 | Double-blind reveal | `[x]` | Computed in SQL (`trigger_reveal`); `≥ 4` match, `≥ 4` vs `= 3` bridge; `≤ 2` excluded; 7-day cadence |
 | Solo journal + AI coach | `[x]` | Encrypted entries; coach behind an Edge Function with 3px Tuscan accent border |
