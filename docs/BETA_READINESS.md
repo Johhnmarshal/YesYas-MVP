@@ -142,6 +142,45 @@ Then send yourself one magic link from the live site and confirm it lands back o
 
 ---
 
+## 4b. Deploy the Edge Functions — therapist export is completely broken without them
+
+`list_edge_functions` on the live project returns **zero functions**. Neither
+`ai-coach` nor `therapist-export` has ever been deployed. Both call sites
+swallow the failure and fall back, so nothing errors visibly — which is why
+this never surfaced.
+
+**Therapist export cannot complete at all.** `settings/export.tsx` gates report
+generation on `callerHas && partnerHas`, computed by reading `consent_events`
+for the pairing. But `consent_events` has exactly one SELECT policy on the live
+project — `user_id = auth.uid()`, self-read only — so the partner's consent row
+is invisible to the caller and `partnerHas` is **always false**. The report is
+never generated. The only code that can see both sides is the
+`therapist-export` Edge Function, which uses the service-role key, and it is
+not deployed. The feature is structurally incapable of working through the
+client path.
+
+Note the local fallback's report text hardcodes
+`✓ Dual partner consent verified via cryptographic audit trail`. That line is
+unreachable today because generation never starts — but if the RLS gate were
+ever loosened without deploying the function, it would print an attestation
+that nothing verified, in a document written for a clinician. Worth deleting
+from the fallback regardless.
+
+**The AI coach is not an AI coach.** `lib/journal.ts` catches the invoke
+failure and returns `buildLocalReflectiveReply`, which picks one of four canned
+prompts by hashing the message. Testers get a deterministic stock phrase, with
+`isFallback: true` set but nothing in the UI saying so.
+
+```bash
+cd /c/Users/oluwa/dev/YesYas-MVP
+supabase functions deploy ai-coach --project-ref flauqfikspnywcvtevnq
+supabase functions deploy therapist-export --project-ref flauqfikspnywcvtevnq
+supabase secrets set ANTHROPIC_API_KEY=... --project-ref flauqfikspnywcvtevnq
+```
+
+Without `ANTHROPIC_API_KEY` set as a function secret, `ai-coach` deploys but
+still returns canned replies — it checks for the key and falls through.
+
 ## 5. Lock down the legacy Firebase project (R-05)
 
 The prototype PR is closed. The deny-all ruleset is written but not deployed.
