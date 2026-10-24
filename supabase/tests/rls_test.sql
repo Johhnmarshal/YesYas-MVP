@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(29);
+select plan(30);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -506,6 +506,21 @@ select is(
   (select public.delete_user_account()),
   true,
   'delete_user_account succeeds and cleans up user D'
+);
+
+-- ---------- 30. consent_events is append-only again once erasure finishes ----------
+-- The counterpart to assertion 19, which only covers UPDATE. DELETE is the verb
+-- that delete_user_account() unlocks by setting yesyas.account_deletion, and
+-- that flag is transaction-local — so with assertion 29 above having just run
+-- it, this is exactly where a flag left open would show. Needs `reset role`
+-- for the same reason assertion 19 does: under RLS the statement would match
+-- no rows, the row trigger would never fire, and nothing would be raised.
+reset role;
+select throws_ok(
+  $$delete from public.consent_events$$,
+  'P0001',
+  'consent_events is append-only',
+  'consent_events blocks DELETE once delete_user_account has cleared its flag'
 );
 
 select * from finish();

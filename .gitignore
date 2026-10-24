@@ -49,3 +49,7 @@ app-example
 /android
 
 .vercel
+
+# Python bytecode from .agents/skills tooling
+__pycache__/
+*.py[cod]
