@@ -55,8 +55,12 @@ declare
   v_count integer;
 begin
   -- A signed-in client, or the pg_cron job running as a database role.
+  -- `current_user` is a reserved SQL keyword resolved by the parser, not a
+  -- function in pg_catalog. Schema-qualifying it makes Postgres read it as a
+  -- column reference and fail with 42P01, even though every other call in this
+  -- schema is qualified because of `set search_path = ''`.
   if auth.uid() is null
-     and pg_catalog.current_user not in ('postgres', 'supabase_admin') then
+     and current_user not in ('postgres', 'supabase_admin') then
     raise exception 'authentication required' using errcode = '28000';
   end if;
 
