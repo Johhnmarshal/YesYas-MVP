@@ -18,11 +18,22 @@
 --     question now returns false rather than leaking.
 --
 --   * expire_old_reveals() had no caller check at all and writes across every
---     pairing. It has two legitimate callers: signed-in clients (lib/reveal.ts
---     calls it before reading a reveal) and the pg_cron job that
---     20260420000003 recommends scheduling. The cron job runs as a database
---     role with no JWT, so this allows an authenticated JWT *or* a privileged
---     database role, and rejects everything else.
+--     pairing. It now requires an authenticated JWT.
+--
+--     Two earlier attempts at a role-based escape hatch for pg_cron both
+--     failed in CI, and the reason is worth recording. Inside a SECURITY
+--     DEFINER function `current_user` is the function OWNER, not the caller,
+--     so `current_user not in ('postgres', ...)` can never be true and the
+--     guard never fires. `session_user` is no better: PostgREST connects as
+--     `authenticator` and then SET ROLEs to anon or authenticated, so every
+--     API call — signed in or not — shares one session_user.
+--
+--     auth.uid() is the only reliable discriminator: anon carries no JWT sub,
+--     authenticated does. The cost is that a pg_cron job, which has no JWT,
+--     can no longer call this. Nothing schedules it today (see
+--     docs/BETA_READINESS.md), and when something does it should run the
+--     UPDATE directly or use a separate function granted only to the
+--     scheduler, rather than widening this one back out.
 
 create or replace function public.is_pairing_member(p_pairing_id uuid, p_user_id uuid)
 returns boolean
@@ -54,13 +65,9 @@ as $$
 declare
   v_count integer;
 begin
-  -- A signed-in client, or the pg_cron job running as a database role.
-  -- `current_user` is a reserved SQL keyword resolved by the parser, not a
-  -- function in pg_catalog. Schema-qualifying it makes Postgres read it as a
-  -- column reference and fail with 42P01, even though every other call in this
-  -- schema is qualified because of `set search_path = ''`.
-  if auth.uid() is null
-     and current_user not in ('postgres', 'supabase_admin') then
+  -- Signed-in callers only. See the header for why current_user and
+  -- session_user cannot be used to make this decision.
+  if auth.uid() is null then
     raise exception 'authentication required' using errcode = '28000';
   end if;
 

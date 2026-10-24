@@ -159,8 +159,23 @@ eas env:create --environment preview --name EXPO_PUBLIC_SUPABASE_ANON_KEY --valu
 - **Therapist export PDF** (R-19) — currently `window.print()` on web and plain text on native. No bucket, signed URL or 30-day purge exists.
 - **AI coach** — sends no conversation history, so it cannot follow a thought across turns, and pins `claude-3-5-sonnet-20241022`, two generations old.
 - **Reveal cadence has no entitlement bypass** — `trigger_reveal` raises unconditionally after one reveal per 7 days, so the PRD's "Premium: unlimited reveals" is impossible as written.
-- **`expire_old_reveals` has no cron** — the 24-hour reveal expiry only runs when a client opens the app. Schedule it:
+- **`expire_old_reveals` has no cron** — the 24-hour reveal expiry only runs when a client opens the app, so the privacy promise that matched items disappear after a day does not hold server-side.
+
+  Note that `expire_old_reveals()` now requires an authenticated JWT, so pg_cron cannot call it directly: inside a `SECURITY DEFINER` function `current_user` is the owner, and PostgREST shares one `session_user` across anon and authenticated, which leaves `auth.uid()` as the only reliable discriminator. Schedule the work itself rather than widening the RPC back out:
 
   ```sql
-  select cron.schedule('expire-reveals', '*/15 * * * *', 'select public.expire_old_reveals()');
+  select cron.schedule(
+    'expire-reveals',
+    '*/15 * * * *',
+    $$update public.reveals
+        set status = 'expired',
+            summary = jsonb_build_object(
+              'match_count', coalesce(jsonb_array_length(matches), 0),
+              'mismatch_count', coalesce(jsonb_array_length(mismatches), 0),
+              'expired_at', now()
+            ),
+            matches = null,
+            mismatches = null
+      where status = 'computed' and expires_at < now()$$
+  );
   ```
