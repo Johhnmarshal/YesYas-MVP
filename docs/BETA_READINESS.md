@@ -109,7 +109,24 @@ was not allowlisted and silently fell back to Site URL.
 
 If that origin is not allowlisted on the remote project, every magic link either fails or bounces the tester to `localhost`.
 
-This cannot be tested without sending a real email, so it has to be checked by eye:
+### Option A — one command (preferred)
+
+The production URL configuration now lives in `supabase/config.toml` under
+`[remotes.production]`, so it is version-controlled and reviewable instead of
+being undocumented dashboard state:
+
+```bash
+cd /c/Users/oluwa/dev/YesYas-MVP
+supabase config push --project-ref flauqfikspnywcvtevnq
+```
+
+Run it without `--yes` the first time: the CLI prints a diff of what it will
+change on the hosted project and waits for confirmation. Read that diff before
+accepting — `config push` sends the whole `[remotes.production.auth]` block,
+not just the two URL fields, so check it is not changing something you set
+deliberately in the dashboard.
+
+### Option B — by hand
 
 Dashboard → Authentication → URL Configuration
 

@@ -45,3 +45,34 @@ enable_confirmations = true
 
 [studio]
 port = 54323
+
+# ---------------------------------------------------------------------------
+# Hosted project overrides.
+#
+# The [auth] block above is the LOCAL stack. This block is what
+# `supabase config push --project-ref flauqfikspnywcvtevnq` sends to the hosted
+# project, so the production URL configuration lives in version control rather
+# than as undocumented dashboard state that nobody can diff or review.
+#
+# This exists because the hosted project sat on Supabase's default Site URL
+# (http://localhost:3000) from April until 2026-10-24, which silently broke
+# every production magic link.
+# ---------------------------------------------------------------------------
+[remotes.production]
+project_id = "flauqfikspnywcvtevnq"
+
+[remotes.production.auth]
+enable_signup = true
+enable_anonymous_sign_ins = false
+site_url = "https://yesyas.vercel.app"
+additional_redirect_urls = [
+  "https://yesyas.vercel.app",
+  "https://yesyas.vercel.app/**",
+  "yesyasapp://",
+  "yesyasapp://**",
+  "http://localhost:8081",
+  "http://localhost:8081/**",
+]
+
+[remotes.production.auth.email]
+enable_confirmations = true
