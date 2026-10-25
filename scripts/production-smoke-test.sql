@@ -561,3 +561,68 @@ select
        and event_type = 'therapist_export')             as distinct_consenters;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Ninth check: a new pairing does not inherit a previous pairing's ratings.
+--
+-- accept_pairing_invite copies desires into the new pairing, which is what
+-- makes solo exploration carry over when a couple pairs for the first time.
+-- The filter on that copy is `where d.pairing_id is null` — solo ratings only.
+--
+-- That filter is load-bearing in a way the code does not announce. Widening it
+-- to carry a previous pairing's ratings forward would look like a kindness:
+-- end a pairing, pair again, and your shared library is still there instead of
+-- 180 unrated items. But the next pairing is not necessarily with the same
+-- person, so it would move one relationship's intimate ratings into another.
+-- There is no consent for that and no way to undo it.
+--
+-- So this asserts the opposite of a convenience: ratings made inside a pairing
+-- MUST NOT appear in the next one. The end-pairing confirmation tells users
+-- this happens; this is what keeps it true.
+--
+-- Expected: old_pairing 6, new_pairing 0, solo 0.
+-- new_pairing > 0 means someone widened the copy and a privacy boundary has
+-- gone with it.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('9a9a9a9a-1111-4111-8111-999999999999','00000000-0000-0000-0000-000000000000','authenticated','authenticated','c1@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('8b8b8b8b-2222-4222-8222-888888888888','00000000-0000-0000-0000-000000000000','authenticated','authenticated','c2@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"9a9a9a9a-1111-4111-8111-999999999999","role":"authenticated"}';
+create temp table q1 as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"8b8b8b8b-2222-4222-8222-888888888888","role":"authenticated"}';
+create temp table pp1 as select public.accept_pairing_invite((select invite_code from q1)) as pid;
+
+-- Rated only inside the pairing. No solo ratings anywhere, so nothing is
+-- entitled to carry over.
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select '8b8b8b8b-2222-4222-8222-888888888888', (select pid from pp1), id, 5
+from (select id from public.desire_library_items order by slug limit 3) x;
+set local request.jwt.claims = '{"sub":"9a9a9a9a-1111-4111-8111-999999999999","role":"authenticated"}';
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select '9a9a9a9a-1111-4111-8111-999999999999', (select pid from pp1), id, 5
+from (select id from public.desire_library_items order by slug limit 3) x;
+
+select public.update_pairing_status((select pid from pp1), 'ended'::public.pairing_status);
+
+create temp table q2 as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"8b8b8b8b-2222-4222-8222-888888888888","role":"authenticated"}';
+create temp table pp2 as select public.accept_pairing_invite((select invite_code from q2)) as pid;
+
+reset role;
+
+select
+  (select count(*) from public.desires
+     where pairing_id = (select pid from pp1))            as old_pairing_keeps,
+  (select count(*) from public.desires
+     where pairing_id = (select pid from pp2))            as new_pairing_inherits,
+  (select count(*) from public.desires
+     where pairing_id is null
+       and user_id in ('9a9a9a9a-1111-4111-8111-999999999999',
+                       '8b8b8b8b-2222-4222-8222-888888888888')) as solo;
+
+rollback;

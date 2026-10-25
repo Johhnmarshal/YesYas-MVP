@@ -281,13 +281,14 @@ there.
 
 ## 8. Smoke test
 
-`scripts/production-smoke-test.sql` runs eight checks, each inside its own
+`scripts/production-smoke-test.sql` runs nine checks, each inside its own
 `begin; … rollback;`: the whole couple journey, the 24-hour expiry, new-user
 onboarding, GDPR erasure, consent-chain ordering, the double-blind payload,
-whether the reveal guard is actually deployed here, and that one partner
-cannot unlock the therapist export alone.
+whether the reveal guard is actually deployed here, that one partner cannot
+unlock the therapist export alone, and that a new pairing does not inherit a
+previous pairing's ratings.
 
-Checks 7 and 8 are the ones that earn their keep against production rather
+Checks 7, 8 and 9 are the ones that earn their keep against production rather
 than against CI. Check 7 reports `refuses_at_two = f` on a database that has
 not had `20261025000004` applied — which is what it says about production
 today. Check 8 covers the only safeguard on the clinical export: both
