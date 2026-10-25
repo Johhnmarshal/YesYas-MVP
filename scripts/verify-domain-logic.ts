@@ -7,7 +7,7 @@ import { computeConsentPayloadHash, verifyConsentChain } from '../lib/consent.ts
 import { hashPin, verifyPin, MasterKeyUnavailableError, adoptMasterKey, bytesToHex, clearMasterKey, decryptForUser, decryptText, encryptForUser, encryptText, exportMasterKey, generateRecoveryCode, hasMasterKey, hashUserIdForLogging, isValidRecoveryCode, normalizeRecoveryCode, provisionMasterKey, sha256Hex, unwrapMasterKey, wrapMasterKey } from '../lib/crypto.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
-import { TIER_ORDER, filterLibraryItems, isLibraryItemVisible, reconcileTierFilter } from '../lib/library-filter.ts';
+import { TIER_ORDER, filterLibraryItems, isLibraryItemVisible, isTierWithinCeiling, reconcileTierFilter } from '../lib/library-filter.ts';
 
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
@@ -362,6 +362,19 @@ async function main() {
     { valid: true, brokenAtId: null },
     'An empty consent log must verify vacuously; the UI distinguishes empty from verified',
   );
+
+
+  // 10. The ceiling predicate itself, used by both enforcement points.
+  //
+  //     The library list and the item detail screen each have to apply the
+  //     ceiling, and each was missing it at some point today — the list only
+  //     applied it on one filter branch, and the detail screen, which fetches
+  //     by id, never read the user's preference at all. Both now call this.
+  assert.ok(isTierWithinCeiling('sensory', 'sensory'), 'equal tiers are within the ceiling');
+  assert.ok(isTierWithinCeiling('sensory', 'explicit'), 'a lower tier is within a higher ceiling');
+  assert.ok(!isTierWithinCeiling('explicit', 'sensory'), 'explicit is not within a sensory ceiling');
+  assert.ok(!isTierWithinCeiling('explicit', 'suggestive'), 'explicit is not within a suggestive ceiling');
+  assert.ok(!isTierWithinCeiling('suggestive', 'sensory'), 'suggestive is not within a sensory ceiling');
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }

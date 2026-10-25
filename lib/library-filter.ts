@@ -31,6 +31,21 @@ export function getAllowedTiers(maxTier: DesireTier): DesireTier[] {
   );
 }
 
+/**
+ * Whether an item's tier is at or below the user's ceiling.
+ *
+ * The ceiling is enforced in two places — the library list and the item detail
+ * screen, which fetches by id and so can be reached directly — and both were
+ * wrong at different times for the same reason: the check was written inline
+ * and then not written again. One function, one test.
+ */
+export function isTierWithinCeiling(
+  tier: DesireTier,
+  ceiling: DesireTier,
+): boolean {
+  return TIER_ORDER[tier] <= TIER_ORDER[ceiling];
+}
+
 export type TierFilterValue = 'up_to_ceiling' | DesireTier;
 export type ToneFilterValue = 'all' | ToneLabel;
 
@@ -60,7 +75,7 @@ export function isLibraryItemVisible(
   item: FilterableLibraryItem,
   state: LibraryFilterState,
 ): boolean {
-  if (TIER_ORDER[item.tier] > TIER_ORDER[state.tierCeiling]) {
+  if (!isTierWithinCeiling(item.tier, state.tierCeiling)) {
     return false;
   }
 

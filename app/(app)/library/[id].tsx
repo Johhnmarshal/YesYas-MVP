@@ -21,6 +21,7 @@ import {
   upsertDesireRating,
 } from '@/lib/desires';
 import type { EncryptedFieldState } from '@/lib/crypto';
+import { isTierWithinCeiling } from '@/lib/library-filter';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -96,13 +97,34 @@ export default function DesireLibraryItemDetailScreen() {
       }
       setUserId(currentUser.id);
 
-      const [fetchedItem, pairingRes] = await Promise.all([
+      const [fetchedItem, pairingRes, profileRes] = await Promise.all([
         fetchLibraryItemById(itemId),
         getActiveOrPendingPairing(currentUser.id),
+        supabase
+          .from('profiles')
+          .select('content_tier_preference')
+          .eq('id', currentUser.id)
+          .maybeSingle(),
       ]);
 
       if (!fetchedItem) {
         throw new Error('This desire item could not be found.');
+      }
+
+      // The content tier ceiling has to hold here too, not just in the list.
+      // This screen fetched by id and never looked at the user's preference,
+      // so an above-ceiling item rendered in full — title, description and a
+      // working star rating. It did not even need a hand-typed URL: browse
+      // explicit items, lower the tier in Settings, press Back, and the
+      // detail screen re-renders the item you just opted out of.
+      //
+      // Checked before setItem so the content never reaches state, let alone
+      // the screen.
+      const ceiling = profileRes.data?.content_tier_preference ?? 'suggestive';
+      if (!isTierWithinCeiling(fetchedItem.tier, ceiling)) {
+        throw new Error(
+          `This item is in the ${fetchedItem.tier} tier, which is above your current content setting. Raise your content tier in Settings if you want to see it.`,
+        );
       }
 
       const activePairingId =
