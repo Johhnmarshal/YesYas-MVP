@@ -614,6 +614,64 @@ async function main() {
     'a real two-row chain from the database must verify as intact',
   );
 
+  //     A full three-row chain from one completed reveal, including the
+  //     three-key caller payload. jsonb orders it role(4), reveal_id(9),
+  //     window_id(9) — length first, then bytes, so reveal_id precedes
+  //     window_id. Alphabetical order would have put reveal_id first overall
+  //     and produced a different hash.
+  const realChain: ConsentEventRow[] = [
+    {
+      seq: 78,
+      id: '44b70963-b8b3-4a94-b0a8-70a169b7fb92',
+      user_id: 'f8f8f8f8-2222-4222-8222-f8f8f8f8f8f8',
+      pairing_id: null,
+      event_type: 'pairing_accepted',
+      payload: { role: 'invitee' },
+      payload_hash: '6ff5341e5d00cbb1bcad705e399e3472fc5ef2c38aa3099aeec9ab479fa4f691',
+      prev_hash: null,
+      created_at: '2026-10-25T12:00:00.000Z',
+    },
+    {
+      seq: 80,
+      id: 'f2a72574-2ad2-4946-ace1-323d7cc448c1',
+      user_id: 'f8f8f8f8-2222-4222-8222-f8f8f8f8f8f8',
+      pairing_id: null,
+      event_type: 'reveal_triggered',
+      payload: {
+        role: 'caller',
+        reveal_id: 'f79706fd-6b51-46ce-a273-4a89c0a3655a',
+        window_id: '2d6e029e-e98e-4b40-9239-dfa83d022a0c',
+      },
+      payload_hash: 'ec652c2dc440b68427ea81185203e0853a1c0d73c03d06dac6f8c08c9df04058',
+      prev_hash: '6ff5341e5d00cbb1bcad705e399e3472fc5ef2c38aa3099aeec9ab479fa4f691',
+      created_at: '2026-10-25T12:00:01.000Z',
+    },
+    {
+      seq: 81,
+      id: 'b392682c-825b-4fd6-bde4-bf3928732d55',
+      user_id: 'f8f8f8f8-2222-4222-8222-f8f8f8f8f8f8',
+      pairing_id: null,
+      event_type: 'reveal_revealed',
+      payload: { reveal_id: 'f79706fd-6b51-46ce-a273-4a89c0a3655a' },
+      payload_hash: 'c223470b4be0fe0790018d6e98870d0e2423f839537100ff599522d261e74520',
+      prev_hash: 'ec652c2dc440b68427ea81185203e0853a1c0d73c03d06dac6f8c08c9df04058',
+      created_at: '2026-10-25T12:00:02.000Z',
+    },
+  ];
+
+  for (const row of realChain) {
+    assert.equal(
+      computeConsentPayloadHash(row),
+      row.payload_hash,
+      `${row.event_type} (${Object.keys(row.payload as object).length} keys) must hash to what Postgres stored`,
+    );
+  }
+  assert.deepEqual(
+    verifyConsentChain(realChain),
+    { valid: true, brokenAtId: null },
+    'a real completed-reveal chain must verify as intact',
+  );
+
   // Key insertion order in the fixture must not matter — jsonb has none.
   const reordered: ConsentEventRow = {
     ...multiKeyRow,
