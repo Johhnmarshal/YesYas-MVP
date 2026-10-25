@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -55,10 +55,14 @@ export default function SignInScreen() {
   // Shown only after a sign-in attempt fails. Account creation is never a
   // side effect of signing in — see onSubmitPassword.
   const [offerCreate, setOfferCreate] = useState(false);
+  // Seconds until another email may be requested. Supabase's built-in mailer
+  // allows very few sends per hour, and every tap of the send button spends
+  // one whether or not the user needed it.
+  const [cooldown, setCooldown] = useState(0);
 
   async function onSubmitMagicLink() {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return;
+    if (!trimmedEmail || cooldown > 0) return;
     setLoading(true);
     setErrorMessage(null);
     setInfoMessage(null);
@@ -85,6 +89,10 @@ export default function SignInScreen() {
         lower.includes('not authorized') ||
         error.status === 429
       ) {
+        // The quota is hourly, so a short retry will fail too. Hold the
+        // button down for a while rather than letting the user spend attempts
+        // discovering that.
+        setCooldown(15 * 60);
         setMode('password');
         setInfoMessage(
           'Hourly email limit reached on the beta server. Choose a passphrase (12+ characters) below to sign in immediately without waiting for an email.',
@@ -94,6 +102,10 @@ export default function SignInScreen() {
       setErrorMessage(error.message);
       return;
     }
+    // A link and code were just sent and both stay valid for a while. Stop
+    // further sends for a minute: an impatient second tap spends another of a
+    // very small hourly allowance and delivers nothing new.
+    setCooldown(60);
     setSent(true);
   }
 
@@ -117,6 +129,12 @@ export default function SignInScreen() {
       setErrorMessage(error.message);
     }
   }
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   async function onSubmitPassword() {
     const trimmedEmail = email.trim().toLowerCase();
@@ -359,13 +377,27 @@ export default function SignInScreen() {
             <Pressable
               style={[
                 styles.button,
-                (loading || !email.trim()) && styles.buttonDisabled,
+                (loading || !email.trim() || cooldown > 0) &&
+                  styles.buttonDisabled,
               ]}
-              disabled={loading || !email.trim()}
+              disabled={loading || !email.trim() || cooldown > 0}
               onPress={() => void onSubmitMagicLink()}
+              accessibilityRole="button"
+              accessibilityLabel={
+                cooldown > 0
+                  ? `Resend available in ${cooldown} seconds`
+                  : 'Send me a sign-in link'
+              }
+              accessibilityState={{ disabled: loading || cooldown > 0 }}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
+              ) : cooldown > 0 ? (
+                <Text style={styles.buttonText}>
+                  {cooldown >= 60
+                    ? `Try again in ${Math.ceil(cooldown / 60)} min`
+                    : `Resend in ${cooldown}s`}
+                </Text>
               ) : (
                 <Text style={styles.buttonText}>Send me a sign-in link</Text>
               )}
