@@ -153,14 +153,28 @@ supabase secrets list --project-ref flauqfikspnywcvtevnq   # confirm
 With the fix in place a missing or revoked key is now visible in the function
 logs instead of silent, so check them once after the first journal entry.
 
-## 4. Apply `20261025000004`
+## 4. Apply the two pending migrations
 
-The reveal guard — a reveal now needs 3 ratings in the pairing — is in `main`
-and in CI, but not on the hosted project:
+Both are in `main` with CI green, neither is on the hosted project. One
+`db push` lands both:
 
 ```bash
 supabase db push --project-ref flauqfikspnywcvtevnq
 ```
+
+- **`20261025000004`** — the reveal guard. A reveal now needs 3 ratings in the
+  pairing, so a couple cannot spend their weekly slot on an empty one. Until
+  this lands, smoke-test check 7 reports
+  `ALLOWED - 20261025000004 is not applied to this database`, which is the
+  check working rather than failing.
+- **`20261025000005`** — normalises `asking-for-what-I-want` to lowercase. This
+  one has to land, because `supabase/seed.sql` now carries the lowercase slug
+  and ends with `on conflict (slug) do nothing`. If the seed is ever re-run
+  against a database that still holds the capitalised slug, it inserts a second
+  near-identical item — 181 rows, two entries with the same title, both
+  separately matchable in a reveal. Verified against production in a
+  rolled-back transaction: afterwards, 0 malformed slugs and still exactly 180
+  rows.
 
 **Note on migration bookkeeping.** Three migrations were applied to production
 through the MCP tooling, which assigns its own version numbers, so the history
