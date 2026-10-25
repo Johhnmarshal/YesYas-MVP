@@ -56,6 +56,30 @@ export async function fetchCurrentReveal(pairingId: string): Promise<RevealRow |
   return data ?? null;
 }
 
+/** Standard cadence from trigger_reveal(): one computed reveal per pairing per week. */
+export const REVEAL_CADENCE_DAYS = 7;
+
+/**
+ * When this pairing may compute its next reveal, or null if it may now.
+ *
+ * The reveal screen needs this because the two timers differ: items clear
+ * after 24 hours, but the cadence runs for 7 days. Between those the screen
+ * shows an expired reveal while the server will still refuse a new one.
+ */
+export function nextRevealAvailableAt(reveal: RevealRow | null): Date | null {
+  if (!reveal?.revealed_at || reveal.status === 'pending') return null;
+  const next = new Date(
+    new Date(reveal.revealed_at).getTime() + REVEAL_CADENCE_DAYS * 24 * 60 * 60 * 1000,
+  );
+  return next.getTime() > Date.now() ? next : null;
+}
+
+/** True for the P0001 trigger_reveal raises when the weekly cadence blocks a reveal. */
+export function isCadenceError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '');
+  return message.toLowerCase().includes('reveal cadence limit');
+}
+
 export async function triggerReveal(
   pairingId: string,
 ): Promise<{ reveal_id: string; status: RevealStatus }> {

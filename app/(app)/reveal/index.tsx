@@ -30,6 +30,8 @@ import {
 import {
   type RevealRow,
   fetchCurrentReveal,
+  isCadenceError,
+  nextRevealAvailableAt,
   triggerReveal,
   withdrawReveal,
 } from '@/lib/reveal';
@@ -222,6 +224,9 @@ export default function RevealScreen() {
     };
   }, [pairing]);
 
+  // Null when a new reveal is allowed now.
+  const cadenceNextAt = nextRevealAvailableAt(reveal);
+
   const handleTriggerReveal = useCallback(async () => {
     if (!pairing || pairing.status !== 'active' || actionBusy) return;
     setActionBusy(true);
@@ -244,15 +249,29 @@ export default function RevealScreen() {
         void hapticMedium();
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not trigger reveal. Please try again.',
-      );
+      // trigger_reveal raises P0001 when the weekly cadence blocks a reveal.
+      // The raw text is a database message; say when instead.
+      if (isCadenceError(err)) {
+        const next = nextRevealAvailableAt(reveal);
+        setErrorMessage(
+          next
+            ? `You've already revealed together this week. Your next reveal unlocks on ${next.toLocaleDateString(
+                undefined,
+                { weekday: 'long', day: 'numeric', month: 'long' },
+              )}.`
+            : "You've already revealed together this week.",
+        );
+      } else {
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : 'Could not trigger reveal. Please try again.',
+        );
+      }
     } finally {
       setActionBusy(false);
     }
-  }, [actionBusy, pairing]);
+  }, [actionBusy, pairing, reveal]);
 
   const handleWithdrawReveal = useCallback(async () => {
     if (!pairing || actionBusy) return;
@@ -1186,23 +1205,43 @@ export default function RevealScreen() {
               hours after computation.
             </Text>
 
-            <View style={styles.actionsColumn}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Start a new reveal"
-                onPress={() => setStartFreshMode(true)}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  {
-                    backgroundColor: colors.primary,
-                    opacity: pressed ? 0.85 : 1,
-                  },
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>
-                  Start a new reveal
+            {/* Items clear after 24 hours but the cadence runs for 7 days, so
+                for most of that window an expired reveal cannot be replaced
+                yet. Offering the button anyway meant a raw database error. */}
+            {cadenceNextAt ? (
+              <Text style={[styles.bodyText, { color: colors.secondary }]}>
+                You&apos;ve already revealed together this week. Your next
+                reveal unlocks on{' '}
+                <Text style={styles.boldText}>
+                  {cadenceNextAt.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
                 </Text>
-              </Pressable>
+                .
+              </Text>
+            ) : null}
+
+            <View style={styles.actionsColumn}>
+              {cadenceNextAt ? null : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Start a new reveal"
+                  onPress={() => setStartFreshMode(true)}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    Start a new reveal
+                  </Text>
+                </Pressable>
+              )}
 
               <Pressable
                 accessibilityRole="button"
