@@ -52,6 +52,9 @@ export default function SignInScreen() {
   const [sent, setSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  // Shown only after a sign-in attempt fails. Account creation is never a
+  // side effect of signing in — see onSubmitPassword.
+  const [offerCreate, setOfferCreate] = useState(false);
 
   async function onSubmitMagicLink() {
     const trimmedEmail = email.trim().toLowerCase();
@@ -128,36 +131,50 @@ export default function SignInScreen() {
     setErrorMessage(null);
     setInfoMessage(null);
 
-    // 1. Try signing in existing user
+    // Sign in only. Creating an account is a separate, explicit action.
+    //
+    // This used to fall through to signUp when sign-in failed, which made
+    // account creation a side effect of typing an email. The hosted project
+    // runs enable_confirmations = false while the built-in SMTP cap is in
+    // force, so that signUp produced a CONFIRMED account with a live session
+    // and no proof the caller owned the address — open registration from the
+    // public sign-in screen. Two probe requests on 2026-10-25 demonstrated it
+    // by accident: both came back 400 email_address_invalid and still left
+    // confirmed users with profiles behind.
+    //
+    // Splitting the two also removes most of the enumeration signal. A failed
+    // sign-in now looks the same whether or not the address exists: same
+    // message, same absence of email, same offer to create.
     const signInRes = await supabase.auth.signInWithPassword({
       email: trimmedEmail,
       password,
     });
 
+    setLoading(false);
+
     if (!signInRes.error && signInRes.data.session) {
-      setLoading(false);
       return;
     }
 
-    // 2. If account doesn't exist yet (or had no password), attempt signUp
-    //
-    // KNOWN ISSUE — open registration. The hosted project runs with
-    // enable_confirmations = false (needed while the built-in SMTP cap is in
-    // force), so this signUp creates a CONFIRMED account and returns a
-    // session immediately, with no proof the caller owns the address. Calling
-    // it automatically from a failed sign-in means any address typed into the
-    // passphrase box becomes a real account.
-    //
-    // Observed directly on 2026-10-25: two probe requests to the auth API
-    // came back `400 email_address_invalid` and still left confirmed users
-    // with profiles in the database. A 400 from this endpoint does not mean
-    // nothing happened.
-    //
-    // The fix is a pair, in this order: configure custom SMTP, turn
-    // enable_confirmations back on, then make account creation an explicit
-    // action rather than a fallback from failed sign-in. That also closes the
-    // remaining half of the enumeration leak, since the two paths would stop
-    // differing by whether an email arrives.
+    setOfferCreate(true);
+    setErrorMessage(
+      'That email and passphrase did not match an existing account. Check the passphrase, use Magic Link, or create a new account below.',
+    );
+  }
+
+  async function onCreateAccount() {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || password.length < MIN_PASSPHRASE_LENGTH) {
+      setErrorMessage(
+        `Please enter your email and a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits.`,
+      );
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage(null);
+    setInfoMessage(null);
+
     const signUpRes = await supabase.auth.signUp({
       email: trimmedEmail,
       password,
@@ -166,24 +183,15 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (signUpRes.error) {
-      // Deliberately identical whether or not the account exists.
-      //
-      // Saying "this email is already registered" turns the public sign-in
-      // screen into a membership oracle: anyone can type an address and a
-      // random passphrase and learn whether that person has a YesYas account.
-      // For this app that disclosure is the thing the whole product exists to
-      // prevent, and it needs no session to exploit.
-      //
-      // Note this only removes the explicit confirmation. A determined prober
-      // can still distinguish the two paths by response timing and by whether
-      // a confirmation email arrives. Closing it fully means not calling
-      // signUp from the sign-in path at all.
+      // Still deliberately neutral: an "already registered" error here would
+      // confirm the address exists to anyone who reached this button.
       setErrorMessage(
-        'That email and passphrase did not match. Check the passphrase, or use Magic Link to sign in.',
+        'We could not create an account with those details. If you already have one, try signing in or use Magic Link.',
       );
       return;
     }
 
+    setOfferCreate(false);
     if (!signUpRes.data.session) {
       setSent(true);
     }
@@ -258,6 +266,20 @@ export default function SignInScreen() {
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
+        ) : null}
+
+        {offerCreate && mode === 'password' && !sent ? (
+          <Pressable
+            style={[styles.createAccountButton, loading && styles.buttonDisabled]}
+            disabled={loading}
+            onPress={() => void onCreateAccount()}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new account with this email and passphrase"
+          >
+            <Text style={styles.createAccountButtonText}>
+              Create a new account with this passphrase
+            </Text>
+          </Pressable>
         ) : null}
 
         {sent ? (
@@ -459,6 +481,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  createAccountButton: {
+    borderWidth: 1,
+    borderColor: '#C86D51',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    marginBottom: 16,
+  },
+  createAccountButtonText: { color: '#C86D51', fontSize: 16, fontWeight: '600' },
   errorBanner: {
     backgroundColor: '#FDECEC',
     borderColor: '#E58B8B',
