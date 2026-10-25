@@ -60,11 +60,33 @@ enable_anonymous_sign_ins = false
 minimum_password_length = 12
 password_requirements = "lower_upper_letters_digits"
 site_url = "https://yesyas.vercel.app"
+# Every entry here is a place a magic link may deliver its token, so the list
+# is an authorisation boundary rather than a convenience.
+#
+# "https://*.vercel.app" and "https://*.vercel.app/**" used to be in it, and
+# they were an account-takeover vector. Supabase honours wildcards in the host,
+# and vercel.app is a shared public domain anyone can deploy to:
+#
+#   1. signInWithOtp is a client call. Anyone holding the publishable anon key
+#      — which ships in the web bundle — can send their own, with any
+#      emailRedirectTo they like.
+#   2. Supabase validates that value against site_url plus this list, so
+#      https://whatever-they-own.vercel.app was accepted.
+#   3. The victim receives a GENUINE YesYas sign-in email from the real sender
+#      and clicks it, because there is nothing wrong with it.
+#   4. The code lands on the attacker's origin, which exchanges it for a
+#      session.
+#
+# Nothing in this repository needs a preview host: the only Vercel URL
+# referenced anywhere is yesyas.vercel.app, and the client sends
+# window.location.origin, so a legitimate deploy is already covered.
+#
+# If a preview deployment ever does need to sign in, add that exact URL, or at
+# narrowest the scoped form Supabase's own docs recommend —
+# "https://yesyas-*-<your-team-slug>.vercel.app" — never a bare *.vercel.app.
 additional_redirect_urls = [
   "https://yesyas.vercel.app",
   "https://yesyas.vercel.app/**",
-  "https://*.vercel.app",
-  "https://*.vercel.app/**",
   "yesyasapp://",
   "yesyasapp://**",
   "http://localhost:8081",
@@ -73,7 +95,12 @@ additional_redirect_urls = [
 
 [remotes.production.auth.email]
 enable_confirmations = false
-max_frequency = "1s"
+# Supabase's default is 60s; this was "1s", which is convenient while testing
+# and an abuse lever once real SMTP is attached — one address can be mailed as
+# fast as requests arrive. sign-in.tsx already holds its own 60-second cooldown
+# after a send, so matching it here costs a tester nothing and removes the
+# server-side hole.
+max_frequency = "60s"
 otp_length = 8
 
 # Supabase's stock magic-link template carries only {{ .ConfirmationURL }},
