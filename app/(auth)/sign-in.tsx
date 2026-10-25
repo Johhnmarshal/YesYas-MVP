@@ -17,7 +17,23 @@ type AuthMode = 'magic_link' | 'password';
 
 /**
  * Email sign-in screen supporting:
- * 1. Magic Link + 8-digit OTP code verification (`signInWithOtp` + `verifyOtp`)
+ * 1. Magic Link + emailed OTP code verification (`signInWithOtp` + `verifyOtp`).
+ *
+ *    The code input is length-agnostic on purpose (maxLength 10, only requires
+ *    non-empty), so whatever length the project is configured for will work.
+ *
+ *    IMPORTANT: this path only works if the Magic Link email actually carries
+ *    a code. Supabase's DEFAULT template does not — it contains only
+ *    {{ .ConfirmationURL }}, so the "enter the code from your email" box asks
+ *    for something that was never sent. Dashboard -> Authentication -> Email
+ *    Templates -> Magic Link needs {{ .Token }} added, e.g.
+ *
+ *      <p>Your sign-in code: <strong>{{ .Token }}</strong></p>
+ *      <p>Or follow this link: <a href="{{ .ConfirmationURL }}">Sign in</a></p>
+ *
+ *    Worth adding {{ .TokenHash }} in the same edit — see the note at
+ *    `flowType` in lib/supabase.ts for why that is what lets web go back to
+ *    PKCE without breaking cross-browser links.
  * 2. Instant Email + Passphrase sign-in (`signInWithPassword` / `signUp`), which
  *    bypasses Supabase's built-in 2-emails/hour SMTP rate limit for beta testers.
  * Renders inline error banners so web users never hit silent `Alert.alert` no-ops.
@@ -126,16 +142,21 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (signUpRes.error) {
-      // If user already exists with a different password or magic-link-only account
-      if (
-        signUpRes.error.message.toLowerCase().includes('already registered')
-      ) {
-        setErrorMessage(
-          'This email is already registered with a different passphrase. Please enter your original passphrase or use Magic Link.',
-        );
-        return;
-      }
-      setErrorMessage(signUpRes.error.message);
+      // Deliberately identical whether or not the account exists.
+      //
+      // Saying "this email is already registered" turns the public sign-in
+      // screen into a membership oracle: anyone can type an address and a
+      // random passphrase and learn whether that person has a YesYas account.
+      // For this app that disclosure is the thing the whole product exists to
+      // prevent, and it needs no session to exploit.
+      //
+      // Note this only removes the explicit confirmation. A determined prober
+      // can still distinguish the two paths by response timing and by whether
+      // a confirmation email arrives. Closing it fully means not calling
+      // signUp from the sign-in path at all.
+      setErrorMessage(
+        'That email and passphrase did not match. Check the passphrase, or use Magic Link to sign in.',
+      );
       return;
     }
 

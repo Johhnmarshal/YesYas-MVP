@@ -62,6 +62,26 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: Platform.OS === 'web',
+      // Web uses implicit because PKCE breaks the common magic-link case: the
+      // code verifier lives in localStorage, so a link opened in a different
+      // browser (or an email client's in-app browser) than the one that
+      // requested it cannot exchange ?code= and sign-in fails.
+      //
+      // consumeInitialUrlAuth() below mitigates the usual implicit objection —
+      // it calls history.replaceState immediately, so the #access_token never
+      // persists as a history entry. What remains is the window before that
+      // runs: the token is in the initial response URL, readable by anything
+      // already on the page, and browser session-restore may still hold it.
+      //
+      // To get back to PKCE without reintroducing the cross-browser failure,
+      // both of these are needed together — changing flowType alone will break
+      // sign-in again:
+      //   1. Dashboard -> Authentication -> Email Templates -> Magic Link, so
+      //      the link carries a token_hash instead of relying on the flow:
+      //        <a href="{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=email">
+      //      The token_hash branch of consumeInitialUrlAuth already handles
+      //      this via verifyOtp, which needs no verifier and works anywhere.
+      //   2. Then set this back to 'pkce' for both platforms.
       flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
     },
     global: {
