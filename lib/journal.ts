@@ -65,7 +65,20 @@ const REFLECTIVE_PROMPTS: string[] = [
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function generateDeterministicThreadId(seed: string): string {
+/**
+ * A fresh v4-shaped thread id.
+ *
+ * Called `generateDeterministicThreadId` until now, which it never was and
+ * must not become: the seed includes Date.now() and Math.random() precisely so two
+ * calls differ. Making it match the old name would be a quiet regression —
+ * `ai_logs` keys the 20-message session limit on (user_id_hash, thread_id), so
+ * a message-derived id would resume an unrelated earlier thread whenever a
+ * user repeated themselves, and would make two users writing the same sentence
+ * share a rate-limit bucket.
+ *
+ * The shape satisfies UUID_REGEX above: version nibble 4, variant nibble a.
+ */
+function generateThreadId(seed: string): string {
   const hex = sha256Hex(`${seed}:${Date.now()}:${Math.random()}`);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
@@ -80,7 +93,7 @@ function buildLocalReflectiveReply(
   const validThreadId =
     typeof threadId === 'string' && UUID_REGEX.test(threadId)
       ? threadId
-      : generateDeterministicThreadId(message);
+      : generateThreadId(message);
   return {
     reply: `Thank you for putting that into words in your private space. ${REFLECTIVE_PROMPTS[index]}`,
     threadId: validThreadId,
@@ -243,7 +256,7 @@ export async function sendAiCoachMessage(
     const returnedThreadId =
       typeof data.threadId === 'string' && UUID_REGEX.test(data.threadId)
         ? data.threadId
-        : (sanitizedThreadId ?? generateDeterministicThreadId(trimmed));
+        : (sanitizedThreadId ?? generateThreadId(trimmed));
 
     // A 200 does not mean a model answered. The function falls back to its own
     // canned prompt when no provider key is set or the provider refused, and
