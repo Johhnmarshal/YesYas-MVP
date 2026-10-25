@@ -81,6 +81,36 @@ otp_length = 8
 # never sent, and the link cannot carry a token_hash — the thing that lets web
 # use PKCE without failing when the link is opened in a different browser than
 # the one that requested it.
+# Custom SMTP. Supabase's built-in mailer is explicitly not a production
+# service: it is capped at a couple of sends per hour and shared across every
+# free project. The hosted auth logs for 2026-10-24 22:00 show 2 sends through
+# and 11 rejected with "429 email rate limit exceeded" — with one person
+# testing. At fifty couples nobody signs in.
+#
+# This block is complete apart from the credential. To turn it on:
+#   1. Create a sender on any SMTP provider (Resend, SES, Postmark) and verify
+#      the sending domain — unverified senders land in spam, which for this
+#      app reads as the product being broken.
+#   2. export SUPABASE_AUTH_SMTP_PASS=<the API key>
+#   3. supabase config push --project-ref flauqfikspnywcvtevnq
+#
+# The password is read from the environment, never committed. Fill in host,
+# port, user and the sender fields for whichever provider you choose; the
+# values below are Resend's.
+#
+# Once mail is reliable, set enable_confirmations back to true above. That is
+# what makes account creation prove the caller owns the address — until then
+# signup is open, which is why sign-in.tsx no longer calls signUp implicitly.
+#
+# [remotes.production.auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+# admin_email = "no-reply@yourdomain"
+# sender_name = "YesYas"
+
 [remotes.production.auth.email.template.magic_link]
 subject = "Your sign-in code"
 content_path = "./supabase/templates/magic_link.html"
