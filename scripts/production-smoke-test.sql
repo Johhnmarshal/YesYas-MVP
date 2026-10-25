@@ -321,3 +321,73 @@ select count(*)                                                                a
 from ordered;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Sixth check: the reveal payload cannot say who wanted what.
+--
+-- This is the product. "Only overlapping desires are revealed — so neither
+-- partner ever sees what the other said no to" is the promise the whole app
+-- is built around, and it lives entirely in what trigger_reveal() chooses to
+-- put in reveals.matches and reveals.mismatches. Both partners can read that
+-- row, so anything written into it is shared.
+--
+-- The two partners are given deliberately distinguishable data: B rates 5/3/1
+-- across three items while A rates all three 5, and both attach notes
+-- containing a marker. A reveal that leaked ratings, notes or user ids would
+-- show it.
+--
+-- Expected: no "rating" key, no marker from either note, no user id, and a
+-- summary of counts only. mismatches carries no description on purpose —
+-- less detail for an item only one partner wanted.
+--
+-- Expected row:
+--   description,library_item_id,slug,tier,title | library_item_id,slug,tier,title
+--   | f | f | f | {"match_count": 1, "mismatch_count": 1}
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('aaaa1111-1111-4111-8111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','p1@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('bbbb2222-2222-4222-8222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','p2@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+create temp table ti as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"bbbb2222-2222-4222-8222-222222222222","role":"authenticated"}';
+create temp table tp as select public.accept_pairing_invite((select invite_code from ti)) as pid;
+
+-- B: 5 (match), 3 (bridge), 1 (hard veto). A: all 5. Notes carry a marker.
+insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+select 'bbbb2222-2222-4222-8222-222222222222', (select pid from tp), id,
+       (array[5,3,1])[rn], 'enc:v1:BSECRET'
+from (select id, row_number() over (order by slug) rn
+      from public.desire_library_items order by slug limit 3) x;
+
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+select 'aaaa1111-1111-4111-8111-111111111111', (select pid from tp), id, 5, 'enc:v1:ASECRET'
+from (select id from public.desire_library_items order by slug limit 3) x;
+
+create temp table r1 as select * from public.trigger_reveal((select pid from tp));
+set local request.jwt.claims = '{"sub":"bbbb2222-2222-4222-8222-222222222222","role":"authenticated"}';
+create temp table r2 as select * from public.trigger_reveal((select pid from tp));
+
+reset role;
+
+select
+  (select string_agg(distinct k, ',' order by k)
+     from public.reveals r, lateral jsonb_array_elements(r.matches) m, lateral jsonb_object_keys(m) k
+    where r.pairing_id = (select pid from tp))                       as match_keys,
+  (select string_agg(distinct k, ',' order by k)
+     from public.reveals r, lateral jsonb_array_elements(r.mismatches) m, lateral jsonb_object_keys(m) k
+    where r.pairing_id = (select pid from tp))                       as bridge_keys,
+  (select (matches::text ~ '"rating"' or mismatches::text ~ '"rating"')
+     from public.reveals where pairing_id = (select pid from tp))    as leaks_rating,
+  (select (matches::text ~* 'secret' or mismatches::text ~* 'secret')
+     from public.reveals where pairing_id = (select pid from tp))    as leaks_note,
+  (select (matches::text ~ 'aaaa1111|bbbb2222' or mismatches::text ~ 'aaaa1111|bbbb2222')
+     from public.reveals where pairing_id = (select pid from tp))    as leaks_user_id,
+  (select summary::text from public.reveals where pairing_id = (select pid from tp)) as summary;
+
+rollback;
