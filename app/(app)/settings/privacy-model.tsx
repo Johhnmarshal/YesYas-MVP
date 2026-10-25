@@ -215,8 +215,18 @@ export default function PrivacyModelScreen() {
               window flag.{"\n\n"}
               <Text style={{ fontWeight: '700', color: colors.text }}>iOS: </Text>
               Apple does not allow third-party apps to block screenshots at the
-              operating system level. YesYas! applies an automated privacy blur
-              whenever you switch apps.
+              operating system level. Instead, reveal and journal screens are
+              covered the moment the app leaves the foreground, so their
+              contents do not appear in the app switcher.{"\n\n"}
+              <Text style={{ fontWeight: '700', color: colors.text }}>
+                Web browser:{' '}
+              </Text>
+              No browser lets a page block screenshots or screen recording, so
+              nothing stops a capture of YesYas! in a browser — including by
+              anyone with access to your computer. Reveal and journal screens
+              are still covered when you switch tabs or minimise the window,
+              but if screen-capture protection matters to you, use the Android
+              app.
             </Text>
           </View>
         </View>

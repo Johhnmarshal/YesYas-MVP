@@ -20,6 +20,7 @@ import {
   SCREEN_CAPTURE_KEYS,
   useScreenCaptureProtection,
 } from '@/lib/screen-capture';
+import { PrivacyShield } from '@/components/PrivacyShield';
 import { confirm, showMessage } from '@/lib/alert';
 import { shareText } from '@/lib/share';
 import { supabase } from '@/lib/supabase';
@@ -264,6 +265,10 @@ export default function JournalDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <PrivacyShield
+        message="This reflection is hidden while the app is in the background."
+      />
     </SafeAreaView>
   );
 }

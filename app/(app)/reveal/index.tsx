@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  AppState,
-  type AppStateStatus,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +19,7 @@ import type {
   RevealMatchItem,
   RevealMismatchItem,
 } from '@/lib/database.types';
+import { PrivacyShield } from '@/components/PrivacyShield';
 import { fetchUserDesires } from '@/lib/desires';
 import {
   type PairingWithPartner,
@@ -100,22 +99,6 @@ export default function RevealScreen() {
   );
 
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
-  const [privacyShieldActive, setPrivacyShieldActive] = useState<boolean>(
-    () => AppState.currentState !== 'active',
-  );
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-
-  // Background privacy blur overlay listener (iOS app switcher / backgrounding)
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (nextState) => {
-      appStateRef.current = nextState;
-      setPrivacyShieldActive(nextState !== 'active');
-    });
-    return () => {
-      sub.remove();
-    };
-  }, []);
-
   // Countdown clock tick every 15s
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1308,26 +1291,8 @@ export default function RevealScreen() {
         onParkForNow={handleParkBridgeItem}
       />
 
-      {/* iOS / Background Privacy Blur Shield Overlay */}
-      {privacyShieldActive ? (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            styles.privacyShieldOverlay,
-            { backgroundColor: colors.bg },
-          ]}
-        >
-          <Ionicons name="lock-closed" size={36} color={colors.primary} />
-          <Text style={[styles.privacyShieldTitle, { color: colors.primary }]}>
-            YesYas! Privacy Shield
-          </Text>
-          <Text
-            style={[styles.privacyShieldSubtitle, { color: colors.secondary }]}
-          >
-            Reveal content is hidden while the app is in the background.
-          </Text>
-        </View>
-      ) : null}
+      {/* Shared with the journal screens — see components/PrivacyShield.tsx */}
+      <PrivacyShield message="Reveal content is hidden while the app is in the background." />
     </SafeAreaView>
   );
 }
@@ -1662,20 +1627,5 @@ const styles = StyleSheet.create({
   bridgeExploreText: {
     ...TYPOGRAPHY.caption,
     fontWeight: '700',
-  },
-  privacyShieldOverlay: {
-    zIndex: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.xs,
-  },
-  privacyShieldTitle: {
-    ...TYPOGRAPHY.h2,
-    textAlign: 'center',
-  },
-  privacyShieldSubtitle: {
-    ...TYPOGRAPHY.body,
-    textAlign: 'center',
   },
 });

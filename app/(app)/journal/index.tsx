@@ -22,6 +22,7 @@ import {
   saveJournalEntry,
   sendAiCoachMessage,
 } from '@/lib/journal';
+import { PrivacyShield } from '@/components/PrivacyShield';
 import { showMessage } from '@/lib/alert';
 import { hasRecoveryBackup } from '@/lib/key-recovery';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
@@ -941,6 +942,10 @@ export default function JournalScreen() {
           </View>
         </View>
       </Modal>
+
+      <PrivacyShield
+        message="Your journal is hidden while the app is in the background."
+      />
     </SafeAreaView>
   );
 }
