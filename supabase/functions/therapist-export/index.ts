@@ -87,6 +87,33 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // The status check this function's own comment claimed, which it did not
+  // make. request_therapist_export() restricts consent to active or paused
+  // pairings and raises 42501 ("not a member of an active or paused pairing")
+  // otherwise — but this function ran with the service-role key, selected the
+  // pairing with no status filter, and so would happily generate the clinical
+  // summary for a pairing that had been ENDED.
+  //
+  // Measured against the hosted project: both partners consent while active,
+  // one ends the pairing, and the RPC then refuses to record anything while
+  // this function's two gates both still pass — step 1 finds the row, step 2
+  // still sees two consenters inside the 7-day window.
+  //
+  // Ending a pairing is the clearest withdrawal there is. Without this, for up
+  // to a week afterwards either partner could still produce a document about
+  // their shared intimate life and give it to a third party, on the strength
+  // of a consent granted while the relationship was live.
+  if (pairing.status !== 'active' && pairing.status !== 'paused') {
+    return jsonResponse(
+      {
+        error:
+          'This pairing has ended, so a clinical summary can no longer be generated for it.',
+        code: 'PAIRING_NOT_ACTIVE',
+      },
+      403,
+    );
+  }
+
   const partnerId = isInviter
     ? pairing.invitee_user_id
     : pairing.inviter_user_id;
