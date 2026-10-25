@@ -63,6 +63,11 @@ export default function SettingsScreen() {
     });
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinInput, setPinInput] = useState('');
+  // Asked twice on purpose. The PIN gates the entire app on next backgrounding,
+  // and a single mistyped digit set a PIN the user did not know — they found
+  // out at the lock screen. The recovery-code modal makes the user re-enter
+  // for exactly this reason; this is the same hazard with a shorter secret.
+  const [pinConfirmInput, setPinConfirmInput] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
 
   // Pairing Modal state
@@ -215,11 +220,16 @@ export default function SettingsScreen() {
       setPinError('PIN must be exactly 6 digits.');
       return;
     }
+    if (pinConfirmInput.trim() !== trimmed) {
+      setPinError('The two PINs do not match. Re-enter them to be sure.');
+      return;
+    }
     try {
       await saveBiometricSettings(true, trimmed);
       setBiometricSettings({ enabled: true, hasPin: true });
       setPinModalVisible(false);
       setPinInput('');
+      setPinConfirmInput('');
       setPinError(null);
       showMessage('Lock Enabled', 'Your 6-digit PIN and device lock are now active.');
     } catch (err) {
@@ -847,7 +857,10 @@ export default function SettingsScreen() {
               Set 6-Digit PIN
             </Text>
             <Text style={[styles.modalBody, { color: colors.muted }]}>
-              Enter a 6-digit PIN code used to unlock YesYas! if biometrics fail.
+              Enter a 6-digit PIN used to unlock YesYas! if biometrics fail,
+              then enter it again to confirm. If you forget it you can sign out
+              from the lock screen and back in — your journal is kept either
+              way.
             </Text>
 
             <TextInput
@@ -872,6 +885,28 @@ export default function SettingsScreen() {
               accessibilityLabel="6 digit PIN input"
             />
 
+            <TextInput
+              style={[
+                styles.pinInput,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.bg,
+                  borderColor: pinError ? '#EF4444' : colors.border,
+                },
+              ]}
+              value={pinConfirmInput}
+              onChangeText={(val) => {
+                setPinConfirmInput(val.replace(/\D/g, '').slice(0, 6));
+                setPinError(null);
+              }}
+              placeholder="Confirm PIN"
+              placeholderTextColor={colors.muted}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+              accessibilityLabel="Confirm 6 digit PIN"
+            />
+
             {pinError && <Text style={styles.errorText}>{pinError}</Text>}
 
             <View style={styles.modalButtonRow}>
@@ -879,6 +914,7 @@ export default function SettingsScreen() {
                 onPress={() => {
                   setPinModalVisible(false);
                   setPinInput('');
+                  setPinConfirmInput('');
                   setPinError(null);
                 }}
                 accessibilityRole="button"
