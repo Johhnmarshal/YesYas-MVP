@@ -1,4 +1,4 @@
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type Href, Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,12 @@ function parseToneParam(raw?: string | string[]): ToneLabel {
   return 'romantic';
 }
 
+/** Whether the raw parameter named a value, rather than the parser defaulting. */
+function isPresent(raw?: string | string[]): boolean {
+  const val = Array.isArray(raw) ? raw[0] : raw;
+  return typeof val === 'string' && val.length > 0;
+}
+
 /**
  * Onboarding Step 2/3 — Content Tier (`sensory`, `suggestive`, `explicit`).
  * Default is `'suggestive'`. Passes `tone` and `tier` to `/(app)/onboarding/mode`.
@@ -22,6 +28,10 @@ export default function OnboardingTierScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams<{ tone?: string }>();
   const tone = parseToneParam(params.tone);
+  // Step 3 refuses to commit without both choices, so arriving here without a
+  // tone would cost the user their tier selection at the next step. Send them
+  // to step 1 now instead.
+  const toneMissing = !isPresent(params.tone);
   const [selectedTier, setSelectedTier] = useState<DesireTier>('suggestive');
 
   function handleContinue() {
@@ -36,6 +46,10 @@ export default function OnboardingTierScreen() {
     } else {
       router.replace('/(app)/onboarding/tone' as Href);
     }
+  }
+
+  if (toneMissing) {
+    return <Redirect href={'/(app)/onboarding/tone' as Href} />;
   }
 
   return (

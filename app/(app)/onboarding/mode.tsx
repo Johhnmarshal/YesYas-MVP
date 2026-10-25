@@ -1,4 +1,4 @@
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type Href, Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,6 +32,23 @@ function parseTierParam(raw?: string | string[]): DesireTier {
 }
 
 /**
+ * Whether the raw parameter actually named a valid value, as opposed to the
+ * parsers above quietly substituting a default.
+ *
+ * This screen's only job is to persist the two choices made on the previous
+ * two screens. Reached without them — a bookmarked or hand-typed
+ * /onboarding/mode on the web build — it used to write the parser defaults
+ * ('romantic', 'suggestive') and onboarding_complete: true, recording a
+ * content tier the user had never been shown. The tier is a consent boundary
+ * in this app, and 'suggestive' is not even the most conservative option, so
+ * the silent default was both an invention and the wrong one.
+ */
+function isPresent(raw?: string | string[]): boolean {
+  const val = Array.isArray(raw) ? raw[0] : raw;
+  return typeof val === 'string' && val.length > 0;
+}
+
+/**
  * Onboarding Step 3/3 — Mode Selection.
  * Presents two action cards ("Explore solo — Journal your desires first" and
  * "Invite my partner now"), saves `tone_preference`, `content_tier_preference`,
@@ -43,6 +60,7 @@ export default function OnboardingModeScreen() {
   const params = useLocalSearchParams<{ tone?: string; tier?: string }>();
   const tone = parseToneParam(params.tone);
   const tier = parseTierParam(params.tier);
+  const choicesMissing = !isPresent(params.tone) || !isPresent(params.tier);
 
   const [submittingMode, setSubmittingMode] = useState<'solo' | 'pair' | null>(
     null,
@@ -100,6 +118,12 @@ export default function OnboardingModeScreen() {
   }
 
   const isBusy = submittingMode !== null;
+
+  // Send them back to step 1 rather than commit defaults they never picked.
+  // tone.tsx takes no parameters, so this cannot bounce back here.
+  if (choicesMissing) {
+    return <Redirect href={'/(app)/onboarding/tone' as Href} />;
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
