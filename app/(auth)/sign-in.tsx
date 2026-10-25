@@ -54,7 +54,6 @@ export default function SignInScreen() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   // Shown only after a sign-in attempt fails. Account creation is never a
   // side effect of signing in — see onSubmitPassword.
-  const [offerCreate, setOfferCreate] = useState(false);
   // Seconds until another email may be requested. Supabase's built-in mailer
   // allows very few sends per hour, and every tap of the send button spends
   // one whether or not the user needed it.
@@ -94,15 +93,6 @@ export default function SignInScreen() {
         // discovering that.
         setCooldown(15 * 60);
         setMode('password');
-        // Reveal "Create account" here too. Everywhere else it appears only
-        // after a failed sign-in, which is the right default — but a tester
-        // who has just been told "sign in immediately without waiting for an
-        // email" has, by definition, no session, and may well have no account
-        // either. Without this they must first fail a sign-in they never
-        // asked to attempt, and the first thing they see after the rate limit
-        // is an error. Showing the button leaks nothing: tapping it still
-        // returns the same neutral message whether or not the address exists.
-        setOfferCreate(true);
         setInfoMessage(
           `Hourly email limit reached on the beta server — it allows 2 sign-in emails an hour. Enter a passphrase (${MIN_PASSPHRASE_LENGTH}+ characters) below to sign in, or create an account, without waiting for an email.`,
         );
@@ -182,8 +172,6 @@ export default function SignInScreen() {
     if (!signInRes.error && signInRes.data.session) {
       return;
     }
-
-    setOfferCreate(true);
     setErrorMessage(
       'That email and passphrase did not match an existing account. Check the passphrase, use Magic Link, or create a new account below.',
     );
@@ -217,8 +205,6 @@ export default function SignInScreen() {
       );
       return;
     }
-
-    setOfferCreate(false);
     if (!signUpRes.data.session) {
       setSent(true);
     }
@@ -295,20 +281,6 @@ export default function SignInScreen() {
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
-        ) : null}
-
-        {offerCreate && mode === 'password' && !sent ? (
-          <Pressable
-            style={[styles.createAccountButton, loading && styles.buttonDisabled]}
-            disabled={loading}
-            onPress={() => void onCreateAccount()}
-            accessibilityRole="button"
-            accessibilityLabel="Create a new account with this email and passphrase"
-          >
-            <Text style={styles.createAccountButtonText}>
-              Create a new account with this passphrase
-            </Text>
-          </Pressable>
         ) : null}
 
         {sent ? (
@@ -475,15 +447,34 @@ export default function SignInScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>
-                  Sign in / Create beta account
-                </Text>
+                <Text style={styles.buttonText}>Sign in</Text>
               )}
             </Pressable>
             <Text style={styles.hint}>
-              Instant sign-in creates your account or signs you in right away —
-              no waiting on magic-link email delivery.
+              Signs you in straight away — no waiting on email. New here? Enter
+              your email and a passphrase, then use Create account.
             </Text>
+            <Pressable
+              style={[
+                styles.createAccountButton,
+                (loading ||
+                  !email.trim() ||
+                  password.length < MIN_PASSPHRASE_LENGTH) &&
+                  styles.buttonDisabled,
+              ]}
+              disabled={
+                loading ||
+                !email.trim() ||
+                password.length < MIN_PASSPHRASE_LENGTH
+              }
+              onPress={() => void onCreateAccount()}
+              accessibilityRole="button"
+              accessibilityLabel="Create a new account with this email and passphrase"
+            >
+              <Text style={styles.createAccountButtonText}>
+                Create account
+              </Text>
+            </Pressable>
           </>
         )}
       </KeyboardAvoidingView>
