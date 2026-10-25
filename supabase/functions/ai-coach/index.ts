@@ -31,6 +31,15 @@ async function sha256Hex(text: string): Promise<string> {
 const ANTHROPIC_MODEL = 'claude-opus-5-5';
 const OPENAI_MODEL = 'gpt-4o-mini';
 
+// Three distinct non-model outcomes, kept apart because the client shows a
+// different notice for each. 'builtin-reflective' means no provider answered,
+// which is worth telling the user — the reply is a stock phrase, not a
+// response to what they wrote. 'safety-redirect' is the opposite: a
+// deliberate, rule-driven answer. Labelling both 'builtin-reflective' would
+// make the app apologise for working correctly.
+const BUILTIN_MODEL = 'builtin-reflective';
+const SAFETY_REDIRECT_MODEL = 'safety-redirect';
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -142,7 +151,7 @@ Deno.serve(async (req: Request) => {
   // Check 6 mandatory safety rules locally for guaranteed compliance
   const lowerMsg = message.toLowerCase();
   let reply = '';
-  let modelUsed = 'builtin-reflective';
+  let modelUsed = BUILTIN_MODEL;
   let promptTokens = Math.ceil(message.length / 4);
   let completionTokens = 0;
 
@@ -156,6 +165,7 @@ Deno.serve(async (req: Request) => {
   ) {
     reply =
       'This is worth discussing with a professional. Your safety and boundaries are essential, and a licensed professional can provide tailored guidance.';
+    modelUsed = SAFETY_REDIRECT_MODEL;
   }
   // Rule 5: Specific sex act or approaching partner advice
   else if (
@@ -166,6 +176,7 @@ Deno.serve(async (req: Request) => {
   ) {
     reply =
       "I can help you explore this privately in your journal, but I won't advise on how to approach a partner about it. Remember that I am an AI journaling companion and not a therapist.";
+    modelUsed = SAFETY_REDIRECT_MODEL;
   } else {
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
     const openAiKey = Deno.env.get('OPENAI_API_KEY');
@@ -250,7 +261,7 @@ Deno.serve(async (req: Request) => {
             Authorization: `Bearer ${openAiKey}`,
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: OPENAI_MODEL,
             max_tokens: 300,
             messages: [
               { role: 'system', content: AI_COACH_SYSTEM_PROMPT },
@@ -280,7 +291,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!reply) {
-      modelUsed = 'builtin-reflective';
+      modelUsed = BUILTIN_MODEL;
       const promptIndex = Math.abs(message.length) % REFLECTIVE_PROMPTS.length;
       reply = `Thank you for taking time to explore this in your private journal. As a reminder, I am an AI self-reflection companion and not a licensed therapist. ${REFLECTIVE_PROMPTS[promptIndex]}`;
       completionTokens = Math.ceil(reply.length / 4);
