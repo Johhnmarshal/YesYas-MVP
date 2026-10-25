@@ -56,6 +56,13 @@ export async function fetchCurrentReveal(pairingId: string): Promise<RevealRow |
   return data ?? null;
 }
 
+export {
+  REVEAL_READINESS_WINDOW_HOURS,
+  REVEAL_VISIBILITY_HOURS,
+  isReadinessWindowClosed,
+  isRevealContentExpired,
+} from './reveal-state';
+
 /** Standard cadence from trigger_reveal(): one computed reveal per pairing per week. */
 export const REVEAL_CADENCE_DAYS = 7;
 

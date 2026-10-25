@@ -19,6 +19,10 @@ import type {
   RevealMatchItem,
   RevealMismatchItem,
 } from '@/lib/database.types';
+import {
+  isReadinessWindowClosed,
+  isRevealContentExpired,
+} from '@/lib/reveal-state';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { fetchUserDesires } from '@/lib/desires';
 import {
@@ -343,10 +347,11 @@ export default function RevealScreen() {
     if (!reveal || startFreshMode) {
       return 'no_reveal' as const;
     }
+    // Shared with the home screen via lib/reveal-state.ts. These were inline
+    // here and absent there, so the two screens disagreed about whether a
+    // deadline had passed.
     if (reveal.status === 'pending') {
-      const windowEndMs =
-        new Date(reveal.triggered_at).getTime() + SEVENTY_TWO_HOURS_MS;
-      if (windowEndMs <= nowMs) {
+      if (isReadinessWindowClosed(reveal, nowMs)) {
         return 'no_reveal' as const;
       }
       if (reveal.triggered_by && reveal.triggered_by !== userId) {
@@ -358,13 +363,9 @@ export default function RevealScreen() {
       return 'both_ready' as const;
     }
     if (reveal.status === 'computed') {
-      if (
-        reveal.expires_at &&
-        new Date(reveal.expires_at).getTime() <= nowMs
-      ) {
-        return 'expired' as const;
-      }
-      return 'completed' as const;
+      return isRevealContentExpired(reveal, nowMs)
+        ? ('expired' as const)
+        : ('completed' as const);
     }
     return 'expired' as const;
   }, [nowMs, pairing, reveal, startFreshMode, userId]);

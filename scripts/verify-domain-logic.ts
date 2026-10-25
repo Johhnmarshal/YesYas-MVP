@@ -9,6 +9,9 @@ import { hashPin, verifyPin, MasterKeyUnavailableError, adoptMasterKey, bytesToH
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { TIER_ORDER, filterLibraryItems, isLibraryItemVisible, isTierWithinCeiling, reconcileTierFilter } from '../lib/library-filter.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { isReadinessWindowClosed, isRevealContentExpired } from '../lib/reveal-state.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -375,6 +378,73 @@ async function main() {
   assert.ok(!isTierWithinCeiling('explicit', 'sensory'), 'explicit is not within a sensory ceiling');
   assert.ok(!isTierWithinCeiling('explicit', 'suggestive'), 'explicit is not within a suggestive ceiling');
   assert.ok(!isTierWithinCeiling('suggestive', 'sensory'), 'suggestive is not within a sensory ceiling');
+
+
+  // 11. Reveal deadlines are decided identically on both screens.
+  //
+  //     expire_old_reveals runs on a 15-minute cron, so a row can sit at
+  //     'computed' with expires_at already past. The reveal screen checked
+  //     that inline; the home screen did not, and announced "Active reveal:
+  //     N mutual matches" for up to a quarter of an hour after the reveal
+  //     screen had started calling it expired. Nothing at all closes the
+  //     72-hour readiness window server-side, so an unchecked client says
+  //     "waiting for your partner" indefinitely.
+  const HOUR = 60 * 60 * 1000;
+  const t0 = Date.parse('2026-10-25T12:00:00Z');
+
+  const computedFresh = {
+    status: 'computed' as const,
+    triggered_at: new Date(t0 - 2 * HOUR).toISOString(),
+    revealed_at: new Date(t0 - 2 * HOUR).toISOString(),
+    expires_at: new Date(t0 + 22 * HOUR).toISOString(),
+  };
+  const computedStale = {
+    ...computedFresh,
+    expires_at: new Date(t0 - 1 * HOUR).toISOString(),
+  };
+
+  assert.equal(isRevealContentExpired(computedFresh, t0), false,
+    'a computed reveal inside its window is not expired');
+  assert.equal(isRevealContentExpired(computedStale, t0), true,
+    'a computed reveal past expires_at is expired even before the cron runs');
+  assert.equal(isRevealContentExpired({ ...computedFresh, status: 'expired' as const }, t0), true,
+    'an already-expired row is expired');
+  assert.equal(isRevealContentExpired({ ...computedFresh, status: 'pending' as const }, t0), false,
+    'a pending reveal has no content to expire');
+  assert.equal(isRevealContentExpired(null, t0), false, 'no reveal is not an expired reveal');
+
+  // expires_at missing: fall back to 24h after revealed_at, which is t0 - 2h,
+  // so the fallback deadline is t0 + 22h.
+  assert.equal(
+    isRevealContentExpired({ ...computedFresh, expires_at: null }, t0 + 21 * HOUR),
+    false,
+    'without expires_at, 23 hours after the reveal is still inside the window',
+  );
+  assert.equal(
+    isRevealContentExpired({ ...computedFresh, expires_at: null }, t0 + 23 * HOUR),
+    true,
+    'without expires_at, 25 hours after the reveal is expired',
+  );
+
+  const pendingFresh = {
+    status: 'pending' as const,
+    triggered_at: new Date(t0 - 10 * HOUR).toISOString(),
+    revealed_at: null,
+    expires_at: null,
+  };
+  assert.equal(isReadinessWindowClosed(pendingFresh, t0), false,
+    '10 hours into a 72-hour window is still open');
+  assert.equal(
+    isReadinessWindowClosed(
+      { ...pendingFresh, triggered_at: new Date(t0 - 73 * HOUR).toISOString() },
+      t0,
+    ),
+    true,
+    '73 hours after triggering, the readiness window has closed',
+  );
+  assert.equal(isReadinessWindowClosed(computedFresh, t0), false,
+    'the readiness window only applies to a pending reveal');
+  assert.equal(isReadinessWindowClosed(null, t0), false, 'no reveal has no window');
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +11,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  isReadinessWindowClosed,
+  isRevealContentExpired,
+} from '@/lib/reveal-state';
 import { PairingManageModal } from '@/components/PairingManageModal';
 import type { DesireTier } from '@/lib/database.types';
 import {
@@ -69,6 +73,19 @@ export default function HomeScreen() {
   const [allowedItemsCount, setAllowedItemsCount] = useState<number>(0);
   const [ratedInTierCount, setRatedInTierCount] = useState<number>(0);
   const [totalRatedCount, setTotalRatedCount] = useState<number>(0);
+
+  // The two reveal windows are time-based, so the summary line has to re-derive
+  // without waiting for a refetch. 15s matches the reveal screen's cadence;
+  // both deadlines are measured in hours, so the interval only needs to be
+  // small relative to a user noticing.
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -192,6 +209,23 @@ export default function HomeScreen() {
     if (!reveal) {
       return 'No active reveal · Ready whenever you both are';
     }
+
+    const lastRevealLine = () =>
+      `Last reveal (${formatRelativeRevealTime(
+        reveal.revealed_at ?? reveal.triggered_at,
+      )}): ${reveal.summary?.match_count ?? 0} matches`;
+
+    // Both windows are decided here as well as on the reveal screen, which is
+    // why they live in lib/reveal-state.ts. Without them this line claimed an
+    // active reveal for up to 15 minutes after the items had gone, and claimed
+    // a partner was still being waited on days after the 72-hour window shut.
+    if (isReadinessWindowClosed(reveal, nowMs)) {
+      return 'No active reveal · Ready whenever you both are';
+    }
+    if (isRevealContentExpired(reveal, nowMs)) {
+      return lastRevealLine();
+    }
+
     if (reveal.status === 'pending') {
       if (reveal.triggered_by && reveal.triggered_by !== userId) {
         return `✨ ${partnerName} is ready and waiting for you!`;
@@ -207,10 +241,8 @@ export default function HomeScreen() {
         count === 1 ? 'match' : 'matches'
       }`;
     }
-    return `Last reveal (${formatRelativeRevealTime(
-      reveal.revealed_at ?? reveal.triggered_at,
-    )}): ${reveal.summary?.match_count ?? 0} matches`;
-  }, [pairing, partnerName, reveal, userId]);
+    return lastRevealLine();
+  }, [nowMs, pairing, partnerName, reveal, userId]);
 
   const isPairedActiveOrPaused =
     pairing?.status === 'active' || pairing?.status === 'paused';
