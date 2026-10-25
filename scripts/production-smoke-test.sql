@@ -78,3 +78,51 @@ select
                   'bbbb2222-2222-4222-8222-222222222222'))              as profiles_created;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Second check: the 24-hour expiry destroys the reveal contents and keeps the
+-- summary.
+--
+-- The PRD promises that a reveal's specific items disappear after a day while
+-- "you had 7 matches" persists. That is the privacy claim the product is sold
+-- on, and until 20261025000001 scheduled it, expire_old_reveals only ran when
+-- somebody opened the app — so a couple who drifted away left their matched
+-- items readable indefinitely.
+--
+-- Expected: status expired, has_matches f, has_mismatches f, match_count 2,
+-- stamped t. match_count surviving while matches is null is the whole point.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values
+  ('aaaa1111-1111-4111-8111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','exp-a@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+  ('bbbb2222-2222-4222-8222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','exp-b@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+insert into public.pairings (id, inviter_user_id, invitee_user_id, status)
+values ('dddd4444-4444-4444-4444-444444444444','aaaa1111-1111-4111-8111-111111111111','bbbb2222-2222-4222-8222-222222222222','active');
+
+-- Computed 25 hours ago, so an hour past its window.
+insert into public.reveals (pairing_id, status, triggered_by, both_ready_at, revealed_at, expires_at, matches, mismatches, summary)
+values (
+  'dddd4444-4444-4444-4444-444444444444', 'computed'::public.reveal_status,
+  'aaaa1111-1111-4111-8111-111111111111',
+  now() - interval '25 hours', now() - interval '25 hours', now() - interval '1 hour',
+  '[{"slug":"a","title":"Secret match"},{"slug":"b","title":"Another"}]'::jsonb,
+  '[{"slug":"c","title":"A bridge"}]'::jsonb,
+  '{"match_count":2,"mismatch_count":1}'::jsonb
+);
+
+select public.expire_old_reveals_scheduled() as rows_expired;
+
+select
+  status::text                      as status,
+  matches is not null               as has_matches,
+  mismatches is not null            as has_mismatches,
+  summary->>'match_count'           as match_count,
+  summary->>'expired_at' is not null as stamped
+from public.reveals
+where pairing_id = 'dddd4444-4444-4444-4444-444444444444';
+
+rollback;
