@@ -62,27 +62,25 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: Platform.OS === 'web',
-      // Web uses implicit because PKCE breaks the common magic-link case: the
-      // code verifier lives in localStorage, so a link opened in a different
-      // browser (or an email client's in-app browser) than the one that
-      // requested it cannot exchange ?code= and sign-in fails.
+      // PKCE on both platforms.
       //
-      // consumeInitialUrlAuth() below mitigates the usual implicit objection —
-      // it calls history.replaceState immediately, so the #access_token never
-      // persists as a history entry. What remains is the window before that
-      // runs: the token is in the initial response URL, readable by anything
-      // already on the page, and browser session-restore may still hold it.
+      // Web was on implicit because PKCE breaks the common magic-link case:
+      // the code verifier lives in localStorage, so a link opened in a
+      // different browser than the one that requested it cannot exchange
+      // ?code=. That is no longer reachable — the magic-link email template
+      // (supabase/templates/magic_link.html) sends users to
+      //   {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=email
+      // which consumeInitialUrlAuth consumes with verifyOtp. verifyOtp needs
+      // no verifier, so it works in any browser regardless of flowType, and
+      // the ?code= path is now only a fallback.
       //
-      // To get back to PKCE without reintroducing the cross-browser failure,
-      // both of these are needed together — changing flowType alone will break
-      // sign-in again:
-      //   1. Dashboard -> Authentication -> Email Templates -> Magic Link, so
-      //      the link carries a token_hash instead of relying on the flow:
-      //        <a href="{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=email">
-      //      The token_hash branch of consumeInitialUrlAuth already handles
-      //      this via verifyOtp, which needs no verifier and works anywhere.
-      //   2. Then set this back to 'pkce' for both platforms.
-      flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
+      // That removes the one real cost of implicit: #access_token and
+      // #refresh_token landing in the initial URL. replaceState already kept
+      // them out of history, but PKCE keeps them out of the URL entirely.
+      //
+      // Do not set this back to implicit without first checking the email
+      // template still emits {{ .TokenHash }} — the two are a pair.
+      flowType: 'pkce',
     },
     global: {
       headers: {
