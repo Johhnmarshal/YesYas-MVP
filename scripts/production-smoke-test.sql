@@ -503,3 +503,61 @@ select
   (select detail from guard_result where step = 'refuses_at_two')          as refusal_detail;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Eighth check: one partner cannot unlock the therapist export alone.
+--
+-- The clinical summary is the most consequential thing this app emits: a
+-- document about two people's intimate life, written for a third party. Its
+-- whole safeguard is that both partners must consent, and the gate is
+-- request_therapist_export()'s both_consented flag — the UI prints "Dual
+-- Partner Consent Verified" on the strength of it, and the on-device fallback
+-- report softens its wording precisely because it cannot check it.
+--
+-- consent_events is self-read only under RLS (one policy, consent_self_read,
+-- user_id = auth.uid()), so the partner's consent row is invisible to the
+-- caller. Only this SECURITY DEFINER function and the service-role Edge
+-- Function can see both sides. That makes the function the single point where
+-- the safeguard could silently invert, and nothing else tests it.
+--
+-- The double tap matters most: if consenting twice satisfied the gate, one
+-- partner could export a joint clinical document about the other on their own.
+--
+-- Expected: f, f, t, 3 rows, 2 distinct consenters.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('e1e1e1e1-1111-4111-8111-eeeeeeeeeeee','00000000-0000-0000-0000-000000000000','authenticated','authenticated','tx1@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('f2f2f2f2-2222-4222-8222-ffffffffffff','00000000-0000-0000-0000-000000000000','authenticated','authenticated','tx2@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"e1e1e1e1-1111-4111-8111-eeeeeeeeeeee","role":"authenticated"}';
+create temp table xi as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"f2f2f2f2-2222-4222-8222-ffffffffffff","role":"authenticated"}';
+create temp table xp as select public.accept_pairing_invite((select invite_code from xi)) as pid;
+
+-- A consents, then consents again. Neither may open the gate.
+set local request.jwt.claims = '{"sub":"e1e1e1e1-1111-4111-8111-eeeeeeeeeeee","role":"authenticated"}';
+create temp table c1  as select * from public.request_therapist_export((select pid from xp));
+create temp table c1b as select * from public.request_therapist_export((select pid from xp));
+
+-- B consents. Now, and only now, it opens.
+set local request.jwt.claims = '{"sub":"f2f2f2f2-2222-4222-8222-ffffffffffff","role":"authenticated"}';
+create temp table c2 as select * from public.request_therapist_export((select pid from xp));
+
+reset role;
+
+select
+  (select both_consented from c1)  as a_alone_expect_f,
+  (select both_consented from c1b) as a_twice_expect_f,
+  (select both_consented from c2)  as both_expect_t,
+  (select count(*) from public.consent_events
+     where pairing_id = (select pid from xp)
+       and event_type = 'therapist_export')             as export_consent_rows,
+  (select count(distinct user_id) from public.consent_events
+     where pairing_id = (select pid from xp)
+       and event_type = 'therapist_export')             as distinct_consenters;
+
+rollback;

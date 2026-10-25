@@ -94,8 +94,17 @@ export default function SignInScreen() {
         // discovering that.
         setCooldown(15 * 60);
         setMode('password');
+        // Reveal "Create account" here too. Everywhere else it appears only
+        // after a failed sign-in, which is the right default — but a tester
+        // who has just been told "sign in immediately without waiting for an
+        // email" has, by definition, no session, and may well have no account
+        // either. Without this they must first fail a sign-in they never
+        // asked to attempt, and the first thing they see after the rate limit
+        // is an error. Showing the button leaks nothing: tapping it still
+        // returns the same neutral message whether or not the address exists.
+        setOfferCreate(true);
         setInfoMessage(
-          'Hourly email limit reached on the beta server. Choose a passphrase (12+ characters) below to sign in immediately without waiting for an email.',
+          `Hourly email limit reached on the beta server — it allows 2 sign-in emails an hour. Enter a passphrase (${MIN_PASSPHRASE_LENGTH}+ characters) below to sign in, or create an account, without waiting for an email.`,
         );
         return;
       }

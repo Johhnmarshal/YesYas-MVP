@@ -4,7 +4,9 @@
 `flauqfikspnywcvtevnq` (eu-west-1). Every claim in section 0 was checked by
 running a query or a call against the hosted project, not by reading code.
 Sections 2 onwards need a credential or an approval that automation does not
-have.
+have: this session's tooling is refused `apply_migration`,
+`deploy_edge_function` and `config push` against the live project, so every
+fix to its schema, functions or auth config lands in `main` and waits for you.
 
 The previous revision of this file is largely obsolete: it said the live
 project served 15 library items, had zero Edge Functions deployed, had never
@@ -25,6 +27,7 @@ migrations. None of that is true any more. What follows replaces it.
 | Edge Functions | `ai-coach` and `therapist-export` both **ACTIVE** |
 | Reveal expiry cron | `expire-reveals` scheduled `*/15 * * * *` |
 | Magic-link sign-in | **works** — a real session was established at 2026-10-25 00:29:55Z |
+| Auth config | `mailer_autoconfirm: true`, `disable_signup: false`, email the only provider |
 
 ### The whole couple journey runs on production
 
@@ -55,20 +58,41 @@ rolled-back transactions, which is the next best thing but not the same thing.
 
 ---
 
-## 1. The one thing actually blocking a beta: email
+## 1. Email: rate-limited, but not the blocker it looked like
 
-The project is on Supabase's built-in SMTP, which allows **2 emails per hour,
-project-wide**. Auth logs for 2026-10-24 show 11 of 13 OTP requests in a single
-hour rejected with `429: email rate limit exceeded`.
+Read from the live GoTrue config (`GET /auth/v1/settings`, a public endpoint):
 
-Magic-link login works. It just cannot be done by more than two people an hour,
-and a tester who mistypes their address burns one of the two.
+```json
+"disable_signup": false,
+"mailer_autoconfirm": true,
+"external": { "email": true, ... all providers false }
+```
 
-This is yours to fix — it needs an SMTP credential:
+`mailer_autoconfirm: true` is the important one. **Email confirmation is off**,
+so `signUp` returns a live session immediately and sends no email at all. A
+tester can create an account and be signed in without any mail being
+delivered.
 
-1. Create a sender on Resend, Postmark, SendGrid or SES.
-2. `supabase/config.toml` already carries the `[remotes.production.auth.email.smtp]`
-   block, commented out. Fill in host, port, user and sender, then:
+So the built-in SMTP cap — **2 emails per hour, project-wide**, which rejected
+11 of 13 OTP requests in a single hour on 2026-10-24 with
+`429: email rate limit exceeded` — limits the **magic-link path only**. It does
+not gate onboarding, and it does not gate a beta.
+
+Magic-link login itself works: a real session was established at
+2026-10-25 00:29:55Z. It just cannot be done by more than two people an hour,
+and a mistyped address burns one of the two.
+
+What the app does about it: on a 429 the sign-in screen switches to the
+passphrase tab, holds a 15-minute cooldown (a short retry would fail too), and
+now also reveals Create account — a tester told "sign in without waiting for
+an email" often has no account yet, and previously had to fail a sign-in
+first to discover the button.
+
+### Still worth fixing, when you can
+
+Custom SMTP removes the cap and lets you turn confirmations back on. The
+`[remotes.production.auth.email.smtp]` block is scaffolded and commented out
+in `supabase/config.toml`:
 
 ```bash
 supabase secrets set SUPABASE_AUTH_SMTP_PASS=... --project-ref flauqfikspnywcvtevnq
@@ -76,10 +100,24 @@ supabase config push --project-ref flauqfikspnywcvtevnq
 ```
 
 Run `config push` without `--yes` the first time and read the diff: it sends
-the whole `[remotes.production.auth]` block, not just the SMTP keys, so check
-it is not reverting something set deliberately in the dashboard.
+the whole `[remotes.production.auth]` block, not just the SMTP keys.
 
-Until that lands, invite testers in pairs, an hour apart.
+### The security cost of the current setting
+
+`disable_signup: false` with `mailer_autoconfirm: true` means **anyone can
+register any email address they do not own, and it is confirmed on the spot.**
+Two probe requests on 2026-10-25 demonstrated it by accident: both returned
+`400 email_address_invalid` and still left confirmed users with profiles
+behind. They were deleted.
+
+For a small invited beta this is a tolerable trade for being able to onboard
+at all. It is not acceptable at launch, because an attacker can squat a real
+person's address before they sign up — in an app about their intimate life.
+`sign-in.tsx` already refuses to create accounts as a side effect of a failed
+sign-in, which removes the worst of it (account creation is a separate,
+explicit action, and the errors are deliberately neutral so the screen is not
+an enumeration oracle). The rest closes when confirmations go back on, which
+needs the SMTP credential above.
 
 ---
 
@@ -96,7 +134,10 @@ Until that lands, invite testers in pairs, an hour apart.
 ## 3. Redeploy `ai-coach`
 
 The deployed copy is the version that pinned `claude-3-5-sonnet-20241022` and
-swallowed every non-ok response. Today's fix is in `main` but **not deployed**:
+swallowed every non-ok response. Today's fix is in `main` but **not deployed** —
+`deploy_edge_function` is refused by the permission classifier with
+`[Production Deploy]`, as `apply_migration` and `config push` are, so this one
+is yours:
 
 ```bash
 supabase functions deploy ai-coach --project-ref flauqfikspnywcvtevnq
@@ -206,9 +247,17 @@ Play internal testing; public store review will reject them.
 
 ## 8. Smoke test
 
-`scripts/production-smoke-test.sql` runs the whole journey plus the 24-hour
-expiry, new-user onboarding, GDPR erasure, consent-chain ordering and the
-double-blind payload, each inside its own `begin; … rollback;`.
+`scripts/production-smoke-test.sql` runs eight checks, each inside its own
+`begin; … rollback;`: the whole couple journey, the 24-hour expiry, new-user
+onboarding, GDPR erasure, consent-chain ordering, the double-blind payload,
+whether the reveal guard is actually deployed here, and that one partner
+cannot unlock the therapist export alone.
+
+Checks 7 and 8 are the ones that earn their keep against production rather
+than against CI. Check 7 reports `refuses_at_two = f` on a database that has
+not had `20261025000004` applied — which is what it says about production
+today. Check 8 covers the only safeguard on the clinical export: both
+partners must consent, and one partner consenting twice must not satisfy it.
 
 ```bash
 psql "$DATABASE_URL" -f scripts/production-smoke-test.sql
