@@ -1,5 +1,14 @@
 # YesYas!
 
+> **The one working copy of this project lives at `C:\Users\oluwa\dev\YesYas-MVP`.**
+> It is the only checkout that tracks `origin/main`, and the only one Vercel,
+> Supabase, EAS and CI ever see. Two earlier copies — one in OneDrive, one in a
+> Google Drive-synced folder — were retired on 2026-10-25 into
+> `C:\Users\oluwa\dev\_archive\`; neither held any work that was not already on
+> GitHub. If you find a YesYas folder anywhere else it is stale: read its
+> `README-MOVED.txt` and come back here. Keeping a second editable copy is what
+> produced the 28-commit divergence that prompted this note.
+
 A privacy-first intimacy app for couples. Built with Expo (React Native + web)
 and Supabase.
 
