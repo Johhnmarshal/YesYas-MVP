@@ -126,16 +126,21 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (signUpRes.error) {
-      // If user already exists with a different password or magic-link-only account
-      if (
-        signUpRes.error.message.toLowerCase().includes('already registered')
-      ) {
-        setErrorMessage(
-          'This email is already registered with a different passphrase. Please enter your original passphrase or use Magic Link.',
-        );
-        return;
-      }
-      setErrorMessage(signUpRes.error.message);
+      // Deliberately identical whether or not the account exists.
+      //
+      // Saying "this email is already registered" turns the public sign-in
+      // screen into a membership oracle: anyone can type an address and a
+      // random passphrase and learn whether that person has a YesYas account.
+      // For this app that disclosure is the thing the whole product exists to
+      // prevent, and it needs no session to exploit.
+      //
+      // Note this only removes the explicit confirmation. A determined prober
+      // can still distinguish the two paths by response timing and by whether
+      // a confirmation email arrives. Closing it fully means not calling
+      // signUp from the sign-in path at all.
+      setErrorMessage(
+        'That email and passphrase did not match. Check the passphrase, or use Magic Link to sign in.',
+      );
       return;
     }
 
