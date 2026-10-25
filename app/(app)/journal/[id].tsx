@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -22,6 +21,7 @@ import {
   SCREEN_CAPTURE_KEYS,
   useScreenCaptureProtection,
 } from '@/lib/screen-capture';
+import { confirm, showMessage } from '@/lib/alert';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -69,36 +69,32 @@ export default function JournalDetailScreen() {
   async function handleDelete() {
     if (!entry) return;
 
-    Alert.alert(
-      'Delete Reflection?',
-      'Are you sure you want to permanently delete this journal entry? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              const {
-                data: { user },
-              } = await supabase.auth.getUser();
+    const confirmed = await confirm({
+      title: 'Delete Reflection?',
+      message:
+        'Are you sure you want to permanently delete this journal entry? This action cannot be undone.',
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
-              if (!user) return;
-              await deleteJournalEntry(user.id, entry.id);
-              router.back();
-            } catch (err) {
-              Alert.alert(
-                'Delete Failed',
-                err instanceof Error ? err.message : 'Could not delete entry.',
-              );
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-    );
+    try {
+      setDeleting(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+      await deleteJournalEntry(user.id, entry.id);
+      router.back();
+    } catch (err) {
+      showMessage(
+        'Delete Failed',
+        err instanceof Error ? err.message : 'Could not delete entry.',
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleShare() {

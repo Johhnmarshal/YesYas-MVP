@@ -3,7 +3,6 @@ import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,6 +22,7 @@ import {
   saveJournalEntry,
   sendAiCoachMessage,
 } from '@/lib/journal';
+import { showMessage } from '@/lib/alert';
 import { hasRecoveryBackup } from '@/lib/key-recovery';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import {
@@ -211,7 +211,7 @@ export default function JournalScreen() {
       setPastEntries(updatedEntries);
     } catch (err) {
       console.warn('Failed to send journal message:', err);
-      Alert.alert(
+      showMessage(
         'Journal Error',
         'Could not save your journal reflection. Please check your connection and try again.',
       );
@@ -230,12 +230,12 @@ export default function JournalScreen() {
         selectedReportReason,
       );
       setReportingMessage(null);
-      Alert.alert(
+      showMessage(
         'Thank You',
         'This response has been reported for safety review. Your feedback keeps YesYas! grounded and safe.',
       );
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Report Error',
         err instanceof Error
           ? err.message

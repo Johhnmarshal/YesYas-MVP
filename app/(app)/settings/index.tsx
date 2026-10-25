@@ -3,7 +3,6 @@ import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import {
   getBiometricSettings,
   saveBiometricSettings,
 } from '@/components/BiometricGate';
+import { confirm, showMessage } from '@/lib/alert';
 import { PairingManageModal } from '@/components/PairingManageModal';
 import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
 import { clearMasterKey } from '@/lib/crypto';
@@ -144,9 +144,9 @@ export default function SettingsScreen() {
         .eq('id', userId);
 
       if (error) throw error;
-      Alert.alert('Saved', 'Your display name has been updated.');
+      showMessage('Saved', 'Your display name has been updated.');
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Update Error',
         err instanceof Error ? err.message : 'Could not save display name.',
       );
@@ -166,7 +166,7 @@ export default function SettingsScreen() {
       if (error) throw error;
       setProfile((prev) => (prev ? { ...prev, tone_preference: newTone } : null));
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Update Error',
         err instanceof Error ? err.message : 'Could not update tone.',
       );
@@ -186,7 +186,7 @@ export default function SettingsScreen() {
         prev ? { ...prev, content_tier_preference: newTier } : null,
       );
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Update Error',
         err instanceof Error ? err.message : 'Could not update tier.',
       );
@@ -202,7 +202,7 @@ export default function SettingsScreen() {
       await saveBiometricSettings(enabled);
       setBiometricSettings((prev) => ({ ...prev, enabled }));
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Security Error',
         err instanceof Error ? err.message : 'Could not change lock setting.',
       );
@@ -221,24 +221,22 @@ export default function SettingsScreen() {
       setPinModalVisible(false);
       setPinInput('');
       setPinError(null);
-      Alert.alert('Lock Enabled', 'Your 6-digit PIN and device lock are now active.');
+      showMessage('Lock Enabled', 'Your 6-digit PIN and device lock are now active.');
     } catch (err) {
       setPinError(err instanceof Error ? err.message : 'Failed to save PIN.');
     }
   }
 
   async function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          router.replace('/(auth)/sign-in');
-        },
-      },
-    ]);
+    const confirmed = await confirm({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmText: 'Sign Out',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await supabase.auth.signOut();
+    router.replace('/(auth)/sign-in');
   }
 
   async function handleDeleteAccount() {
@@ -262,7 +260,7 @@ export default function SettingsScreen() {
       setDeleteModalVisible(false);
       router.replace('/(auth)/sign-in');
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Deletion Error',
         err instanceof Error
           ? err.message

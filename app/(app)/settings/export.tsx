@@ -3,7 +3,6 @@ import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -18,6 +17,7 @@ import {
   fetchActivePairings,
   getActiveOrPendingPairing,
 } from '@/lib/pairing';
+import { showMessage } from '@/lib/alert';
 import { fetchPairReveals, requestTherapistExport } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -241,19 +241,19 @@ export default function TherapistExportScreen() {
         if (userId) {
           await fetchOrGenerateReport(pairing, userId);
         }
-        Alert.alert(
+        showMessage(
           'Dual Consent Verified',
           'Both partners have consented. The clinical summary report is now ready to view and share.',
         );
       } else {
         setBothConsented(false);
-        Alert.alert(
+        showMessage(
           'Consent Recorded',
           'Your export consent has been logged to the audit chain. Once your partner opens this screen and grants consent, the summary will unlock.',
         );
       }
     } catch (err) {
-      Alert.alert(
+      showMessage(
         'Consent Error',
         err instanceof Error
           ? err.message
