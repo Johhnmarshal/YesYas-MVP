@@ -497,7 +497,7 @@ insert into public.desire_library_items (slug, title, description, tier, tone_ta
    'A fantasy, written down',
    'Each writes a fantasy they have not shared aloud. Exchange. No pressure to act.',
    'explicit', array['direct'], 'en-US'),
-  ('asking-for-what-I-want',
+  ('asking-for-what-i-want',
    'Asking for what I want, out loud',
    'One partner says what they want in bed tonight. The other responds honestly.',
    'explicit', array['direct','playful'], 'en-US'),

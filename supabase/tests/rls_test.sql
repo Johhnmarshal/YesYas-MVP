@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(37);
+select plan(39);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -680,6 +680,51 @@ set local request.jwt.claims = '{"sub":"55555555-5555-5555-5555-555555555555","r
 select lives_ok(
   $$ select public.trigger_reveal('cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid) $$,
   'trigger_reveal proceeds once the caller has 3 ratings'
+);
+
+-- ---------- assertions 38-39: library content integrity ----------
+--
+-- The library is the product's content, and the seed is 736 lines of hand-
+-- written tuples ending in `on conflict (slug) do nothing`. That ending is
+-- what makes slug hygiene load-bearing rather than cosmetic: a slug that
+-- differs from the hosted row by one character inserts a second near-identical
+-- item on the next seed run instead of doing nothing. One slug did differ —
+-- asking-for-what-I-want, corrected in 20261025000005 — and nothing would have
+-- noticed.
+--
+-- Checked here rather than in the TypeScript verifier because this runs against
+-- a database built from the migrations AND the seed, so it tests the seed's
+-- actual contents.
+reset role;
+
+-- 38. Every slug is lowercase kebab-case.
+select is(
+  (select count(*)::int from public.desire_library_items
+    where slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  0,
+  'every library slug is lowercase kebab-case, so the seed cannot double-insert'
+);
+
+-- 39. No duplicate titles, and nothing missing the fields the UI renders.
+--     A duplicate title is separately ratable and separately matchable, which
+--     reads as a bug in the reveal rather than in the content.
+select is(
+  (
+    select count(*)::int
+    from public.desire_library_items li
+    where li.description is null
+       or btrim(li.description) = ''
+       or li.tone_tags is null
+       or cardinality(li.tone_tags) = 0
+       or exists (
+            select 1 from unnest(li.tone_tags) t
+            where t not in ('romantic', 'playful', 'direct')
+          )
+       or (select count(*) from public.desire_library_items d
+            where lower(d.title) = lower(li.title)) > 1
+  ),
+  0,
+  'every library item has a description and valid tone tags, and no title repeats'
 );
 
 select * from finish();
