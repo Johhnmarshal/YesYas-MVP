@@ -238,6 +238,10 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Recovery code | Nothing warned you that a reinstall destroys every journal entry — the only mention was in Settings |
 | PIN lock | The locked screen had no exit at all. Forgetting six digits meant reinstalling, which destroyed the journal |
 | Invite share | Handed every web tester a `yesyasapp://` link their browser cannot open |
+| Every dialog on web | `react-native-web`'s `Alert` is `static alert() {}` — a no-op. 13 error and success messages never appeared, and 2 confirmations ("Sign Out", "Delete entry") were dead buttons, because the work lived in a callback that could not fire |
+| Tier ceiling, part 2 | The item detail screen fetched by id and never read the user's tier, so an above-ceiling item rendered in full with a working rating. Reachable by browsing explicit items, lowering the tier, and pressing Back |
+| Onboarding | Reaching step 3 without parameters committed the parser defaults — a content tier the user was never shown — and marked onboarding complete |
+| Passphrase copy | The button said "Sign in / Create beta account" and the hint promised account creation, months after that fall-through was deliberately removed |
 | CI | Read nothing in `supabase/functions/` — now type-checked with Deno |
 
 ### Worth doing before mobile ships
