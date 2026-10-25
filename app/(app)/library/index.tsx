@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LibraryItemCard } from '@/components/LibraryItemCard';
-import type { DesireTier, ToneLabel } from '@/lib/database.types';
+import type { DesireTier } from '@/lib/database.types';
 import {
   type DesireLibraryItem,
   type DesireWithNote,
@@ -22,6 +22,12 @@ import {
   fetchLibraryItems,
   fetchUserDesires,
 } from '@/lib/desires';
+import {
+  type TierFilterValue,
+  type ToneFilterValue,
+  filterLibraryItems,
+  reconcileTierFilter,
+} from '@/lib/library-filter';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
 import {
@@ -32,8 +38,6 @@ import {
   useThemeColors,
 } from '@/lib/theme';
 
-type TierFilterValue = 'up_to_ceiling' | DesireTier;
-type ToneFilterValue = 'all' | ToneLabel;
 
 const TIER_FILTER_SEGMENTS: { value: TierFilterValue; label: string }[] = [
   { value: 'up_to_ceiling', label: 'All up to my tier' },
@@ -110,6 +114,12 @@ export default function DesireLibraryScreen() {
       const userTierCeiling: DesireTier =
         profileRes.data?.content_tier_preference ?? 'suggestive';
       setTierCeiling(userTierCeiling);
+
+      // A tier filter chosen while the ceiling was higher must not outlive the
+      // ceiling being lowered in Settings. This screen stays mounted across tab
+      // switches and this function re-runs on every focus, so without this
+      // tierFilter would still name a tier the user has just opted out of.
+      setTierFilter((prev) => reconcileTierFilter(prev, userTierCeiling));
 
       const activePairingId =
         pairingRes &&
@@ -214,32 +224,16 @@ export default function DesireLibraryScreen() {
     ).length;
   }, [ceilingAllowedItems, desiresByItemId]);
 
-  const filteredItems = useMemo(() => {
-    const trimmedSearch = searchQuery.trim().toLowerCase();
-    const maxRank = TIER_ORDER[tierCeiling];
-
-    return allItems.filter((item) => {
-      if (tierFilter === 'up_to_ceiling') {
-        if (TIER_ORDER[item.tier] > maxRank) return false;
-      } else if (item.tier !== tierFilter) {
-        return false;
-      }
-
-      if (toneFilter !== 'all' && !item.tone_tags.includes(toneFilter)) {
-        return false;
-      }
-
-      if (trimmedSearch) {
-        const inTitle = item.title.toLowerCase().includes(trimmedSearch);
-        const inDesc = (item.description ?? '')
-          .toLowerCase()
-          .includes(trimmedSearch);
-        if (!inTitle && !inDesc) return false;
-      }
-
-      return true;
-    });
-  }, [allItems, searchQuery, tierCeiling, tierFilter, toneFilter]);
+  const filteredItems = useMemo(
+    () =>
+      filterLibraryItems(allItems, {
+        tierCeiling,
+        tierFilter,
+        toneFilter,
+        searchQuery,
+      }),
+    [allItems, searchQuery, tierCeiling, tierFilter, toneFilter],
+  );
 
   const handleResetFilters = useCallback(() => {
     setTierFilter('up_to_ceiling');

@@ -7,6 +7,7 @@ import {
   type EncryptedFieldState,
 } from './crypto';
 import type { Database, DesireTier } from './database.types';
+import { TIER_ORDER, getAllowedTiers } from './library-filter';
 import { supabase } from './supabase';
 
 export type DesireLibraryItem = Database['public']['Tables']['desire_library_items']['Row'];
@@ -40,18 +41,10 @@ async function requireUnlockedForNoteWrite(userId: string): Promise<void> {
   }
 }
 
-export const TIER_ORDER: Record<DesireTier, number> = {
-  sensory: 1,
-  suggestive: 2,
-  explicit: 3,
-};
-
-export function getAllowedTiers(maxTier: DesireTier): DesireTier[] {
-  const maxRank = TIER_ORDER[maxTier];
-  return (['sensory', 'suggestive', 'explicit'] as DesireTier[]).filter(
-    (t) => TIER_ORDER[t] <= maxRank,
-  );
-}
+// Tier ranking lives in lib/library-filter.ts, which imports no Supabase
+// client and so can be exercised by scripts/verify-domain-logic.ts. Re-exported
+// here so existing callers keep one import site.
+export { TIER_ORDER, getAllowedTiers };
 
 export async function fetchLibraryItems(maxTier?: DesireTier): Promise<DesireLibraryItem[]> {
   let query = supabase

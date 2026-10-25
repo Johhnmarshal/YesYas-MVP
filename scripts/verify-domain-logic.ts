@@ -6,6 +6,9 @@ import { computeConsentPayloadHash, verifyConsentChain } from '../lib/consent.ts
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { hashPin, verifyPin, MasterKeyUnavailableError, adoptMasterKey, bytesToHex, clearMasterKey, decryptForUser, decryptText, encryptForUser, encryptText, exportMasterKey, generateRecoveryCode, hasMasterKey, hashUserIdForLogging, isValidRecoveryCode, normalizeRecoveryCode, provisionMasterKey, sha256Hex, unwrapMasterKey, wrapMasterKey } from '../lib/crypto.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { TIER_ORDER, filterLibraryItems, isLibraryItemVisible, reconcileTierFilter } from '../lib/library-filter.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -260,7 +263,88 @@ async function main() {
   assert.equal(calcCuriosity({}), 0);
   assert.equal(calcCuriosity({ mismatch_count: 'invalid' }), 0);
 
-  console.log('PASS: All crypto and consent hash-chain assertions succeeded.');
+
+  // 8. The content tier ceiling is never exceeded, whatever the tier filter says.
+  //
+  //    Regression: the Library screen applied the ceiling only when the tier
+  //    filter was 'up_to_ceiling', trusting its tap handler to never select a
+  //    locked tier. The ceiling can move underneath a selection though —
+  //    choose Explicit, lower the content tier to Sensory in Settings, return
+  //    to the Library — and the screen stays mounted, refreshing the ceiling on
+  //    focus without touching the filter. Every explicit item kept rendering
+  //    under a padlocked pill.
+  const libraryFixture = [
+    { tier: 'sensory' as const,    tone_tags: ['romantic'], title: 'Slow morning',   description: 'Unhurried.' },
+    { tier: 'suggestive' as const, tone_tags: ['playful'],  title: 'Teasing note',   description: 'A hint.' },
+    { tier: 'explicit' as const,   tone_tags: ['direct'],   title: 'Explicit item',  description: 'Plain.' },
+  ];
+
+  assert.equal(
+    filterLibraryItems(libraryFixture, {
+      tierCeiling: 'sensory',
+      tierFilter: 'explicit',
+      toneFilter: 'all',
+      searchQuery: '',
+    }).length,
+    0,
+    'An explicit tier filter under a sensory ceiling must list nothing',
+  );
+
+  assert.equal(
+    isLibraryItemVisible(libraryFixture[2], {
+      tierCeiling: 'suggestive',
+      tierFilter: 'explicit',
+      toneFilter: 'all',
+      searchQuery: '',
+    }),
+    false,
+    'An above-ceiling item must stay hidden even when the filter names its tier',
+  );
+
+  assert.equal(
+    filterLibraryItems(libraryFixture, {
+      tierCeiling: 'explicit',
+      tierFilter: 'up_to_ceiling',
+      toneFilter: 'all',
+      searchQuery: '',
+    }).length,
+    3,
+    'An explicit ceiling must still show all three tiers',
+  );
+
+  // Search and tone narrow within the ceiling, never past it.
+  assert.deepEqual(
+    filterLibraryItems(libraryFixture, {
+      tierCeiling: 'suggestive',
+      tierFilter: 'up_to_ceiling',
+      toneFilter: 'all',
+      searchQuery: '  PLAIN  ',
+    }).map((i) => i.title),
+    [],
+    'Search must not reach an item the ceiling excludes',
+  );
+  assert.deepEqual(
+    filterLibraryItems(libraryFixture, {
+      tierCeiling: 'suggestive',
+      tierFilter: 'up_to_ceiling',
+      toneFilter: 'playful',
+      searchQuery: '',
+    }).map((i) => i.title),
+    ['Teasing note'],
+    'Tone filter must select within the ceiling',
+  );
+
+  // A selection the ceiling no longer permits collapses back to the safe default.
+  assert.equal(reconcileTierFilter('explicit', 'sensory'), 'up_to_ceiling',
+    'Lowering the ceiling must drop a now-locked tier filter');
+  assert.equal(reconcileTierFilter('sensory', 'explicit'), 'sensory',
+    'A filter still under the ceiling must survive');
+  assert.equal(reconcileTierFilter('up_to_ceiling', 'sensory'), 'up_to_ceiling',
+    'The default filter is always valid');
+  assert.ok(TIER_ORDER.sensory < TIER_ORDER.suggestive && TIER_ORDER.suggestive < TIER_ORDER.explicit,
+    'Tier ranking must be strictly increasing');
+
+  console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
 
 main().catch((err) => {
