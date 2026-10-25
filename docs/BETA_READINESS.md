@@ -222,6 +222,36 @@ Play internal testing; public store review will reject them.
 
 ---
 
+## 6b. Fixed on 2026-10-25 — in `main`, CI green
+
+Each of these was found by reading a code path that had never executed against
+real data, then proving the behaviour against the hosted project inside a
+rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
+0 reveals and 0 journal entries, so none of them had ever been hit by anyone.
+
+| Fix | What it did before |
+|---|---|
+| Content tier ceiling | Choosing a tier filter, then lowering your content tier in Settings, kept listing the tier you had just opted out of — 60 explicit items under a padlocked pill |
+| Reveal guard | Both partners tapping "ready" before rating anything produced a `0 match / 0 bridge` reveal and then locked the feature for 7 days |
+| AI coach | Never answered once. OpenAI was unreachable whenever an Anthropic key existed, non-ok responses were swallowed silently, `content[0].text` read the thinking block, and `max_tokens: 300` was shared with thinking |
+| Coach disclosure | A canned stock reply was presented as a real one; safety redirects were then mislabelled as "coach not switched on" |
+| Recovery code | Nothing warned you that a reinstall destroys every journal entry — the only mention was in Settings |
+| PIN lock | The locked screen had no exit at all. Forgetting six digits meant reinstalling, which destroyed the journal |
+| Invite share | Handed every web tester a `yesyasapp://` link their browser cannot open |
+| CI | Read nothing in `supabase/functions/` — now type-checked with Deno |
+
+### Worth doing before mobile ships
+
+An invite link cannot carry its code through sign-in. The accept screen is
+inside the `(app)` group behind auth, and the root layout's redirect to
+`/(auth)/sign-in` drops the query parameter, so a signed-out recipient arrives
+with nothing. The share message now leads with the 8-character code, which
+works in every case, but the link is only useful to someone already signed in.
+When mobile ships the deep link starts resolving and the same gap appears
+there.
+
+---
+
 ## 7. Open, not blocking a beta
 
 - **Sentry and PostHog** (R-11, R-18) — you will run the beta blind to errors
