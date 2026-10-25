@@ -1,4 +1,5 @@
 import { type Href, Stack, router, useSegments } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -175,12 +176,22 @@ export default function RootLayout() {
     }
   }, [ready, userId, onboardingComplete, segments]);
 
+  // Rendered in both branches on purpose. The static web export renders this
+  // tree while `ready` is still false, so a <Head> placed only in the loaded
+  // branch never reaches dist/*.html and every page ships an empty <title>.
+  const pageHead = (
+    <Head>
+      <title>YesYas!</title>
+    </Head>
+  );
+
   if (
     !ready ||
     (userId !== null && onboardingComplete === null && !onboardingCheckFailed)
   ) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.bg }]}>
+        {pageHead}
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -188,6 +199,7 @@ export default function RootLayout() {
 
   return (
     <BiometricGate active={userId !== null}>
+      {pageHead}
       <EncryptionKeyGate userId={userId}>
         <StatusBar style="auto" />
         <Stack screenOptions={{ headerShown: false }}>
