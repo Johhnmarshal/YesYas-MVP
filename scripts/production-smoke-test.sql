@@ -191,3 +191,72 @@ select (select profile_created from r1)     as profile_auto_created,
        (select rows_tampered from r5)       as other_profiles_tampered;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Fourth check: UK GDPR erasure actually erases, and only the caller.
+--
+-- delete_user_account() is a compliance claim, and it was broken on arrival:
+-- deleting a profile cascades the pairing away, which makes Postgres null the
+-- partner's consent_events.pairing_id, and consent_events_immutable() blocked
+-- that UPDATE. Erasure died on consent_events_pairing_id_fkey. Fixed in
+-- 20261024000002; this is the standing check that it stays fixed.
+--
+-- Note pairing_status_after is null rather than 'ended'. The function marks
+-- the pairing ended, then deleting the profile cascades the row away
+-- entirely, so from the partner's side the pairing vanishes rather than
+-- showing as ended. That is defensible — the erasing user's traces should go
+-- — but it is behaviour worth knowing rather than discovering.
+--
+-- Expected: 4, 1, 1, 1, t, 0, 0, 0, 0, 0, 1, null.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values
+  ('aaaa1111-1111-4111-8111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','del-a@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+  ('bbbb2222-2222-4222-8222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','del-b@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+create temp table t_inv as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"bbbb2222-2222-4222-8222-222222222222","role":"authenticated"}';
+create temp table t_p as select public.accept_pairing_invite((select invite_code from t_inv)) as pid;
+
+-- Give the erasing user a full footprint across every table that holds them.
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+insert into public.desires (user_id, pairing_id, library_item_id, rating, note)
+select 'aaaa1111-1111-4111-8111-111111111111', (select pid from t_p), id, 5, 'enc:v1:aa:bb:cc'
+from (select id from public.desire_library_items order by slug limit 4) x;
+insert into public.journal_entries (user_id, body)
+values ('aaaa1111-1111-4111-8111-111111111111', 'enc:v1:dd:ee:ff');
+insert into public.user_key_recovery (user_id, wrapped_key, salt, iterations)
+values ('aaaa1111-1111-4111-8111-111111111111',
+        'enc:v1:' || repeat('a',32) || ':' || repeat('b',64) || ':' || repeat('c',64),
+        repeat('0',32), 150000);
+insert into public.ai_flags (user_id, reason) values ('aaaa1111-1111-4111-8111-111111111111','test');
+
+create temp table before as select
+  (select count(*) from public.desires where user_id='aaaa1111-1111-4111-8111-111111111111') d,
+  (select count(*) from public.journal_entries where user_id='aaaa1111-1111-4111-8111-111111111111') j,
+  (select count(*) from public.user_key_recovery where user_id='aaaa1111-1111-4111-8111-111111111111') k,
+  (select count(*) from public.consent_events where user_id='aaaa1111-1111-4111-8111-111111111111') c;
+
+create temp table res as select public.delete_user_account() as ok;
+
+reset role;
+
+select (select d from before) as desires_before,
+       (select j from before) as journal_before,
+       (select k from before) as keyrecovery_before,
+       (select c from before) as consent_before,
+       (select ok from res)   as rpc_returned_true,
+       (select count(*) from auth.users where id='aaaa1111-1111-4111-8111-111111111111') as auth_user_after,
+       (select count(*) from public.profiles where id='aaaa1111-1111-4111-8111-111111111111') as profile_after,
+       (select count(*) from public.desires where user_id='aaaa1111-1111-4111-8111-111111111111') as desires_after,
+       (select count(*) from public.journal_entries where user_id='aaaa1111-1111-4111-8111-111111111111') as journal_after,
+       (select count(*) from public.user_key_recovery where user_id='aaaa1111-1111-4111-8111-111111111111') as keyrecovery_after,
+       (select count(*) from auth.users where id='bbbb2222-2222-4222-8222-222222222222') as partner_survives,
+       (select status::text from public.pairings where id=(select pid from t_p)) as pairing_status_after;
+
+rollback;
