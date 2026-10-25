@@ -23,6 +23,37 @@ export interface PairingWithPartner extends PairingRow {
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/**
+ * Turns the exceptions accept_pairing_invite raises into something a person
+ * can act on.
+ *
+ * The RPC's messages are written for a log: lowercase, terse, phrased from
+ * the database's point of view ('inviter cannot accept own invite'). Every
+ * one of these is a situation a real couple hits — clicking your own share
+ * link, an invite left for three days, trying to pair while already paired —
+ * so each needs to say what happened and what to do next.
+ */
+export function describePairingError(err: unknown, fallback: string): string {
+  const raw = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
+
+  if (raw.includes('inviter cannot accept own invite')) {
+    return 'This is your own invite link. Send it to your partner and ask them to open it on their device.';
+  }
+  if (raw.includes('already has an active pairing')) {
+    return 'One of you is already paired with someone. End that pairing in Settings before starting a new one.';
+  }
+  if (raw.includes('has expired') || raw.includes('invalid or expired')) {
+    return 'This invite has expired — they only last 48 hours. Ask your partner to send a fresh one.';
+  }
+  if (raw.includes('authentication required')) {
+    return 'Your session has ended. Sign in again and reopen the invite.';
+  }
+  if (raw.includes('invite code is required')) {
+    return 'Enter the 8-character code from your partner’s invite.';
+  }
+  return fallback;
+}
+
 export async function createPairingInvite(): Promise<PairingInviteResult> {
   const { data, error } = await supabase.rpc('create_pairing_invite');
   if (error) {

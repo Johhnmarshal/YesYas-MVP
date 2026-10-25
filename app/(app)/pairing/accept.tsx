@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   type PairingInvitePreview,
   acceptPairingInvite,
+  describePairingError,
   previewPairingInvite,
 } from '@/lib/pairing';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -85,9 +86,10 @@ export default function PairingAcceptScreen() {
       }
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not verify this invite code. Please check your connection and try again.',
+        describePairingError(
+          err,
+          'Could not verify this invite code. Please check your connection and try again.',
+        ),
       );
     } finally {
       setPreviewLoading(false);
@@ -120,9 +122,10 @@ export default function PairingAcceptScreen() {
       router.replace('/(app)/home' as Href);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not accept this invite. Please verify the code and try again.',
+        describePairingError(
+          err,
+          'Could not accept this invite. Please verify the code and try again.',
+        ),
       );
       setAccepting(false);
     }
