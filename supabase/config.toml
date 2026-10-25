@@ -26,6 +26,15 @@ additional_redirect_urls = [
 [auth.email]
 enable_confirmations = true
 
+# The default Supabase magic-link template carries only {{ .ConfirmationURL }}.
+# That breaks two things at once: the in-app OTP box asks for a code that was
+# never sent, and the link cannot carry a token_hash, which is what lets web
+# use PKCE without failing when the link opens in a different browser than
+# requested it.
+[auth.email.template.magic_link]
+subject = "Your sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
 [studio]
 port = 54323
 
@@ -59,6 +68,15 @@ additional_redirect_urls = [
 enable_confirmations = false
 max_frequency = "1s"
 otp_length = 8
+
+# Supabase's stock magic-link template carries only {{ .ConfirmationURL }},
+# which breaks two paths at once: the in-app OTP box asks for a code that was
+# never sent, and the link cannot carry a token_hash — the thing that lets web
+# use PKCE without failing when the link is opened in a different browser than
+# the one that requested it.
+[remotes.production.auth.email.template.magic_link]
+subject = "Your sign-in code"
+content_path = "./supabase/templates/magic_link.html"
 
 [remotes.production.auth.mfa.totp]
 enroll_enabled = true
