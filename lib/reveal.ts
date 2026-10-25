@@ -80,6 +80,21 @@ export function isCadenceError(err: unknown): boolean {
   return message.toLowerCase().includes('reveal cadence limit');
 }
 
+/**
+ * Minimum ratings in the current pairing before trigger_reveal will accept a
+ * readiness tap. Mirrors the P0002 guard in 20261025000004; keep the two in
+ * step. The screen uses this to disable the button rather than let the server
+ * refuse, because the refusal is the only feedback a tester would otherwise
+ * get and a reveal spends the weekly slot.
+ */
+export const MIN_RATINGS_FOR_REVEAL = 3;
+
+/** True for the P0002 trigger_reveal raises when the caller has rated too little. */
+export function isTooFewRatingsError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '');
+  return message.toLowerCase().includes('rate at least');
+}
+
 export async function triggerReveal(
   pairingId: string,
 ): Promise<{ reveal_id: string; status: RevealStatus }> {

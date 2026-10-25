@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(34);
+select plan(37);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -592,6 +592,92 @@ select is(
   ),
   true,
   'consent chain links correctly when read in seq order, including rows written by one statement'
+);
+
+-- ---------- assertions 35-37: a reveal must have something to compare ----------
+--
+-- trigger_reveal enforced the 7-day cadence but never checked the caller had
+-- rated anything, so the most likely first interaction a couple has with the
+-- feature -- both tapping "ready" before rating a single item -- returned
+-- {"match_count": 0, "mismatch_count": 0} and then locked the reveal for a
+-- week. Measured on the hosted project before 20261025000004.
+--
+-- Uses the previously unpaired users C and D so the A/B fixtures above, which
+-- sit exactly at the 3-rating threshold, are untouched.
+reset role;
+do $$
+declare
+  v_pair uuid := 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+  v_items uuid[];
+begin
+  insert into public.pairings (id, inviter_user_id, invitee_user_id, status)
+  values (v_pair, '33333333-3333-3333-3333-333333333333',
+                  '44444444-4444-4444-4444-444444444444', 'active');
+
+  select array_agg(id) into v_items
+  from (select id from public.desire_library_items order by slug limit 3) x;
+
+  -- C rates two items: below the threshold.
+  insert into public.desires (user_id, pairing_id, library_item_id, rating)
+  values
+    ('33333333-3333-3333-3333-333333333333', v_pair, v_items[1], 5),
+    ('33333333-3333-3333-3333-333333333333', v_pair, v_items[2], 5);
+  -- D is fully rated, so the failure below is attributable to C alone.
+  insert into public.desires (user_id, pairing_id, library_item_id, rating)
+  values
+    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[1], 5),
+    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[2], 5),
+    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[3], 5);
+end;
+$$;
+
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+
+-- 35. Two ratings is not enough, and it fails with P0002 rather than the
+--     cadence code so the client can tell the two apart.
+select throws_ok(
+  $$ select public.trigger_reveal('cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid) $$,
+  'P0002',
+  null,
+  'trigger_reveal refuses a caller with fewer than 3 ratings (P0002, not the cadence P0001)'
+);
+
+-- 36. Nothing was written: no readiness row, so no half-consumed state.
+select is(
+  (select count(*)::int from public.reveal_readiness
+    where pairing_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'),
+  0,
+  'a refused reveal leaves no readiness row behind'
+);
+
+reset role;
+do $$
+declare
+  v_pair uuid := 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+  v_third uuid;
+begin
+  select id into v_third
+  from (select id from public.desire_library_items order by slug limit 3) x
+  order by id desc limit 1;
+
+  insert into public.desires (user_id, pairing_id, library_item_id, rating)
+  select '33333333-3333-3333-3333-333333333333', v_pair, id, 5
+  from (select id from public.desire_library_items order by slug limit 3) x
+  on conflict (user_id, pairing_id, library_item_id) where pairing_id is not null
+  do nothing;
+end;
+$$;
+
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+
+-- 37. With the third rating in place the same call is allowed through.
+select lives_ok(
+  $$ select public.trigger_reveal('cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid) $$,
+  'trigger_reveal proceeds once the caller has 3 ratings'
 );
 
 select * from finish();

@@ -30,7 +30,9 @@ import {
 import {
   type RevealRow,
   fetchCurrentReveal,
+  MIN_RATINGS_FOR_REVEAL,
   isCadenceError,
+  isTooFewRatingsError,
   nextRevealAvailableAt,
   triggerReveal,
   withdrawReveal,
@@ -75,6 +77,11 @@ export default function RevealScreen() {
   const [userId, setUserId] = useState<string>('');
   const [pairing, setPairing] = useState<PairingWithPartner | null>(null);
   const [ratedCount, setRatedCount] = useState<number>(0);
+  // Ratings in THIS pairing, which is what trigger_reveal's P0002 guard counts.
+  // ratedCount above is the union with solo ratings and is only for display;
+  // gating the button on that union would re-create the mismatch the guard
+  // exists to catch.
+  const [pairedRatedCount, setPairedRatedCount] = useState<number>(0);
   const [reveal, setReveal] = useState<RevealRow | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -143,6 +150,7 @@ export default function RevealScreen() {
       ) {
         const soloDesires = await fetchUserDesires(user.id, null);
         setRatedCount(soloDesires.length);
+        setPairedRatedCount(0);
         setReveal(null);
         return;
       }
@@ -158,6 +166,7 @@ export default function RevealScreen() {
       for (const row of pairedDesires) uniqueRatedIds.add(row.library_item_id);
 
       setRatedCount(uniqueRatedIds.size);
+      setPairedRatedCount(pairedDesires.length);
       setReveal(currentReveal);
     } catch (err) {
       setErrorMessage(
@@ -227,6 +236,15 @@ export default function RevealScreen() {
   // Null when a new reveal is allowed now.
   const cadenceNextAt = nextRevealAvailableAt(reveal);
 
+  // The server refuses below the threshold (P0002). Disable rather than let it
+  // refuse: the refusal would be a tester's only feedback, and the reveal is
+  // the one action that spends a weekly slot.
+  const tooFewRatingsToReveal = pairedRatedCount < MIN_RATINGS_FOR_REVEAL;
+  const ratingsStillNeeded = Math.max(
+    0,
+    MIN_RATINGS_FOR_REVEAL - pairedRatedCount,
+  );
+
   const handleTriggerReveal = useCallback(async () => {
     if (!pairing || pairing.status !== 'active' || actionBusy) return;
     setActionBusy(true);
@@ -260,6 +278,10 @@ export default function RevealScreen() {
                 { weekday: 'long', day: 'numeric', month: 'long' },
               )}.`
             : "You've already revealed together this week.",
+        );
+      } else if (isTooFewRatingsError(err)) {
+        setErrorMessage(
+          `Rate at least ${MIN_RATINGS_FOR_REVEAL} items in the Desire Library first — a reveal uses your weekly slot, so it needs something to compare.`,
         );
       } else {
         setErrorMessage(
@@ -666,15 +688,25 @@ export default function RevealScreen() {
             </View>
 
             <View style={styles.actionsColumn}>
+              {tooFewRatingsToReveal ? (
+                <Text style={[styles.revealGateHint, { color: colors.secondary }]}>
+                  {`Rate ${ratingsStillNeeded} more ${
+                    ratingsStillNeeded === 1 ? 'item' : 'items'
+                  } in the Desire Library to unlock your reveal. It uses your weekly slot, so it needs something to compare.`}
+                </Text>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: actionBusy || tooFewRatingsToReveal }}
                 accessibilityLabel={
-                  effectiveState === 'partner_waiting_for_you' ||
-                  effectiveState === 'both_ready'
-                    ? 'See our matches'
-                    : "I'm ready"
+                  tooFewRatingsToReveal
+                    ? `Reveal locked until you rate ${ratingsStillNeeded} more items`
+                    : effectiveState === 'partner_waiting_for_you' ||
+                        effectiveState === 'both_ready'
+                      ? 'See our matches'
+                      : "I'm ready"
                 }
-                disabled={actionBusy}
+                disabled={actionBusy || tooFewRatingsToReveal}
                 onPress={() => void handleTriggerReveal()}
                 style={({ pressed }) => [
                   styles.primaryButton,
@@ -684,7 +716,8 @@ export default function RevealScreen() {
                       effectiveState === 'both_ready'
                         ? colors.accentWarm
                         : colors.primary,
-                    opacity: pressed || actionBusy ? 0.85 : 1,
+                    opacity:
+                      pressed || actionBusy || tooFewRatingsToReveal ? 0.5 : 1,
                   },
                 ]}
               >
@@ -1414,6 +1447,11 @@ const styles = StyleSheet.create({
   actionsColumn: {
     gap: SPACING.xs,
     marginTop: SPACING.xs,
+  },
+  revealGateHint: {
+    ...TYPOGRAPHY.caption,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.sm,
   },
   primaryButton: {
     minHeight: 56,
