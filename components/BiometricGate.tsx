@@ -20,6 +20,7 @@ import {
   hapticSuccess,
 } from '@/lib/haptics';
 import { hashPin, verifyPin } from '@/lib/crypto';
+import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export const LOCK_ENABLED_KEY = '@yesyas/lock_enabled';
@@ -190,11 +191,55 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
   const [locked, setLocked] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [verifyingPin, setVerifyingPin] = useState(false);
+  // Two-tap confirm rather than Alert.alert: react-native-web's Alert is not
+  // reliable, and the web build is the beta channel. A silent no-op here
+  // would leave the user exactly as stuck as before.
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const wasInBackgroundRef = useRef(false);
+
+  /**
+   * The way out of a forgotten PIN.
+   *
+   * Without this the locked overlay had no exit at all: no sign-out, no reset,
+   * no attempt counter. A tester who forgot their six digits could only
+   * reinstall the app — which discards the device keychain entry, and with it
+   * every journal entry and private note, because nobody has a recovery code
+   * (user_key_recovery is empty on production). Forgetting a PIN destroyed all
+   * your data.
+   *
+   * Clearing the lock on sign-out is safe. The PIN is a local convenience lock
+   * over content that already sits behind account authentication: whoever does
+   * this is signed out immediately and needs the account's email and
+   * passphrase to get back in. It deliberately does NOT call clearMasterKey —
+   * the device key stays put, so the journal survives and is readable again
+   * after signing back in.
+   */
+  const handleForgotPin = useCallback(async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setErrorMessage(null);
+    try {
+      // Clears LOCK_ENABLED_KEY and the PBKDF2 verifier.
+      await saveBiometricSettings(false, '');
+      // The pre-hashing plaintext PIN, if this device still carries one.
+      await AsyncStorage.removeItem(PIN_CODE_KEY);
+      await supabase.auth.signOut();
+      setPinInput('');
+      setConfirmingSignOut(false);
+      setLocked(false);
+    } catch {
+      setErrorMessage(
+        'Could not sign out. Check your connection and try again.',
+      );
+    } finally {
+      setSigningOut(false);
+    }
+  }, [signingOut]);
 
   const triggerBiometricPrompt = useCallback(async () => {
     if (Platform.OS === 'web') return;
@@ -446,6 +491,36 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
                 </Text>
               </Pressable>
             )}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                confirmingSignOut
+                  ? 'Confirm sign out and clear the PIN lock'
+                  : 'Forgot your PIN? Sign out instead'
+              }
+              disabled={signingOut}
+              onPress={() => {
+                void hapticLight();
+                if (confirmingSignOut) {
+                  void handleForgotPin();
+                } else {
+                  setConfirmingSignOut(true);
+                }
+              }}
+              style={({ pressed }) => [
+                styles.forgotPinButton,
+                { opacity: pressed || signingOut ? 0.6 : 1 },
+              ]}
+            >
+              <Text style={[styles.forgotPinText, { color: colors.muted }]}>
+                {signingOut
+                  ? 'Signing out…'
+                  : confirmingSignOut
+                    ? 'Tap again to sign out. Your journal is kept and stays readable once you sign back in.'
+                    : 'Forgot your PIN?'}
+              </Text>
+            </Pressable>
           </View>
         </SafeAreaView>
       ) : null}
@@ -534,6 +609,17 @@ const styles = StyleSheet.create({
   keyActionText: {
     ...TYPOGRAPHY.caption,
     fontWeight: '600',
+  },
+  forgotPinButton: {
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    alignSelf: 'center',
+    maxWidth: 320,
+  },
+  forgotPinText: {
+    ...TYPOGRAPHY.caption,
+    textAlign: 'center',
   },
   biometricButton: {
     minHeight: 48,
