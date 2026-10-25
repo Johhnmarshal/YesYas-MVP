@@ -222,6 +222,7 @@ not secrecy — which is exactly why this ruleset matters.
 | | Status |
 |---|---|
 | Icons at valid dimensions | **Done** — 1024×1024 and 48×48, no alpha |
+| `expo-dev-client` | **Done** — `eas.json`'s `development` profile sets `developmentClient: true`, which EAS validates against the package. It was missing, so both development profiles would have failed; now pinned to `~6.0.20` per the SDK's own manifest |
 | EAS project id | **You** — `eas init` |
 | Apple Developer account | **You** — $99/yr, needed for anything past a simulator build |
 
@@ -231,6 +232,13 @@ eas login
 eas init
 eas build --profile preview --platform android   # internal APK, no Apple account needed
 ```
+
+A `development` build is worth doing before any store submission. Four modules
+this app depends on are native-only — `expo-secure-store` (the device
+encryption key), `expo-local-authentication` (the lock screen),
+`expo-screen-capture` (FLAG_SECURE, the only real screenshot protection the
+product has) and `expo-haptics`. Three of them deliberately no-op on web, so
+none of that behaviour is exercised by the web beta at all.
 
 Set the backend variables per environment first or the build ships with no backend:
 
