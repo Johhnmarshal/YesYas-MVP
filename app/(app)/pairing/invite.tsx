@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   type PairingInviteResult,
   createPairingInvite,
+  describePairingError,
   getActiveOrPendingPairing,
 } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
@@ -115,9 +116,7 @@ export default function PairingInviteScreen() {
       setNowMs(Date.now());
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not generate an invite code. Please try again.',
+        describePairingError(err, 'Could not generate an invite code. Please try again.'),
       );
     } finally {
       setLoading(false);

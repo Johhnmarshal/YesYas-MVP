@@ -51,6 +51,21 @@ export function describePairingError(err: unknown, fallback: string): string {
   if (raw.includes('invite code is required')) {
     return 'Enter the 8-character code from your partner’s invite.';
   }
+  if (raw.includes('failed to generate unique invite code')) {
+    return 'Could not create an invite just now. Please try again.';
+  }
+  if (raw.includes('not a member of this pairing')) {
+    return 'You are no longer part of this pairing.';
+  }
+  if (raw.includes('cannot transition an ended pairing')) {
+    return 'This pairing has already ended. Start a new invite to pair again.';
+  }
+  if (raw.includes('pending pairing can only be cancelled')) {
+    return 'This invite has not been accepted yet — you can cancel it, but not pause or resume it.';
+  }
+  if (raw.includes('invalid target pairing status')) {
+    return 'That change is not available for this pairing.';
+  }
   return fallback;
 }
 

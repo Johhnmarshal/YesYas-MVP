@@ -13,6 +13,7 @@ import type { PairingStatus } from '@/lib/database.types';
 import {
   type PairingWithPartner,
   updatePairingStatus,
+  describePairingError,
 } from '@/lib/pairing';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -85,9 +86,7 @@ export function PairingManageModal({
       onClose();
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not update pairing status. Please try again.',
+        describePairingError(err, 'Could not update pairing status. Please try again.'),
       );
     } finally {
       setSubmittingStatus(null);
