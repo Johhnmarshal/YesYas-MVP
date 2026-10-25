@@ -153,11 +153,27 @@ export default function PairingInviteScreen() {
 
   const handleShareInvite = useCallback(async () => {
     if (!invite?.invite_code) return;
-    const deepLink = `yesyasapp://pairing/accept?code=${encodeURIComponent(invite.invite_code)}`;
+    const code = invite.invite_code;
+
+    // The link has to match the platform. `yesyasapp://` only resolves where
+    // the native app is installed, and the beta runs on the web — so the old
+    // message handed every web tester a scheme their device has nothing
+    // registered for, which opens nothing and reports nothing.
+    const link =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/pairing/accept?code=${encodeURIComponent(code)}`
+        : `yesyasapp://pairing/accept?code=${encodeURIComponent(code)}`;
+
     try {
       await Share.share({
         title: 'Pair with me on YesYas!',
-        message: `Join me on YesYas! Use my private 8-character invite code ${invite.invite_code} or open ${deepLink} within 48 hours.`,
+        // The code leads, because the code always works. The link needs the
+        // recipient to be signed in already: the accept screen sits inside the
+        // (app) group behind auth, and the root layout's redirect to
+        // /(auth)/sign-in does not carry the query parameter through. Someone
+        // signed out follows the link, lands on sign-in, and arrives with no
+        // code — so they need to have it in front of them regardless.
+        message: `Join me on YesYas! My private invite code is ${code} — enter it on the "Join your partner" screen within 48 hours. Already signed in? This opens it directly: ${link}`,
       });
     } catch {
       // User dismissed system share sheet
