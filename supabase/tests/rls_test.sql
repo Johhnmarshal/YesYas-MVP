@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(39);
+select plan(43);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -725,6 +725,69 @@ select is(
   ),
   0,
   'every library item has a description and valid tone tags, and no title repeats'
+);
+
+-- ---------- assertions 40-43: a partner sees nothing private ----------
+--
+-- Assertions 1-7 cover desires between A and B. These cover the rest of the
+-- per-user tables, because "your partner cannot read your private data" is the
+-- product, and a policy widened by accident on any one of these would not fail
+-- any existing test.
+--
+-- user_key_recovery is the one that matters most. It holds the wrapped master
+-- key; a partner who could read that row could brute-force the recovery code
+-- offline at their leisure and then decrypt every journal entry and note the
+-- other person has ever written. Nothing else in this schema is that
+-- load-bearing.
+--
+-- A and B are an ACTIVE pairing by this point, which is the permissive case —
+-- profiles_partner_limited_read only grants across an active pairing, so if
+-- any of these leaked, this is where it would show.
+reset role;
+insert into public.journal_entries (user_id, body)
+values ('22222222-2222-2222-2222-222222222222', 'enc:v1:BJOURNALSECRET');
+insert into public.user_key_recovery (user_id, wrapped_key, salt, iterations, kdf)
+values ('22222222-2222-2222-2222-222222222222', 'enc:v1:00:BWRAPPED:MAC',
+        'aabbccddeeff00112233445566778899', 150000, 'pbkdf2-sha256');
+insert into public.ai_flags (user_id, reason)
+values ('22222222-2222-2222-2222-222222222222', 'b-private-flag');
+
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+-- 40. A cannot read B's journal.
+select is(
+  (select count(*)::int from public.journal_entries
+    where user_id = '22222222-2222-2222-2222-222222222222'),
+  0,
+  'an active partner cannot read the other partner''s journal entries'
+);
+
+-- 41. A cannot read B's wrapped master key.
+select is(
+  (select count(*)::int from public.user_key_recovery
+    where user_id = '22222222-2222-2222-2222-222222222222'),
+  0,
+  'an active partner cannot read the other partner''s wrapped encryption key'
+);
+
+-- 42. A cannot read B's AI moderation flags.
+select is(
+  (select count(*)::int from public.ai_flags
+    where user_id = '22222222-2222-2222-2222-222222222222'),
+  0,
+  'an active partner cannot read the other partner''s AI flags'
+);
+
+-- 43. ai_logs stays closed to clients entirely. RLS is on with no policies,
+--     which is deny-all — it is written only by Edge Functions holding the
+--     service-role key. Asserted because "no policies" looks like an omission
+--     and an obliging future change could add one.
+select is(
+  (select count(*)::int from public.ai_logs),
+  0,
+  'ai_logs is not readable by a signed-in client at all'
 );
 
 select * from finish();

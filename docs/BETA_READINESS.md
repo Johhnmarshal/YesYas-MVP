@@ -434,6 +434,32 @@ there.
 - **Reveal cadence has no entitlement bypass** — `trigger_reveal` refuses
   unconditionally after one reveal per 7 days, so the PRD's "Premium:
   unlimited reveals" is not expressible.
+- **A partner can read your content tier and tone, not just your name.**
+  `profiles_partner_limited_read` is correctly scoped to *active* pairings, but
+  RLS is row-level — "limited" cannot restrict columns, so a partner who can
+  read the row reads all of it: `display_name`, `tone_preference`,
+  `content_tier_preference`, `locale`, `onboarding_complete`. Verified against
+  the hosted project: as an active partner, `content_tier_preference` came back
+  `explicit`.
+
+  The app itself is well-behaved — `lib/pairing.ts` selects only
+  `display_name` — but the anon key ships in the bundle, so a partner can query
+  the rest directly. It is a disposition rather than a rating, so much milder
+  than the things the double-blind engine protects, but it is the same kind of
+  leak the product exists to prevent.
+
+  Fixing it needs the database and the client to change together: restrict
+  `profiles` to self-read, expose partner `display_name` through a view or an
+  RPC, and point `getActiveOrPendingPairing` at it. Shipping the client half
+  alone would blank out every partner's name until the migration landed, so it
+  is deliberately left whole rather than half-done. The policy name is also
+  worth correcting in the same migration, since it currently claims something
+  Postgres cannot do.
+
+  What *is* protected, now asserted in pgTAP 40-43: a partner cannot read the
+  other's journal entries, wrapped encryption key, or AI flags, and `ai_logs`
+  is closed to clients entirely.
+
 - **Consent audit screen reads at most 1000 rows** — PostgREST's default
   ceiling. The chain still verifies because it is a prefix from genesis, but a
   heavy user would eventually stop seeing their recent events.
