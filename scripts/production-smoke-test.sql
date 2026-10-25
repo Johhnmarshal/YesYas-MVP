@@ -126,3 +126,68 @@ from public.reveals
 where pairing_id = 'dddd4444-4444-4444-4444-444444444444';
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Third check: a brand-new user can get through onboarding.
+--
+-- app/_layout.tsx gates everything on profiles.onboarding_complete, and
+-- onboarding/mode.tsx is the only thing that sets it. If RLS ever stopped
+-- permitting that self-update, every new user would loop in onboarding with
+-- no error — the update would simply affect zero rows. Nothing else in the
+-- suite would notice, because the rest of the journey starts from users who
+-- are already past it.
+--
+-- The last column is the other half: the same policy that lets a user write
+-- their own profile must stop them writing anyone else's.
+--
+-- Expected: 1, f, t, playful, 120, 0.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('eeee5555-5555-4555-8555-555555555555','00000000-0000-0000-0000-000000000000','authenticated','authenticated','onboard@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+create temp table r1 as
+  select count(*) as profile_created from public.profiles
+  where id = 'eeee5555-5555-4555-8555-555555555555';
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"eeee5555-5555-4555-8555-555555555555","role":"authenticated"}';
+
+create temp table r2 as
+  select onboarding_complete as starts_complete from public.profiles
+  where id = 'eeee5555-5555-4555-8555-555555555555';
+
+-- Exactly what onboarding/mode.tsx writes on the final step.
+update public.profiles
+set tone_preference = 'playful'::public.tone_label,
+    content_tier_preference = 'suggestive'::public.desire_tier,
+    onboarding_complete = true
+where id = 'eeee5555-5555-4555-8555-555555555555';
+
+create temp table r3 as
+  select onboarding_complete, tone_preference::text as tone from public.profiles
+  where id = 'eeee5555-5555-4555-8555-555555555555';
+
+create temp table r4 as
+  select count(*) as library_visible from public.desire_library_items
+  where active = true
+    and tier in ('sensory'::public.desire_tier, 'suggestive'::public.desire_tier);
+
+with attempt as (
+  update public.profiles set onboarding_complete = false
+  where id <> 'eeee5555-5555-4555-8555-555555555555' returning 1
+)
+select count(*) as rows_tampered into temp r5 from attempt;
+
+reset role;
+
+select (select profile_created from r1)     as profile_auto_created,
+       (select starts_complete from r2)     as starts_complete,
+       (select onboarding_complete from r3) as completed_after_update,
+       (select tone from r3)                as tone_saved,
+       (select library_visible from r4)     as library_at_default_tier,
+       (select rows_tampered from r5)       as other_profiles_tampered;
+
+rollback;
