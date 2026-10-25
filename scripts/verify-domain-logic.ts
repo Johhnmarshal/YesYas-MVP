@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import type { ConsentEventRow } from '../lib/consent';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
@@ -506,6 +508,44 @@ async function main() {
   );
   assert.equal(describePairingError(null, FALLBACK), FALLBACK, 'null uses the fallback');
   assert.equal(describePairingError(undefined, FALLBACK), FALLBACK, 'undefined uses the fallback');
+
+
+  // 13. Every (app) route is declared in the Tabs layout.
+  //
+  //     expo-router turns each route under a <Tabs> layout into a visible tab
+  //     unless it is declared with href: null. settings/privacy-model was not
+  //     declared, so the bottom bar carried a fifth tab reading
+  //     "privacy-model" beside Home, Library, Journal and Settings.
+  //
+  //     This is a filesystem check rather than a logic one because the bug is
+  //     an omission: adding a screen and forgetting the declaration is the
+  //     natural mistake, and nothing else in the pipeline notices.
+  const appDir = path.join(import.meta.dirname, '..', 'app', '(app)');
+  const layoutSrc = fs.readFileSync(path.join(appDir, '_layout.tsx'), 'utf8');
+
+  const declared = new Set(
+    [...layoutSrc.matchAll(/name="([^"]+)"/g)].map((m) => m[1]),
+  );
+
+  const routeFiles: string[] = [];
+  const walk = (dir: string, prefix: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name), prefix ? `${prefix}/${entry.name}` : entry.name);
+      } else if (entry.name.endsWith('.tsx') && entry.name !== '_layout.tsx') {
+        const base = entry.name.replace(/\.tsx$/, '');
+        routeFiles.push(prefix ? `${prefix}/${base}` : base);
+      }
+    }
+  };
+  walk(appDir, '');
+
+  const undeclared = routeFiles.filter((r) => !declared.has(r)).sort();
+  assert.deepEqual(
+    undeclared,
+    [],
+    `every (app) route must be declared in the Tabs layout, or it renders as its own tab. Undeclared: ${undeclared.join(', ')}`,
+  );
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }

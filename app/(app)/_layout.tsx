@@ -154,6 +154,19 @@ export default function AppLayout() {
           href: null,
         }}
       />
+      {/*
+        Every route under (app) becomes a tab unless it is declared with
+        href: null. This one was missing, so the bottom bar carried a fifth
+        tab labelled "privacy-model" next to Home, Library, Journal and
+        Settings. scripts/verify-domain-logic.ts now diffs the route files
+        against this list so adding a screen cannot reintroduce it.
+      */}
+      <Tabs.Screen
+        name="settings/privacy-model"
+        options={{
+          href: null,
+        }}
+      />
       <Tabs.Screen
         name="settings/export"
         options={{
