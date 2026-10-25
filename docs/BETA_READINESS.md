@@ -456,9 +456,9 @@ there.
   worth correcting in the same migration, since it currently claims something
   Postgres cannot do.
 
-  What *is* protected, now asserted in pgTAP 40-43: a partner cannot read the
-  other's journal entries, wrapped encryption key, or AI flags, and `ai_logs`
-  is closed to clients entirely.
+  What *is* protected: a partner cannot read the other's journal entries or AI
+  flags (pgTAP 40-41), `ai_logs` is closed to clients entirely (42), and the
+  wrapped encryption key was already covered by assertion 26.
 
 - **Consent audit screen reads at most 1000 rows** — PostgREST's default
   ceiling. The chain still verifies because it is a prefix from genesis, but a
