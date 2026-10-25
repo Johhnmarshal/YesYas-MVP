@@ -23,6 +23,7 @@ import {
   saveJournalEntry,
   sendAiCoachMessage,
 } from '@/lib/journal';
+import { hasRecoveryBackup } from '@/lib/key-recovery';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import {
   SCREEN_CAPTURE_KEYS,
@@ -66,6 +67,12 @@ export default function JournalScreen() {
   // Set when a reply came from the local fallback rather than the coach, so
   // the stock phrasing is explained instead of reading as a poor answer.
   const [coachNotice, setCoachNotice] = useState<string | null>(null);
+  // Shown once there is something to lose. The device key lives only on this
+  // device; without a recovery code a reinstall or a second device loses every
+  // entry permanently and silently. Until now the only place that said so was
+  // the Settings screen, which a tester has no reason to open — and
+  // user_key_recovery has zero rows on production.
+  const [needsRecoveryCode, setNeedsRecoveryCode] = useState(false);
 
   // Modals
   const [graduationModalVisible, setGraduationModalVisible] = useState(false);
@@ -98,6 +105,19 @@ export default function JournalScreen() {
       setLoadingEntries(true);
       const entries = await fetchJournalEntries(user.id);
       setPastEntries(entries);
+
+      if (entries.length > 0) {
+        try {
+          setNeedsRecoveryCode(!(await hasRecoveryBackup(user.id)));
+        } catch {
+          // Offline or the check failed. Stay quiet rather than warn about a
+          // backup that may well exist — a false alarm here teaches people to
+          // ignore the one warning that matters.
+          setNeedsRecoveryCode(false);
+        }
+      } else {
+        setNeedsRecoveryCode(false);
+      }
     } catch (err) {
       console.warn('Error loading journal state:', err);
     } finally {
@@ -588,6 +608,36 @@ export default function JournalScreen() {
             )}
           </View>
         </ScrollView>
+
+        {needsRecoveryCode ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Create an encryption recovery code in Settings"
+            onPress={() => router.push('/(app)/settings' as Href)}
+            style={({ pressed }) => [
+              styles.recoveryWarning,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.accentWarm,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Ionicons
+              name="key-outline"
+              size={16}
+              color={colors.accentWarm}
+              style={styles.recoveryWarningIcon}
+            />
+            <Text
+              style={[styles.recoveryWarningText, { color: colors.secondary }]}
+            >
+              Your entries are encrypted with a key held only on this device.
+              Create a recovery code so a reinstall or a new phone does not lose
+              them — tap here.
+            </Text>
+          </Pressable>
+        ) : null}
 
         {coachNotice ? (
           <View
@@ -1117,6 +1167,22 @@ const styles = StyleSheet.create({
   entryCardSnippet: {
     fontSize: TYPOGRAPHY.body.fontSize,
     lineHeight: 20,
+  },
+  recoveryWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.xs,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  recoveryWarningIcon: {
+    marginTop: 1,
+  },
+  recoveryWarningText: {
+    ...TYPOGRAPHY.caption,
+    flex: 1,
   },
   coachNotice: {
     borderTopWidth: 1,
