@@ -322,7 +322,7 @@ export function PairingManageModal({
               >
                 {isPending
                   ? 'This invite code will immediately stop working. You can generate a fresh code whenever you are ready.'
-                  : 'Ending a pairing permanently closes this shared connection and logs a pairing_ended event in both consent histories. Your solo Desire Library ratings and private Journal entries remain safely yours.'}
+                  : 'Ending a pairing permanently closes this shared connection and logs a pairing_ended event in both consent histories. Your solo Desire Library ratings and private Journal entries remain safely yours.\n\nRatings you made inside this pairing stay with it and will not carry into a new one — not even a new pairing with the same person. That is deliberate: a fresh connection starts from a clean slate rather than inheriting another one. If you pair again you will rate items afresh.'}
               </Text>
 
               <Pressable
