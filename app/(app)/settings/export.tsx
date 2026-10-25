@@ -158,7 +158,18 @@ export default function TherapistExportScreen() {
         `- ${partnerName}`,
         '',
         'CONSENT AUDIT STATUS:',
-        '✓ Dual partner consent verified via cryptographic audit trail',
+        // Deliberately weaker than the Edge Function's wording. This is the
+        // client-side fallback: it runs when the therapist-export function is
+        // unreachable, so it has only the caller's own consent_events rows to
+        // go on — consent_events is self-read only under RLS, and the
+        // partner's row is invisible here. Claiming the chain was verified
+        // would be an attestation with nothing behind it, in a document
+        // written for a clinician. Only the server, holding the service-role
+        // key, can see both sides and say that.
+        'Both partners recorded consent in the app before this summary was',
+        'generated. This copy was produced on-device and could not re-check',
+        'the cryptographic audit chain — ask for a server-generated copy if',
+        'that verification matters.',
         '',
         'REVEAL HISTORY & AGGREGATE SUMMARY:',
       ];
