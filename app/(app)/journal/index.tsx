@@ -164,7 +164,9 @@ export default function JournalScreen() {
           ? 'You have reached the coach limit for now. Your entry is saved — the reply below is a standard prompt.'
           : aiResponse.reason === 'unavailable'
             ? 'The coach could not be reached, so the reply below is a standard prompt. Your entry is saved.'
-            : null,
+            : aiResponse.reason === 'no_provider'
+              ? 'The reflective coach is not switched on yet, so the reply below is a standard prompt rather than a response to what you wrote. Your entry is saved.'
+              : null,
       );
 
       // 3. Encrypt & persist AI reply on device

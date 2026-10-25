@@ -29,7 +29,24 @@ export interface JournalEntryWithBody extends JournalEntryRow {
  * being set as a function secret — in that case the function deploys happily
  * and returns stock text, so the symptom is identical from here.
  */
-export type AiCoachReason = 'ok' | 'rate_limited' | 'unavailable';
+/**
+ * Why the reply reads the way it does.
+ *
+ * `no_provider` is the one that is easy to miss: the Edge Function answers
+ * HTTP 200 with a canned reflective prompt whenever no model provider is
+ * configured or reachable, tagging it `model: 'builtin-reflective'`. Without
+ * reading that tag the client treats a stock phrase as a real reply and tells
+ * the user nothing — in a feature whose whole value is that it responded to
+ * what they wrote.
+ */
+export type AiCoachReason =
+  | 'ok'
+  | 'rate_limited'
+  | 'unavailable'
+  | 'no_provider';
+
+/** The Edge Function's marker for its own built-in canned reply. */
+const BUILTIN_MODEL = 'builtin-reflective';
 
 export interface AiCoachResponse {
   reply: string;
@@ -228,11 +245,16 @@ export async function sendAiCoachMessage(
         ? data.threadId
         : (sanitizedThreadId ?? generateDeterministicThreadId(trimmed));
 
+    // A 200 does not mean a model answered. The function falls back to its own
+    // canned prompt when no provider key is set or the provider refused, and
+    // says so in `model`.
+    const servedByBuiltin = data.model === BUILTIN_MODEL;
+
     return {
       reply: data.reply,
       threadId: returnedThreadId,
-      isFallback: false,
-      reason: 'ok',
+      isFallback: servedByBuiltin,
+      reason: servedByBuiltin ? 'no_provider' : 'ok',
     };
   } catch {
     return buildLocalReflectiveReply(trimmed, threadId);
