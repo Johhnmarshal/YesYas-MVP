@@ -121,10 +121,13 @@ needs the SMTP credential above.
 
 ---
 
-## 2a. Check the redirect allowlist for `*.vercel.app` — do this first
+## 2a. CONFIRMED LIVE: remove `*.vercel.app` from the redirect allowlist
 
-**Dashboard → Authentication → URL Configuration.** If the Redirect URLs list
-contains `https://*.vercel.app` (or `https://*.vercel.app/**`), remove it.
+**This is verified on the hosted project, not a theoretical risk, and it is the
+one thing to fix before inviting anybody.**
+
+**Dashboard → Authentication → URL Configuration → Redirect URLs.** Remove
+`https://*.vercel.app` and `https://*.vercel.app/**`.
 
 `supabase/config.toml` carried that entry until 2026-10-25 and it is an
 account-takeover vector. Supabase honours wildcards in the host and
@@ -142,10 +145,36 @@ account-takeover vector. Supabase honours wildcards in the host and
 The email being real is what makes it worse than ordinary phishing — none of
 the usual signals apply.
 
-It is removed from the repo, so a `config push` will not reintroduce it. But if
-it was added by hand when the Site URL was fixed, it is live now and only the
-dashboard will show that. Automation in this session cannot read the live
-allowlist.
+### How this was confirmed
+
+GoTrue validates `redirect_to` against the allowlist and then redirects, so an
+invalid token is a side-effect-free oracle — no email is sent, no account is
+touched, and the `Location` header says which redirect was honoured:
+
+```bash
+curl -sS -o /dev/null -D -   "https://flauqfikspnywcvtevnq.supabase.co/auth/v1/verify?token=0000000000&type=magiclink&redirect_to=https%3A%2F%2Fanything-you-like.vercel.app"   -H "apikey: <the anon key from .env>" | grep -i '^location:'
+```
+
+Measured 2026-10-25:
+
+| `redirect_to` | Result |
+|---|---|
+| `https://yesyas.vercel.app` | honoured — correct |
+| `https://<random>.vercel.app` | **honoured — the hole** |
+| `https://<random>.vercel.app` (second random name) | **honoured** |
+| `https://<random>.netlify.app` | fell back to Site URL — correct |
+| `https://<random>-deep.sub.vercel.app` | fell back — the wildcard is one label |
+| `https://yesyas.vercel.app.evil.com` | fell back — no suffix confusion |
+| `http://localhost:8081` | honoured — allowlisted for development |
+
+The `netlify.app` and `evil.com` rows are the important controls: the allowlist
+**is** being enforced, and it still accepted an arbitrary `vercel.app`
+subdomain. Re-run the same probe after fixing it — the random `vercel.app` row
+should fall back to `https://yesyas.vercel.app`.
+
+It is already removed from `supabase/config.toml`, so a `config push` will not
+reintroduce it, but the live value came from the dashboard and only the
+dashboard will clear it.
 
 The allowlist should contain exactly: `https://yesyas.vercel.app`,
 `https://yesyas.vercel.app/**`, `yesyasapp://`, `yesyasapp://**`, and the
@@ -312,7 +341,7 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
 | Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
 | Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
-| Magic-link redirect wildcard | `https://*.vercel.app` was an accepted redirect target, so any site on the shared Vercel domain could receive a real sign-in token for any address an attacker chose to mail. Removed from the repo; **check the dashboard too** |
+| Magic-link redirect wildcard | `https://*.vercel.app` is an accepted redirect target, so any site on the shared Vercel domain can receive a real sign-in token for any address an attacker chooses to mail. Removed from the repo; **confirmed still live on the project — see section 2a** |
 | Clinical export survived a breakup | `therapist-export` never checked pairing status, though its own comment claimed it did. Membership and dual consent both outlive an ended pairing, so for up to 7 days after a breakup either party could POST the old pairing id and get the summary |
 | Private note became a shared signal | Writing a note on an unrated item stored `rating: 3` — exactly `trigger_reveal`'s Curiosity Bridge threshold — so if the partner rated it 4 or 5, the item surfaced in the couple's shared reveal as something one of them was "open to exploring". Verified end to end: a note-only item came back inside `reveals.mismatches` |
 | Consent audit screen | **The worst one.** `consent_events_chain()` hashes `payload::text`, and jsonb sorts object keys by byte length then bytewise; `lib/consent.ts` sorted alphabetically. Both `reveal_triggered` payloads order differently under the two rules, so `verifyConsentChain` returned `valid: false` and the screen rendered "Audit Chain Integrity Failure" over an intact log — for every couple that had triggered a reveal |
