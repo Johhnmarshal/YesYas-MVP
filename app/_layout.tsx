@@ -6,7 +6,11 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { BiometricGate } from '@/components/BiometricGate';
 import { EncryptionKeyGate } from '@/components/EncryptionKeyGate';
-import { consumeInitialUrlAuth, supabase } from '@/lib/supabase';
+import {
+  consumeInitialUrlAuth,
+  subscribeToAuthDeepLinks,
+  supabase,
+} from '@/lib/supabase';
 import { useThemeColors } from '@/lib/theme';
 
 type OnboardingListener = () => void;
@@ -121,9 +125,17 @@ export default function RootLayout() {
       }
     })();
 
+    // Magic links that arrive while the app is already running. getInitialURL
+    // inside consumeInitialUrlAuth only covers a cold start; on native a link
+    // tapped with the app backgrounded comes through as a 'url' event, which
+    // is the more common case once somebody has the app open and goes to their
+    // mail. No-op on web.
+    const unsubscribeDeepLinks = subscribeToAuthDeepLinks();
+
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      unsubscribeDeepLinks();
     };
   }, [syncSessionProfile]);
 

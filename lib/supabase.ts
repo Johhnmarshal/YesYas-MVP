@@ -13,8 +13,9 @@ import {
   type EmailOtpType,
   type SupabaseClient,
 } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
+import { type AuthUrlAction, parseAuthParams, parseAuthUrl } from './auth-url';
 import type { Database } from './database.types';
 
 // Capture the initial browser URL query & hash at module-evaluation time BEFORE
@@ -90,71 +91,106 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
   },
 );
 
+/** Applies a parsed auth action. Returns whether anything was done. */
+async function applyAuthAction(action: AuthUrlAction): Promise<boolean> {
+  if (!action) return false;
+
+  if (action.kind === 'token_hash') {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: action.tokenHash,
+      type: action.type,
+    });
+    // Older links carry a type the current template no longer sends; retry as
+    // 'email' rather than stranding somebody on a valid token.
+    if (error && action.type !== 'email') {
+      await supabase.auth.verifyOtp({
+        token_hash: action.tokenHash,
+        type: 'email',
+      });
+    }
+    return true;
+  }
+
+  if (action.kind === 'session') {
+    await supabase.auth.setSession({
+      access_token: action.accessToken,
+      refresh_token: action.refreshToken,
+    });
+    return true;
+  }
+
+  await supabase.auth.exchangeCodeForSession(action.code);
+  return true;
+}
+
+/** Keeps tokens out of browser history once they have been consumed. */
+function clearWebAuthParams(): void {
+  if (typeof window !== 'undefined' && window.history?.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
 /**
- * Processes magic-link / OTP parameters from the initial browser URL
- * (`?token_hash=...&type=...`, `#access_token=...&refresh_token=...`, or `?code=...`)
- * before Expo Router redirects away from the entry URL.
+ * Processes magic-link / OTP parameters from whatever URL started the app.
+ *
+ * On web that is the initial browser URL, captured at module evaluation before
+ * Expo Router redirects away from it. On native it is the deep link that
+ * launched the app, which was previously not handled at all: this function
+ * returned immediately without a window.location, detectSessionInUrl is
+ * web-only, and nothing else read Linking. A magic link on a device opened the
+ * app and then did nothing.
+ *
+ * The parsing lives in lib/auth-url.ts and is covered by
+ * scripts/verify-domain-logic.ts, including the custom-scheme shapes, because
+ * this is the code path that decides whether somebody gets signed in.
  */
 export async function consumeInitialUrlAuth(): Promise<void> {
-  if (initialAuthHandled || !initialWebLocation) {
+  if (initialAuthHandled) {
     return;
   }
   initialAuthHandled = true;
 
   try {
-    const searchParams = new URLSearchParams(initialWebLocation.search);
-    const hashRaw = initialWebLocation.hash.replace(/^#/, '');
-    const hashParams = new URLSearchParams(hashRaw);
-
-    // 1. Direct token_hash verification (works across devices & in-app browsers)
-    const tokenHash =
-      searchParams.get('token_hash') ?? hashParams.get('token_hash');
-    const rawType = (searchParams.get('type') ??
-      hashParams.get('type') ??
-      'email') as EmailOtpType;
-
-    if (tokenHash) {
-      const { error } = await supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: rawType,
-      });
-      if (error && rawType !== 'email') {
-        await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'email',
-        });
-      }
-      if (typeof window !== 'undefined' && window.history?.replaceState) {
-        window.history.replaceState({}, '', window.location.pathname);
+    if (initialWebLocation) {
+      if (await applyAuthAction(parseAuthParams(initialWebLocation))) {
+        clearWebAuthParams();
       }
       return;
     }
 
-    // 2. Implicit flow (#access_token=...&refresh_token=...)
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    if (accessToken && refreshToken) {
-      await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      if (typeof window !== 'undefined' && window.history?.replaceState) {
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-      return;
-    }
-
-    // 3. PKCE code flow (?code=...)
-    const code = searchParams.get('code');
-    if (code) {
-      await supabase.auth.exchangeCodeForSession(code);
-      if (typeof window !== 'undefined' && window.history?.replaceState) {
-        window.history.replaceState({}, '', window.location.pathname);
-      }
+    if (Platform.OS !== 'web') {
+      await applyAuthAction(parseAuthUrl(await Linking.getInitialURL()));
     }
   } catch (err) {
     console.warn('[YesYas] Failed to process initial auth URL:', err);
   }
+}
+
+/**
+ * Handles magic links that arrive while the app is already running.
+ *
+ * getInitialURL only covers a cold start. On native a link tapped with the app
+ * in the background delivers a 'url' event instead, and without this it would
+ * be ignored — which is the more common case once somebody has the app open
+ * and goes to their mail.
+ *
+ * Returns an unsubscribe function; no-op on web, where supabase-js and
+ * consumeInitialUrlAuth already cover the entry URL.
+ */
+export function subscribeToAuthDeepLinks(): () => void {
+  if (Platform.OS === 'web') {
+    return () => {};
+  }
+
+  const subscription = Linking.addEventListener('url', ({ url }) => {
+    void applyAuthAction(parseAuthUrl(url)).catch((err) => {
+      console.warn('[YesYas] Failed to process auth deep link:', err);
+    });
+  });
+
+  return () => {
+    subscription.remove();
+  };
 }
 
 /**

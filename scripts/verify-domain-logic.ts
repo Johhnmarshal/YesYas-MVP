@@ -20,6 +20,9 @@ import { describePairingError } from '../lib/pairing-errors.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { RatingRequiredError, ratingForNewNote } from '../lib/desire-note-rules.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { parseAuthUrl } from '../lib/auth-url.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -732,6 +735,96 @@ async function main() {
       () => ratingForNewNote(bad),
       (err: unknown) => err instanceof RatingRequiredError,
       `${bad} is outside desires_rating_check and must be refused`,
+    );
+  }
+
+
+  // 16. Auth URL parsing, for web and for a custom-scheme deep link.
+  //
+  //     This is the code path that decides whether somebody gets signed in,
+  //     and until now it existed only inline in lib/supabase.ts, gated on
+  //     window.location, so native had nothing and nothing was tested.
+  //
+  //     The deep-link cases matter most: `new URL()` treats non-special
+  //     schemes like yesyasapp:// differently across Node and React Native's
+  //     polyfill, and the polyfill has historically dropped the fragment. The
+  //     parser uses index arithmetic for that reason, and these assertions are
+  //     what say it works on the shapes that actually arrive.
+
+  // The magic-link template's own form: {{ .SiteURL }}/?token_hash=..&type=email
+  assert.deepEqual(
+    parseAuthUrl('https://yesyas.vercel.app/?token_hash=abc123&type=email'),
+    { kind: 'token_hash', tokenHash: 'abc123', type: 'email' },
+    'web query token_hash is read',
+  );
+  // Same thing arriving at the native scheme, which is what yesyasapp:/// gets.
+  assert.deepEqual(
+    parseAuthUrl('yesyasapp:///?token_hash=abc123&type=email'),
+    { kind: 'token_hash', tokenHash: 'abc123', type: 'email' },
+    'deep-link query token_hash is read',
+  );
+  // type defaults to email rather than being dropped.
+  assert.deepEqual(
+    parseAuthUrl('yesyasapp:///?token_hash=abc123'),
+    { kind: 'token_hash', tokenHash: 'abc123', type: 'email' },
+    'a missing type defaults to email',
+  );
+  assert.deepEqual(
+    parseAuthUrl('yesyasapp:///?token_hash=abc&type=recovery'),
+    { kind: 'token_hash', tokenHash: 'abc', type: 'recovery' },
+    'a non-default type is preserved',
+  );
+  // Fragment form, both platforms.
+  assert.deepEqual(
+    parseAuthUrl('yesyasapp:///#token_hash=xyz&type=email'),
+    { kind: 'token_hash', tokenHash: 'xyz', type: 'email' },
+    'fragment token_hash is read on a deep link',
+  );
+
+  // Implicit flow needs both halves.
+  assert.deepEqual(
+    parseAuthUrl('yesyasapp:///#access_token=AT&refresh_token=RT'),
+    { kind: 'session', accessToken: 'AT', refreshToken: 'RT' },
+    'implicit flow with both tokens establishes a session',
+  );
+  assert.equal(
+    parseAuthUrl('yesyasapp:///#access_token=AT'),
+    null,
+    'an access_token with no refresh_token is not a session',
+  );
+  assert.equal(
+    parseAuthUrl('yesyasapp:///#refresh_token=RT'),
+    null,
+    'a refresh_token alone is not a session',
+  );
+
+  // PKCE.
+  assert.deepEqual(
+    parseAuthUrl('https://yesyas.vercel.app/?code=pkce-code'),
+    { kind: 'code', code: 'pkce-code' },
+    'PKCE code is read from the query',
+  );
+
+  // token_hash wins: verifyOtp works without the verifier the code needs.
+  assert.deepEqual(
+    parseAuthUrl('https://yesyas.vercel.app/?code=c&token_hash=t&type=email'),
+    { kind: 'token_hash', tokenHash: 't', type: 'email' },
+    'token_hash takes precedence over code',
+  );
+
+  // Nothing to do.
+  for (const nothing of [
+    null,
+    undefined,
+    '',
+    'yesyasapp:///',
+    'https://yesyas.vercel.app/',
+    'https://yesyas.vercel.app/?error=access_denied&error_code=otp_expired',
+  ]) {
+    assert.equal(
+      parseAuthUrl(nothing as string | null | undefined),
+      null,
+      `no auth parameters in ${JSON.stringify(nothing)}`,
     );
   }
 

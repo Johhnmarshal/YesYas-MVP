@@ -286,7 +286,7 @@ not secrecy — which is exactly why this ruleset matters.
 |---|---|
 | Icons at valid dimensions | **Done** — 1024×1024 and 48×48, no alpha |
 | `expo-dev-client` | **Done** — `eas.json`'s `development` profile sets `developmentClient: true`, which EAS validates against the package. It was missing, so both development profiles would have failed; now pinned to `~6.0.20` per the SDK's own manifest |
-| Magic-link sign-in on native | **Not implemented.** See below — this is a hard blocker for a mobile beta, separate from the build |
+| Magic-link sign-in on native | **Implemented, untested on a device.** Parsing is covered by tests; the `Linking` wiring needs a real build to confirm — see below |
 | EAS project id | **You** — `eas init` |
 | Apple Developer account | **You** — $99/yr, needed for anything past a simulator build |
 
@@ -316,19 +316,31 @@ gaps, both measured:
    slashes, so the bare scheme never matched. Fixed in the client — it now
    sends `yesyasapp:///`.
 
-2. **Nothing reads the token out of a deep link.** `detectSessionInUrl` is
-   `Platform.OS === 'web'`, `consumeInitialUrlAuth()` returns immediately when
-   there is no `window.location`, and no file imports `Linking` or calls
-   `getInitialURL`. So even with the redirect fixed, opening the link would
-   launch the app and then do nothing with the token.
+2. **Nothing read the token out of a deep link** — `detectSessionInUrl` is
+   `Platform.OS === 'web'`, `consumeInitialUrlAuth()` returned immediately
+   without a `window.location`, and no file imported `Linking`. **Now
+   implemented:** `consumeInitialUrlAuth()` reads `Linking.getInitialURL()` on
+   native for a cold start, and `subscribeToAuthDeepLinks()` handles the `url`
+   event for a link tapped while the app is backgrounded — the more common
+   case once somebody has the app open and goes to their mail.
 
-Closing (2) means wiring `Linking.getInitialURL()` plus a `url` listener into
-the root layout and handing the URL to the parsing that `consumeInitialUrlAuth`
-already does for web — the logic exists, it is only gated on web. That is a
-small change but it cannot be exercised from this session: there is no
-simulator or device here, and shipping untested auth wiring for a path nobody
-can try is worse than naming the gap. It wants doing alongside the first
-`development` build, where it can actually be tested.
+### What is and is not verified about the native path
+
+The parsing is extracted into `lib/auth-url.ts` and covered by 20 assertions
+in `scripts/verify-domain-logic.ts`, including the custom-scheme shapes
+(`yesyasapp:///?token_hash=…`, fragment form, implicit flow needing both
+tokens, `token_hash` taking precedence over `code`). It deliberately avoids
+`new URL()`: non-special schemes behave differently across Node and React
+Native's polyfill, and the polyfill has historically dropped the fragment.
+
+The web path is browser-verified after the refactor — an invalid `token_hash`
+is consumed, stripped from the URL so tokens stay out of history, and the app
+lands on `/sign-in`.
+
+**The `Linking` wiring itself is typechecked only.** There is no simulator or
+device in this session, so nobody has watched a real magic link open a real
+build. Treat the first `development` build as the test: tap a link from mail
+with the app closed, then again with it backgrounded.
 
 The passphrase path is unaffected and works on native, so mobile testers are
 not locked out — they just cannot use email links.
