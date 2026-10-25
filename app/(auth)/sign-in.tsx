@@ -140,6 +140,24 @@ export default function SignInScreen() {
     }
 
     // 2. If account doesn't exist yet (or had no password), attempt signUp
+    //
+    // KNOWN ISSUE — open registration. The hosted project runs with
+    // enable_confirmations = false (needed while the built-in SMTP cap is in
+    // force), so this signUp creates a CONFIRMED account and returns a
+    // session immediately, with no proof the caller owns the address. Calling
+    // it automatically from a failed sign-in means any address typed into the
+    // passphrase box becomes a real account.
+    //
+    // Observed directly on 2026-10-25: two probe requests to the auth API
+    // came back `400 email_address_invalid` and still left confirmed users
+    // with profiles in the database. A 400 from this endpoint does not mean
+    // nothing happened.
+    //
+    // The fix is a pair, in this order: configure custom SMTP, turn
+    // enable_confirmations back on, then make account creation an explicit
+    // action rather than a fallback from failed sign-in. That also closes the
+    // remaining half of the enumeration leak, since the two paths would stop
+    // differing by whether an email arrives.
     const signUpRes = await supabase.auth.signUp({
       email: trimmedEmail,
       password,
