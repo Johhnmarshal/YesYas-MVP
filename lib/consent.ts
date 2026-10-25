@@ -19,6 +19,47 @@ function formatPayloadJson(value: Json | null | undefined, postgresSpacing: bool
   return serializeJsonValue(value, postgresSpacing);
 }
 
+/**
+ * Orders object keys the way `jsonb` stores them: by UTF-8 byte length first,
+ * then bytewise.
+ *
+ * This is the whole bug. The chain hash is computed by consent_events_chain()
+ * from `new.payload::text`, and jsonb does not preserve insertion order — it
+ * sorts keys by (length, bytes). This serialiser used Object.keys().sort(),
+ * which is alphabetical, so the two agreed only when the two orderings
+ * happened to coincide.
+ *
+ * They do not coincide for either reveal_triggered payload:
+ *
+ *   {reveal_id, state}             -> jsonb: state, reveal_id
+ *   {reveal_id, window_id, role}   -> jsonb: role, reveal_id, window_id
+ *
+ * so verifyConsentChain returned { valid: false } for every couple that had
+ * triggered a reveal, and the consent screen told them their audit trail had
+ * been tampered with. Measured against a real trigger-written row: the stored
+ * hash matched sha256 of the Postgres text exactly, and the value this module
+ * computed shared not one character with it.
+ *
+ * That is the same failure 20261025000003 was written to prevent — the screen
+ * accusing the system of altering the log — reached by a different route. The
+ * ordering fix there was in SQL; this one is the client half nobody had
+ * checked against real output.
+ */
+function compareJsonbKeys(a: string, b: string): number {
+  const encoder = new TextEncoder();
+  const ba = encoder.encode(a);
+  const bb = encoder.encode(b);
+  if (ba.length !== bb.length) {
+    return ba.length - bb.length;
+  }
+  for (let i = 0; i < ba.length; i += 1) {
+    if (ba[i] !== bb[i]) {
+      return ba[i] - bb[i];
+    }
+  }
+  return 0;
+}
+
 function serializeJsonValue(value: Json, postgresSpacing: boolean): string {
   if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
     return JSON.stringify(value);
@@ -27,7 +68,7 @@ function serializeJsonValue(value: Json, postgresSpacing: boolean): string {
     const sep = postgresSpacing ? ', ' : ',';
     return `[${value.map((item) => serializeJsonValue(item, postgresSpacing)).join(sep)}]`;
   }
-  const keys = Object.keys(value).sort();
+  const keys = Object.keys(value).sort(compareJsonbKeys);
   const colon = postgresSpacing ? ': ' : ':';
   const comma = postgresSpacing ? ', ' : ',';
   const entries: string[] = [];

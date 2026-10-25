@@ -547,6 +547,87 @@ async function main() {
     `every (app) route must be declared in the Tabs layout, or it renders as its own tab. Undeclared: ${undeclared.join(', ')}`,
   );
 
+
+  // 14. Golden vectors from rows the database actually wrote.
+  //
+  //     Every other consent assertion in this file builds its rows in
+  //     TypeScript and then checks TypeScript against itself, which is why a
+  //     total mismatch with Postgres survived: consent_events_chain() hashes
+  //     `new.payload::text`, and jsonb sorts object keys by (byte length,
+  //     bytes) rather than alphabetically.
+  //
+  //     Both reveal_triggered payloads are affected:
+  //       {reveal_id, state}           -> jsonb emits state first
+  //       {reveal_id, window_id, role} -> jsonb emits role first
+  //
+  //     so verifyConsentChain reported { valid: false } for every couple that
+  //     had triggered a reveal, and settings/consent.tsx told them their audit
+  //     trail had been tampered with.
+  //
+  //     These two rows were produced by trigger_reveal() against the hosted
+  //     project inside a rolled-back transaction, and the hashes are copied
+  //     from the database verbatim. Hand-written fixtures cannot catch this
+  //     class of bug; only the real serialisation can.
+  const genesisRow: ConsentEventRow = {
+    seq: 74,
+    id: '82506105-a979-4b9d-ab3e-b2145790f189',
+    user_id: 'd1d1d1d1-1111-4111-8111-d1d1d1d1d1d1',
+    pairing_id: null,
+    event_type: 'pairing_accepted',
+    payload: { role: 'inviter' },
+    payload_hash: '1fc4ae960f8e48711e714d047b99adc8c73e437c3276ccd34d4b6a0731eaa418',
+    prev_hash: null,
+    created_at: '2026-10-25T12:00:00.000Z',
+  };
+  // Two keys, and jsonb puts the shorter one first: {"state": ..., "reveal_id": ...}
+  const multiKeyRow: ConsentEventRow = {
+    seq: 76,
+    id: '32833ae7-d189-4839-9cd7-0be35fb3e998',
+    user_id: 'd1d1d1d1-1111-4111-8111-d1d1d1d1d1d1',
+    pairing_id: null,
+    event_type: 'reveal_triggered',
+    payload: {
+      state: 'waiting_for_partner',
+      reveal_id: 'b9fef755-f7da-4e34-9acb-261e1fea573e',
+    },
+    payload_hash: 'a4144570ffd6dc1c8b4b65a3d44a83171a4a5dbc0ac7aab88768fe8e125f67cc',
+    prev_hash: '1fc4ae960f8e48711e714d047b99adc8c73e437c3276ccd34d4b6a0731eaa418',
+    created_at: '2026-10-25T12:00:01.000Z',
+  };
+
+  assert.equal(
+    computeConsentPayloadHash(genesisRow),
+    genesisRow.payload_hash,
+    'single-key payload must hash to what Postgres stored',
+  );
+  assert.equal(
+    computeConsentPayloadHash(multiKeyRow),
+    multiKeyRow.payload_hash,
+    'multi-key payload must hash to what Postgres stored (jsonb key order, not alphabetical)',
+  );
+
+  //     And the chain these two form must verify, since that is what the
+  //     consent screen actually calls.
+  assert.deepEqual(
+    verifyConsentChain([genesisRow, multiKeyRow]),
+    { valid: true, brokenAtId: null },
+    'a real two-row chain from the database must verify as intact',
+  );
+
+  // Key insertion order in the fixture must not matter — jsonb has none.
+  const reordered: ConsentEventRow = {
+    ...multiKeyRow,
+    payload: {
+      reveal_id: 'b9fef755-f7da-4e34-9acb-261e1fea573e',
+      state: 'waiting_for_partner',
+    },
+  };
+  assert.equal(
+    computeConsentPayloadHash(reordered),
+    multiKeyRow.payload_hash,
+    'the hash must not depend on the order keys appear in the JS object',
+  );
+
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
 
