@@ -121,6 +121,40 @@ needs the SMTP credential above.
 
 ---
 
+## 2a. Check the redirect allowlist for `*.vercel.app` — do this first
+
+**Dashboard → Authentication → URL Configuration.** If the Redirect URLs list
+contains `https://*.vercel.app` (or `https://*.vercel.app/**`), remove it.
+
+`supabase/config.toml` carried that entry until 2026-10-25 and it is an
+account-takeover vector. Supabase honours wildcards in the host and
+`vercel.app` is a shared public domain:
+
+1. `signInWithOtp` is a client call and the anon key ships in the web bundle,
+   so anyone can send a request with any `emailRedirectTo`.
+2. Supabase validates it against Site URL plus the allowlist, and
+   `https://anything-they-own.vercel.app` matched.
+3. The victim gets a **genuine** YesYas sign-in email, from the real sender,
+   and clicks it.
+4. The code arrives at the attacker's origin and is exchanged for a session on
+   an account holding that person's journal and private notes.
+
+The email being real is what makes it worse than ordinary phishing — none of
+the usual signals apply.
+
+It is removed from the repo, so a `config push` will not reintroduce it. But if
+it was added by hand when the Site URL was fixed, it is live now and only the
+dashboard will show that. Automation in this session cannot read the live
+allowlist.
+
+The allowlist should contain exactly: `https://yesyas.vercel.app`,
+`https://yesyas.vercel.app/**`, `yesyasapp://`, `yesyasapp://**`, and the
+localhost entries for development. If a preview deployment ever needs to sign
+in, add that exact URL, or at narrowest
+`https://yesyas-*-<your-team-slug>.vercel.app`.
+
+---
+
 ## 2. Dashboard toggles that no file can express
 
 - **Leaked-password protection** — Authentication → Policies. Not expressible
@@ -278,6 +312,7 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
 | Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
 | Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
+| Magic-link redirect wildcard | `https://*.vercel.app` was an accepted redirect target, so any site on the shared Vercel domain could receive a real sign-in token for any address an attacker chose to mail. Removed from the repo; **check the dashboard too** |
 | Clinical export survived a breakup | `therapist-export` never checked pairing status, though its own comment claimed it did. Membership and dual consent both outlive an ended pairing, so for up to 7 days after a breakup either party could POST the old pairing id and get the summary |
 | Private note became a shared signal | Writing a note on an unrated item stored `rating: 3` — exactly `trigger_reveal`'s Curiosity Bridge threshold — so if the partner rated it 4 or 5, the item surfaced in the couple's shared reveal as something one of them was "open to exploring". Verified end to end: a note-only item came back inside `reveals.mismatches` |
 | Consent audit screen | **The worst one.** `consent_events_chain()` hashes `payload::text`, and jsonb sorts object keys by byte length then bytewise; `lib/consent.ts` sorted alphabetically. Both `reveal_triggered` payloads order differently under the two rules, so `verifyConsentChain` returned `valid: false` and the screen rendered "Audit Chain Integrity Failure" over an intact log — for every couple that had triggered a reveal |
