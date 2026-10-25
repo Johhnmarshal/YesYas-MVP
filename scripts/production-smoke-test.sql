@@ -260,3 +260,64 @@ select (select d from before) as desires_before,
        (select status::text from public.pairings where id=(select pid from t_p)) as pairing_status_after;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Fifth check: the consent chain links correctly in the order it is read.
+--
+-- The chain is built by consent_events_chain() and read by lib/consent.ts,
+-- which compares events[i].prev_hash to events[i-1].payload_hash positionally.
+-- If those orders disagree the audit screen accuses the system of tampering
+-- with an untouched log — the worst failure a screen whose only job is proving
+-- integrity can have.
+--
+-- They did disagree. The trigger ordered by (created_at desc, id desc) and the
+-- client read ascending, while created_at is the transaction timestamp and so
+-- is identical for the three rows trigger_reveal writes in one statement,
+-- leaving a random v4 UUID as the tie-break. Fixed in 20261025000003 by
+-- chaining on seq.
+--
+-- Expected: 6, 2, 2, 4, 4, 6 — genesis_ok must equal genesis_rows and links_ok
+-- must equal link_rows.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('aaaa1111-1111-4111-8111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','chain-a@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('bbbb2222-2222-4222-8222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','chain-b@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+create temp table ti as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"bbbb2222-2222-4222-8222-222222222222","role":"authenticated"}';
+create temp table tp as select public.accept_pairing_invite((select invite_code from ti)) as pid;
+
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select 'bbbb2222-2222-4222-8222-222222222222', (select pid from tp), id, 5
+from (select id from public.desire_library_items order by slug limit 2) x;
+set local request.jwt.claims = '{"sub":"aaaa1111-1111-4111-8111-111111111111","role":"authenticated"}';
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select 'aaaa1111-1111-4111-8111-111111111111', (select pid from tp), id, 5
+from (select id from public.desire_library_items order by slug limit 2) x;
+
+create temp table r1 as select * from public.trigger_reveal((select pid from tp));
+set local request.jwt.claims = '{"sub":"bbbb2222-2222-4222-8222-222222222222","role":"authenticated"}';
+create temp table r2 as select * from public.trigger_reveal((select pid from tp));
+
+reset role;
+
+with ordered as (
+  select user_id, prev_hash, payload_hash, seq,
+         lag(payload_hash) over (partition by user_id order by seq) as expected_prev,
+         row_number()      over (partition by user_id order by seq) as rn
+  from public.consent_events
+)
+select count(*)                                                                as rows_checked,
+       count(*) filter (where rn = 1 and prev_hash is null)                    as genesis_ok,
+       count(*) filter (where rn = 1)                                          as genesis_rows,
+       count(*) filter (where rn > 1 and prev_hash is not distinct from expected_prev) as links_ok,
+       count(*) filter (where rn > 1)                                          as link_rows,
+       count(distinct seq)                                                     as distinct_seq
+from ordered;
+
+rollback;
