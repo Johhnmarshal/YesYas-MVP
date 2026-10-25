@@ -19,14 +19,39 @@ export function notifyOnboardingComplete(): void {
   onboardingListeners.forEach((listener) => listener());
 }
 
-async function fetchProfileOnboardingStatus(userId: string): Promise<boolean> {
+/**
+ * Three outcomes, and the third one matters.
+ *
+ * `null` means "could not find out" — a network failure, a transient Supabase
+ * error, an RLS hiccup. This used to return `false` for those, conflating not
+ * knowing with not onboarded, and the router acts on `false` by sending the
+ * user to /(app)/onboarding/tone.
+ *
+ * So a signed-in user with a flaky connection was walked through onboarding
+ * again, and step 3 writes tone_preference and content_tier_preference on
+ * completion — overwriting settings they had chosen deliberately. The content
+ * tier is a consent boundary in this app, so a dropped request could quietly
+ * move someone from Sensory to whatever they tapped in a hurry the second
+ * time.
+ *
+ * The router already treats `null` as "do nothing and wait", so the fix is to
+ * stop lying to it. A missing row genuinely is `false`: the
+ * on_auth_user_created trigger creates a profile at signup, so no row means no
+ * onboarding has happened.
+ */
+async function fetchProfileOnboardingStatus(
+  userId: string,
+): Promise<boolean | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('onboarding_complete')
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    return null;
+  }
+  if (!data) {
     return false;
   }
   return Boolean(data.onboarding_complete);
@@ -45,22 +70,30 @@ export default function RootLayout() {
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
     null,
   );
+  // null for onboardingComplete means two different things: not fetched yet,
+  // and fetched-but-failed. The loading gate below must keep waiting for the
+  // first and give up on the second, or a dropped profile request leaves the
+  // user on a spinner for ever.
+  const [onboardingCheckFailed, setOnboardingCheckFailed] = useState(false);
   const segments = useSegments();
 
   const syncSessionProfile = useCallback(async (uid: string | null) => {
     if (!uid) {
       setUserId(null);
       setOnboardingComplete(null);
+      setOnboardingCheckFailed(false);
       return;
     }
     setUserId(uid);
     const completed = await fetchProfileOnboardingStatus(uid);
+    setOnboardingCheckFailed(completed === null);
     setOnboardingComplete(completed);
   }, []);
 
   useEffect(() => {
     const listener: OnboardingListener = () => {
       setOnboardingComplete(true);
+      setOnboardingCheckFailed(false);
     };
     onboardingListeners.add(listener);
     return () => {
@@ -117,14 +150,18 @@ export default function RootLayout() {
         let cancelled = false;
         void fetchProfileOnboardingStatus(userId).then((latestStatus) => {
           if (cancelled) return;
-          if (latestStatus) {
+          setOnboardingCheckFailed(latestStatus === null);
+          if (latestStatus === true) {
             setOnboardingComplete(true);
             if (inAuthGroup) {
               router.replace('/(app)/home');
             }
-          } else {
+          } else if (latestStatus === false) {
             router.replace('/(app)/onboarding/tone' as Href);
           }
+          // null: the check itself failed. Leave the user where they are
+          // rather than send them through onboarding on the strength of a
+          // dropped request.
         });
         return () => {
           cancelled = true;
@@ -138,7 +175,10 @@ export default function RootLayout() {
     }
   }, [ready, userId, onboardingComplete, segments]);
 
-  if (!ready || (userId !== null && onboardingComplete === null)) {
+  if (
+    !ready ||
+    (userId !== null && onboardingComplete === null && !onboardingCheckFailed)
+  ) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.bg }]}>
         <ActivityIndicator color={colors.primary} />
