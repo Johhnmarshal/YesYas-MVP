@@ -20,6 +20,8 @@ import type {
   RevealMismatchItem,
 } from '@/lib/database.types';
 import {
+  REVEAL_READINESS_WINDOW_HOURS,
+  REVEAL_VISIBILITY_HOURS,
   isReadinessWindowClosed,
   isRevealContentExpired,
 } from '@/lib/reveal-state';
@@ -48,8 +50,10 @@ import {
 } from '@/lib/screen-capture';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
-const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+// Derived from the shared window lengths so the countdown labels cannot say
+// one thing while the predicates in lib/reveal-state.ts decide another.
+const SEVENTY_TWO_HOURS_MS = REVEAL_READINESS_WINDOW_HOURS * 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = REVEAL_VISIBILITY_HOURS * 60 * 60 * 1000;
 
 function formatRemainingDuration(targetMs: number, nowMs: number): string {
   const diffMs = targetMs - nowMs;
