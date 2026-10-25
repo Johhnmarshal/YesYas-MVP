@@ -17,7 +17,23 @@ type AuthMode = 'magic_link' | 'password';
 
 /**
  * Email sign-in screen supporting:
- * 1. Magic Link + 8-digit OTP code verification (`signInWithOtp` + `verifyOtp`)
+ * 1. Magic Link + emailed OTP code verification (`signInWithOtp` + `verifyOtp`).
+ *
+ *    The code input is length-agnostic on purpose (maxLength 10, only requires
+ *    non-empty), so whatever length the project is configured for will work.
+ *
+ *    IMPORTANT: this path only works if the Magic Link email actually carries
+ *    a code. Supabase's DEFAULT template does not — it contains only
+ *    {{ .ConfirmationURL }}, so the "enter the code from your email" box asks
+ *    for something that was never sent. Dashboard -> Authentication -> Email
+ *    Templates -> Magic Link needs {{ .Token }} added, e.g.
+ *
+ *      <p>Your sign-in code: <strong>{{ .Token }}</strong></p>
+ *      <p>Or follow this link: <a href="{{ .ConfirmationURL }}">Sign in</a></p>
+ *
+ *    Worth adding {{ .TokenHash }} in the same edit — see the note at
+ *    `flowType` in lib/supabase.ts for why that is what lets web go back to
+ *    PKCE without breaking cross-browser links.
  * 2. Instant Email + Passphrase sign-in (`signInWithPassword` / `signUp`), which
  *    bypasses Supabase's built-in 2-emails/hour SMTP rate limit for beta testers.
  * Renders inline error banners so web users never hit silent `Alert.alert` no-ops.
