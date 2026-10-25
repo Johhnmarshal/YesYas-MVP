@@ -286,6 +286,7 @@ not secrecy — which is exactly why this ruleset matters.
 |---|---|
 | Icons at valid dimensions | **Done** — 1024×1024 and 48×48, no alpha |
 | `expo-dev-client` | **Done** — `eas.json`'s `development` profile sets `developmentClient: true`, which EAS validates against the package. It was missing, so both development profiles would have failed; now pinned to `~6.0.20` per the SDK's own manifest |
+| Magic-link sign-in on native | **Not implemented.** See below — this is a hard blocker for a mobile beta, separate from the build |
 | EAS project id | **You** — `eas init` |
 | Apple Developer account | **You** — $99/yr, needed for anything past a simulator build |
 
@@ -295,6 +296,42 @@ eas login
 eas init
 eas build --profile preview --platform android   # internal APK, no Apple account needed
 ```
+
+### Magic-link sign-in does not work on native yet
+
+This is not a build problem and will not be fixed by `eas build`. Two separate
+gaps, both measured:
+
+1. **The redirect was not allowlisted.** `sign-in.tsx` sent
+   `emailRedirectTo: 'yesyasapp://'`. Probing the live allowlist with an
+   invalid token against `/auth/v1/verify` (no email sent, nothing created):
+
+   | `redirect_to` | Result |
+   |---|---|
+   | `yesyasapp://` | **blocked**, mangled to `yesyasapp:` |
+   | `yesyasapp:///` | allowed |
+   | `yesyasapp://sign-in` | allowed |
+
+   The live list carries `yesyasapp://**`, which requires something after the
+   slashes, so the bare scheme never matched. Fixed in the client — it now
+   sends `yesyasapp:///`.
+
+2. **Nothing reads the token out of a deep link.** `detectSessionInUrl` is
+   `Platform.OS === 'web'`, `consumeInitialUrlAuth()` returns immediately when
+   there is no `window.location`, and no file imports `Linking` or calls
+   `getInitialURL`. So even with the redirect fixed, opening the link would
+   launch the app and then do nothing with the token.
+
+Closing (2) means wiring `Linking.getInitialURL()` plus a `url` listener into
+the root layout and handing the URL to the parsing that `consumeInitialUrlAuth`
+already does for web — the logic exists, it is only gated on web. That is a
+small change but it cannot be exercised from this session: there is no
+simulator or device here, and shipping untested auth wiring for a path nobody
+can try is worse than naming the gap. It wants doing alongside the first
+`development` build, where it can actually be tested.
+
+The passphrase path is unaffected and works on native, so mobile testers are
+not locked out — they just cannot use email links.
 
 A `development` build is worth doing before any store submission. Four modules
 this app depends on are native-only — `expo-secure-store` (the device

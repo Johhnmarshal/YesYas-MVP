@@ -66,10 +66,26 @@ export default function SignInScreen() {
     setErrorMessage(null);
     setInfoMessage(null);
 
+    // Native sends 'yesyasapp:///' with the trailing slash, not 'yesyasapp://'.
+    // Measured against the hosted project's allowlist with an invalid-token
+    // probe against /auth/v1/verify (no email sent, nothing created):
+    //
+    //   yesyasapp://              blocked, and mangled to "yesyasapp:"
+    //   yesyasapp:///             allowed
+    //   yesyasapp://sign-in       allowed
+    //
+    // The live list carries "yesyasapp://**", which needs something after the
+    // slashes, so the bare scheme never matched and the link would not have
+    // come back to the app at all.
+    //
+    // Note this is necessary but not sufficient for mobile: nothing in the app
+    // reads a token out of a deep link yet. detectSessionInUrl is web-only,
+    // consumeInitialUrlAuth returns early when there is no window.location, and
+    // no file imports Linking. See docs/BETA_READINESS.md section 6.
     const emailRedirectTo =
       Platform.OS === 'web' && typeof window !== 'undefined'
         ? window.location.origin
-        : 'yesyasapp://';
+        : 'yesyasapp:///';
 
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmedEmail,
