@@ -248,7 +248,10 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
 | Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
 | Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
-| CI | Read nothing in `supabase/functions/` — now type-checked with Deno |
+| Stray navigation tab | `settings/privacy-model` was the one route under `(app)` not declared `href: null`, so the bottom bar carried a fifth tab reading "privacy-model" |
+| Pairing resume error | Pausing one pairing, pairing with someone else, then resuming the first showed `duplicate key value violates unique constraint "pairings_one_active_inviter"`. The invariant held; the wording was unusable |
+| PIN setup | Entered once, so a single mistyped digit armed a lock the user could not open. Now asked twice |
+| CI | Read nothing in `supabase/functions/` — now type-checked with Deno. It also now diffs the `(app)` route files against the Tabs layout, since a missing declaration silently adds a tab |
 
 ### Worth doing before mobile ships
 
