@@ -63,6 +63,9 @@ export default function JournalScreen() {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [isPaired, setIsPaired] = useState(false);
   const [checkingPairing, setCheckingPairing] = useState(true);
+  // Set when a reply came from the local fallback rather than the coach, so
+  // the stock phrasing is explained instead of reading as a poor answer.
+  const [coachNotice, setCoachNotice] = useState<string | null>(null);
 
   // Modals
   const [graduationModalVisible, setGraduationModalVisible] = useState(false);
@@ -155,6 +158,14 @@ export default function JournalScreen() {
       if (aiResponse.threadId) {
         setThreadId(aiResponse.threadId);
       }
+
+      setCoachNotice(
+        aiResponse.reason === 'rate_limited'
+          ? 'You have reached the coach limit for now. Your entry is saved — the reply below is a standard prompt.'
+          : aiResponse.reason === 'unavailable'
+            ? 'The coach could not be reached, so the reply below is a standard prompt. Your entry is saved.'
+            : null,
+      );
 
       // 3. Encrypt & persist AI reply on device
       const savedAiRow = await saveJournalEntry(
@@ -575,6 +586,22 @@ export default function JournalScreen() {
             )}
           </View>
         </ScrollView>
+
+        {coachNotice ? (
+          <View
+            style={[
+              styles.coachNotice,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <Text
+              style={[styles.coachNoticeText, { color: colors.secondary }]}
+              accessibilityLiveRegion="polite"
+            >
+              {coachNotice}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Input Bar at Bottom */}
         <View
@@ -1088,6 +1115,14 @@ const styles = StyleSheet.create({
   entryCardSnippet: {
     fontSize: TYPOGRAPHY.body.fontSize,
     lineHeight: 20,
+  },
+  coachNotice: {
+    borderTopWidth: 1,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  coachNoticeText: {
+    ...TYPOGRAPHY.caption,
   },
   inputContainer: {
     flexDirection: 'row',

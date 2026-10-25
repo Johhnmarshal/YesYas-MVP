@@ -22,10 +22,20 @@ export interface JournalEntryWithBody extends JournalEntryRow {
   bodyState: EncryptedFieldState;
 }
 
+/**
+ * Why a reply is the local canned one rather than the coach's.
+ *
+ * 'unavailable' covers the Edge Function erroring or ANTHROPIC_API_KEY not
+ * being set as a function secret — in that case the function deploys happily
+ * and returns stock text, so the symptom is identical from here.
+ */
+export type AiCoachReason = 'ok' | 'rate_limited' | 'unavailable';
+
 export interface AiCoachResponse {
   reply: string;
   threadId: string;
   isFallback?: boolean;
+  reason: AiCoachReason;
 }
 
 const REFLECTIVE_PROMPTS: string[] = [
@@ -43,7 +53,11 @@ function generateDeterministicThreadId(seed: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
-function buildLocalReflectiveReply(message: string, threadId?: string): AiCoachResponse {
+function buildLocalReflectiveReply(
+  message: string,
+  threadId?: string,
+  reason: AiCoachReason = 'unavailable',
+): AiCoachResponse {
   const hash = sha256Hex(message.trim().toLowerCase());
   const index = parseInt(hash.slice(0, 2), 16) % REFLECTIVE_PROMPTS.length;
   const validThreadId =
@@ -54,6 +68,7 @@ function buildLocalReflectiveReply(message: string, threadId?: string): AiCoachR
     reply: `Thank you for putting that into words in your private space. ${REFLECTIVE_PROMPTS[index]}`,
     threadId: validThreadId,
     isFallback: true,
+    reason,
   };
 }
 
@@ -186,7 +201,26 @@ export async function sendAiCoachMessage(
     });
 
     if (error || !data || typeof data.reply !== 'string') {
-      return buildLocalReflectiveReply(trimmed, sanitizedThreadId ?? undefined);
+      // The function returns 429 with RATE_LIMIT_SESSION_EXCEEDED or
+      // RATE_LIMIT_DAILY_EXCEEDED. supabase-js puts the body on error.context,
+      // so it has to be read back to tell "you've used today's messages" from
+      // "the coach is down" — they are very different things to be told.
+      let reason: AiCoachReason = 'unavailable';
+      const context = (error as { context?: Response } | null)?.context;
+      if (context) {
+        try {
+          const body = await context.clone().json();
+          if (
+            context.status === 429 ||
+            String(body?.code ?? '').startsWith('RATE_LIMIT')
+          ) {
+            reason = 'rate_limited';
+          }
+        } catch {
+          // Body unreadable; leave it as unavailable.
+        }
+      }
+      return buildLocalReflectiveReply(trimmed, sanitizedThreadId ?? undefined, reason);
     }
 
     const returnedThreadId =
@@ -198,6 +232,7 @@ export async function sendAiCoachMessage(
       reply: data.reply,
       threadId: returnedThreadId,
       isFallback: false,
+      reason: 'ok',
     };
   } catch {
     return buildLocalReflectiveReply(trimmed, threadId);
