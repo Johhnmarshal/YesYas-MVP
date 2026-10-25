@@ -602,38 +602,45 @@ select is(
 -- {"match_count": 0, "mismatch_count": 0} and then locked the reveal for a
 -- week. Measured on the hosted project before 20261025000004.
 --
--- Uses the previously unpaired users C and D so the A/B fixtures above, which
--- sit exactly at the 3-rating threshold, are untouched.
+-- Creates two fresh users rather than reusing C and D: assertion 29 calls
+-- delete_user_account() as user D, and pairings.invitee_user_id references
+-- public.profiles(id), so pairing D here fails the foreign key. The A/B
+-- fixtures are left alone because they sit exactly at the 3-rating threshold.
 reset role;
+insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
+values
+  ('55555555-5555-5555-5555-555555555555', 'e@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated'),
+  ('66666666-6666-6666-6666-666666666666', 'f@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
+
 do $$
 declare
   v_pair uuid := 'cccccccc-cccc-cccc-cccc-cccccccccccc';
   v_items uuid[];
 begin
   insert into public.pairings (id, inviter_user_id, invitee_user_id, status)
-  values (v_pair, '33333333-3333-3333-3333-333333333333',
-                  '44444444-4444-4444-4444-444444444444', 'active');
+  values (v_pair, '55555555-5555-5555-5555-555555555555',
+                  '66666666-6666-6666-6666-666666666666', 'active');
 
   select array_agg(id) into v_items
   from (select id from public.desire_library_items order by slug limit 3) x;
 
-  -- C rates two items: below the threshold.
+  -- E rates two items: below the threshold.
   insert into public.desires (user_id, pairing_id, library_item_id, rating)
   values
-    ('33333333-3333-3333-3333-333333333333', v_pair, v_items[1], 5),
-    ('33333333-3333-3333-3333-333333333333', v_pair, v_items[2], 5);
-  -- D is fully rated, so the failure below is attributable to C alone.
+    ('55555555-5555-5555-5555-555555555555', v_pair, v_items[1], 5),
+    ('55555555-5555-5555-5555-555555555555', v_pair, v_items[2], 5);
+  -- F is fully rated, so the failure below is attributable to E alone.
   insert into public.desires (user_id, pairing_id, library_item_id, rating)
   values
-    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[1], 5),
-    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[2], 5),
-    ('44444444-4444-4444-4444-444444444444', v_pair, v_items[3], 5);
+    ('66666666-6666-6666-6666-666666666666', v_pair, v_items[1], 5),
+    ('66666666-6666-6666-6666-666666666666', v_pair, v_items[2], 5),
+    ('66666666-6666-6666-6666-666666666666', v_pair, v_items[3], 5);
 end;
 $$;
 
 set local role authenticated;
-set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
-set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+set local request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+set local request.jwt.claims = '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}';
 
 -- 35. Two ratings is not enough, and it fails with P0002 rather than the
 --     cadence code so the client can tell the two apart.
@@ -656,14 +663,9 @@ reset role;
 do $$
 declare
   v_pair uuid := 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-  v_third uuid;
 begin
-  select id into v_third
-  from (select id from public.desire_library_items order by slug limit 3) x
-  order by id desc limit 1;
-
   insert into public.desires (user_id, pairing_id, library_item_id, rating)
-  select '33333333-3333-3333-3333-333333333333', v_pair, id, 5
+  select '55555555-5555-5555-5555-555555555555', v_pair, id, 5
   from (select id from public.desire_library_items order by slug limit 3) x
   on conflict (user_id, pairing_id, library_item_id) where pairing_id is not null
   do nothing;
@@ -671,8 +673,8 @@ end;
 $$;
 
 set local role authenticated;
-set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
-set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+set local request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+set local request.jwt.claims = '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}';
 
 -- 37. With the third rating in place the same call is allowed through.
 select lives_ok(
