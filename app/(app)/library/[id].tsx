@@ -199,7 +199,7 @@ export default function DesireLibraryItemDetailScreen() {
             pairingId,
             libraryItemId: item.id,
             note: textToSave,
-            defaultRating: currentRating ?? 3,
+            rating: currentRating,
           }),
           ...(pairingId !== null
             ? [
@@ -208,7 +208,7 @@ export default function DesireLibraryItemDetailScreen() {
                   pairingId: null,
                   libraryItemId: item.id,
                   note: textToSave,
-                  defaultRating: currentRating ?? 3,
+                  rating: currentRating,
                 }),
               ]
             : []),
@@ -615,14 +615,27 @@ export default function DesireLibraryItemDetailScreen() {
                 </Text>
               ) : null}
 
+              {/* See the note in components/LibraryItemCard.tsx: a note needs a
+                  rating to be storable, and the value previously invented for
+                  it was the Curiosity Bridge threshold. */}
               <TextInput
                 value={note}
                 onChangeText={handleNoteChange}
                 onBlur={flushPendingNote}
-                placeholder="Write a boundary, memory, or what would make this feel safe and exciting…"
+                editable={rating !== null}
+                placeholder={
+                  rating === null
+                    ? 'Give this a star rating first, then you can add a private note.'
+                    : 'Write a boundary, memory, or what would make this feel safe and exciting…'
+                }
                 placeholderTextColor={colors.muted}
                 multiline
-                accessibilityLabel={`Private encrypted note for ${item.title}`}
+                accessibilityLabel={
+                  rating === null
+                    ? `Private note for ${item.title} — rate this item first`
+                    : `Private encrypted note for ${item.title}`
+                }
+                accessibilityState={{ disabled: rating === null }}
                 style={[
                   styles.noteInput,
                   {

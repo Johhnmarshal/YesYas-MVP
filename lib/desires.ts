@@ -7,6 +7,7 @@ import {
   type EncryptedFieldState,
 } from './crypto';
 import type { Database, DesireTier } from './database.types';
+import { ratingForNewNote } from './desire-note-rules';
 import { TIER_ORDER, getAllowedTiers } from './library-filter';
 import { supabase } from './supabase';
 
@@ -208,18 +209,26 @@ export async function upsertDesireRating(
   return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
 }
 
+// The note/rating rule lives in lib/desire-note-rules.ts so it can be tested
+// without the Supabase client. Re-exported for callers that catch it.
+export { RatingRequiredError } from './desire-note-rules';
+
 export interface UpsertDesireNoteParams {
   userId: string;
   pairingId: string | null;
   libraryItemId: string;
   note: string;
-  defaultRating?: number;
+  /**
+   * The user's own rating, or null if they have not given one. Null is
+   * refused rather than defaulted — see {@link RatingRequiredError}.
+   */
+  rating: number | null;
 }
 
 export async function upsertDesireNote(
   params: UpsertDesireNoteParams,
 ): Promise<DesireWithNote | null> {
-  const { userId, pairingId, libraryItemId, note, defaultRating = 3 } = params;
+  const { userId, pairingId, libraryItemId, note, rating } = params;
   await requireUnlockedForNoteWrite(userId);
   const trimmed = note.trim();
   const encryptedNote = trimmed ? await encryptText(trimmed, userId) : null;
@@ -244,13 +253,17 @@ export async function upsertDesireNote(
     return null;
   }
 
+  // No row yet, so storing this note means creating one — and that needs a
+  // rating the user has actually given. Throws rather than guessing.
+  const ratingToStore = ratingForNewNote(rating);
+
   const { data, error } = await supabase
     .from('desires')
     .insert({
       user_id: userId,
       pairing_id: pairingId,
       library_item_id: libraryItemId,
-      rating: defaultRating,
+      rating: ratingToStore,
       note: encryptedNote,
     })
     .select('*')

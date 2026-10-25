@@ -109,7 +109,7 @@ export function LibraryItemCard({
             pairingId,
             libraryItemId: item.id,
             note: textToSave,
-            defaultRating: currentRating ?? 3,
+            rating: currentRating,
           }),
           ...(pairingId !== null
             ? [
@@ -118,7 +118,7 @@ export function LibraryItemCard({
                   pairingId: null,
                   libraryItemId: item.id,
                   note: textToSave,
-                  defaultRating: currentRating ?? 3,
+                  rating: currentRating,
                 }),
               ]
             : []),
@@ -365,14 +365,32 @@ export function LibraryItemCard({
               </Text>
             ) : null}
 
+            {/*
+              Gated on having a rating. A note cannot be stored without one —
+              desires.rating is NOT NULL — and the value this used to invent,
+              3, is exactly the Curiosity Bridge threshold, so a private note
+              on an unrated item put it into the couple's shared reveal.
+              Blocking the field is kinder than letting someone write a note
+              and then refusing to save it.
+            */}
             <TextInput
               value={note}
               onChangeText={handleNoteChange}
               onBlur={handleNoteBlur}
-              placeholder="Write a personal thought, boundary, or context…"
+              editable={rating !== null}
+              placeholder={
+                rating === null
+                  ? 'Give this a star rating first, then you can add a private note.'
+                  : 'Write a personal thought, boundary, or context…'
+              }
               placeholderTextColor={colors.muted}
               multiline
-              accessibilityLabel={`Private encrypted note for ${item.title}`}
+              accessibilityLabel={
+                rating === null
+                  ? `Private note for ${item.title} — rate this item first`
+                  : `Private encrypted note for ${item.title}`
+              }
+              accessibilityState={{ disabled: rating === null }}
               style={[
                 styles.noteInput,
                 {

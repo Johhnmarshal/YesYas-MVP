@@ -17,6 +17,9 @@ import { isReadinessWindowClosed, isRevealContentExpired } from '../lib/reveal-s
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { describePairingError } from '../lib/pairing-errors.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { RatingRequiredError, ratingForNewNote } from '../lib/desire-note-rules.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -685,6 +688,52 @@ async function main() {
     multiKeyRow.payload_hash,
     'the hash must not depend on the order keys appear in the JS object',
   );
+
+
+  // 15. A note never invents a rating.
+  //
+  //     desires.rating is NOT NULL with CHECK (1..5), so a note cannot be
+  //     stored without one. The client used to default it to 3, which is
+  //     exactly trigger_reveal()'s Curiosity Bridge threshold:
+  //
+  //       veto    rating > 2            3 survives
+  //       match   both >= 4             3 is not a match
+  //       bridge  (a >= 4 and b = 3) or (a = 3 and b >= 4)
+  //
+  //     So a private note on an unrated item recorded a 3, and if the partner
+  //     rated it 4 or 5 the item surfaced in the couple's shared Curiosity
+  //     Bridge as something one of them was "open to exploring". Verified
+  //     against the hosted project: the note-only item came back inside
+  //     reveals.mismatches.
+  assert.throws(
+    () => ratingForNewNote(null),
+    (err: unknown) => err instanceof RatingRequiredError,
+    'a new note with no rating must be refused, not defaulted',
+  );
+  // Specifically: it must never silently become the bridge value.
+  assert.notEqual(
+    (() => { try { return ratingForNewNote(null); } catch { return 'threw'; } })(),
+    3,
+    'the refusal must not fall back to 3, the Curiosity Bridge threshold',
+  );
+
+  for (const valid of [1, 2, 3, 4, 5]) {
+    assert.equal(
+      ratingForNewNote(valid),
+      valid,
+      `a rating the user actually gave (${valid}) passes through unchanged`,
+    );
+  }
+
+  // Out-of-range values are named here rather than surfacing as a Postgres
+  // constraint violation.
+  for (const bad of [0, 6, -1, 2.5]) {
+    assert.throws(
+      () => ratingForNewNote(bad),
+      (err: unknown) => err instanceof RatingRequiredError,
+      `${bad} is outside desires_rating_check and must be refused`,
+    );
+  }
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
