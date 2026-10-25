@@ -626,3 +626,85 @@ select
                        '8b8b8b8b-2222-4222-8222-888888888888')) as solo;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Tenth check: ending a pairing revokes the therapist export.
+--
+-- The clinical summary is the most consequential thing this app emits, and two
+-- separate pieces of code decide whether it may be produced:
+-- request_therapist_export() records consent, and the therapist-export Edge
+-- Function, running with the service-role key, generates the document.
+--
+-- Only the first of them checked pairing status. The Edge Function took
+-- pairingId from the request body and gated on membership plus dual consent —
+-- and neither lapses when a pairing ends. The pairings row keeps both user ids
+-- for ever, so an ex-partner stays a "member", and consent granted while the
+-- relationship was live stays valid for the rest of the 7-day window. For up
+-- to a week after a breakup, either party could POST the old pairing id and
+-- get the summary.
+--
+-- This check covers the SQL half, which is the rule the function now mirrors:
+-- consent cannot be granted or re-granted once a pairing has ended. It cannot
+-- reach the Edge Function itself, so if that ever regresses this is the
+-- statement of what it is supposed to agree with.
+--
+-- Expected: granted_while_active t, refused_after_end t.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('33cc33cc-3333-4333-8333-33cc33cc33cc','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e1@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('44dd44dd-4444-4444-8444-44dd44dd44dd','00000000-0000-0000-0000-000000000000','authenticated','authenticated','e2@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+create temp table export_result (step text, passed boolean, detail text);
+grant insert, select on export_result to authenticated;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"33cc33cc-3333-4333-8333-33cc33cc33cc","role":"authenticated"}';
+create temp table ei as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"44dd44dd-4444-4444-8444-44dd44dd44dd","role":"authenticated"}';
+create temp table ep as select public.accept_pairing_invite((select invite_code from ei)) as pid;
+
+do $$
+declare v_pid uuid;
+begin
+  select pid into v_pid from ep;
+
+  -- Both consent while the pairing is active.
+  perform set_config('request.jwt.claims','{"sub":"33cc33cc-3333-4333-8333-33cc33cc33cc","role":"authenticated"}', true);
+  begin
+    perform public.request_therapist_export(v_pid);
+    perform set_config('request.jwt.claims','{"sub":"44dd44dd-4444-4444-8444-44dd44dd44dd","role":"authenticated"}', true);
+    perform public.request_therapist_export(v_pid);
+    insert into export_result values ('granted_while_active', true, null);
+  exception when others then
+    insert into export_result values ('granted_while_active', false, sqlstate || ' / ' || sqlerrm);
+  end;
+
+  -- One partner ends it.
+  perform set_config('request.jwt.claims','{"sub":"33cc33cc-3333-4333-8333-33cc33cc33cc","role":"authenticated"}', true);
+  perform public.update_pairing_status(v_pid, 'ended'::public.pairing_status);
+
+  -- Consent must no longer be grantable.
+  begin
+    perform public.request_therapist_export(v_pid);
+    insert into export_result values ('refused_after_end', false,
+      'ALLOWED - an ended pairing still accepts export consent');
+  exception
+    when sqlstate '42501' then
+      insert into export_result values ('refused_after_end', true, sqlerrm);
+    when others then
+      insert into export_result values ('refused_after_end', false,
+        'wrong error: ' || sqlstate || ' / ' || sqlerrm);
+  end;
+end $$;
+
+reset role;
+
+select
+  (select passed from export_result where step = 'granted_while_active') as granted_while_active,
+  (select passed from export_result where step = 'refused_after_end')    as refused_after_end,
+  (select detail from export_result where step = 'refused_after_end')    as refusal_detail;
+
+rollback;

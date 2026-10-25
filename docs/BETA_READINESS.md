@@ -131,7 +131,7 @@ needs the SMTP credential above.
 
 ---
 
-## 3. Redeploy `ai-coach`
+## 3. Redeploy both Edge Functions
 
 The deployed copy is the version that pinned `claude-3-5-sonnet-20241022` and
 swallowed every non-ok response. Today's fix is in `main` but **not deployed** —
@@ -141,7 +141,15 @@ is yours:
 
 ```bash
 supabase functions deploy ai-coach --project-ref flauqfikspnywcvtevnq
+supabase functions deploy therapist-export --project-ref flauqfikspnywcvtevnq
 ```
+
+`therapist-export` matters as much as the coach. It took `pairingId` from the
+request body and gated on membership plus dual consent, neither of which lapses
+when a pairing ends — the row keeps both user ids for ever, and consent granted
+while the relationship was live stays valid for the rest of the 7-day window.
+So for up to a week after a breakup either party could POST the old pairing id
+and receive the clinical summary. The deployed copy still can.
 
 It also needs a provider key, or it serves canned reflective prompts for ever:
 
@@ -262,6 +270,7 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
 | Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
 | Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
+| Clinical export survived a breakup | `therapist-export` never checked pairing status, though its own comment claimed it did. Membership and dual consent both outlive an ended pairing, so for up to 7 days after a breakup either party could POST the old pairing id and get the summary |
 | Private note became a shared signal | Writing a note on an unrated item stored `rating: 3` — exactly `trigger_reveal`'s Curiosity Bridge threshold — so if the partner rated it 4 or 5, the item surfaced in the couple's shared reveal as something one of them was "open to exploring". Verified end to end: a note-only item came back inside `reveals.mismatches` |
 | Consent audit screen | **The worst one.** `consent_events_chain()` hashes `payload::text`, and jsonb sorts object keys by byte length then bytewise; `lib/consent.ts` sorted alphabetically. Both `reveal_triggered` payloads order differently under the two rules, so `verifyConsentChain` returned `valid: false` and the screen rendered "Audit Chain Integrity Failure" over an intact log — for every couple that had triggered a reveal |
 | Library slug | One of 180 slugs had a capital letter. Harmless alone, but `seed.sql` ends `on conflict (slug) do nothing`, so lowercasing it in the seed alone would insert a second near-identical item on the next reseed |
@@ -315,12 +324,13 @@ there.
 
 ## 8. Smoke test
 
-`scripts/production-smoke-test.sql` runs nine checks, each inside its own
+`scripts/production-smoke-test.sql` runs ten checks, each inside its own
 `begin; … rollback;`: the whole couple journey, the 24-hour expiry, new-user
 onboarding, GDPR erasure, consent-chain ordering, the double-blind payload,
 whether the reveal guard is actually deployed here, that one partner cannot
-unlock the therapist export alone, and that a new pairing does not inherit a
-previous pairing's ratings.
+unlock the therapist export alone, that a new pairing does not inherit a
+previous pairing's ratings, and that ending a pairing revokes the therapist
+export.
 
 Checks 7, 8 and 9 are the ones that earn their keep against production rather
 than against CI. Check 7 reports `refuses_at_two = f` on a database that has
