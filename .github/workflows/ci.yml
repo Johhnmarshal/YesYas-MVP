@@ -42,6 +42,36 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
 
+  edge-functions:
+    name: Edge Function Typecheck (Deno)
+    runs-on: ubuntu-latest
+
+    # supabase/functions/ is Deno, not Node: `npx tsc --noEmit` never looks at
+    # it and `expo lint` excludes it, so until now nothing in CI read these
+    # files at all. They are the only server-side code that talks to a payment
+    # or model provider, and they are deployed straight to production by hand.
+    # A typo here used to be discoverable only by a user hitting the endpoint.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Typecheck every edge function entrypoint
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          entrypoints=(supabase/functions/*/index.ts)
+          if [ ${#entrypoints[@]} -eq 0 ]; then
+            echo "No edge functions found — nothing to check."
+            exit 0
+          fi
+          printf 'Checking %s\n' "${entrypoints[@]}"
+          deno check --allow-import "${entrypoints[@]}"
+
   db-test:
     name: Supabase Migrations & pgTAP Suite
     runs-on: ubuntu-latest

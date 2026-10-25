@@ -25,6 +25,12 @@ async function sha256Hex(text: string): Promise<string> {
   return hashArr.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Was pinned to claude-3-5-sonnet-20241022, two generations old. A retired
+// model id does not fail loudly here — the non-ok branch used to be silent, so
+// the coach would just serve canned prompts forever.
+const ANTHROPIC_MODEL = 'claude-opus-5-5';
+const OPENAI_MODEL = 'gpt-4o-mini';
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -166,7 +172,6 @@ Deno.serve(async (req: Request) => {
 
     if (anthropicKey) {
       try {
-        modelUsed = 'claude-3-5-sonnet-20241022';
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -175,8 +180,13 @@ Deno.serve(async (req: Request) => {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 300,
+            model: ANTHROPIC_MODEL,
+            // Thinking is always on and billed against max_tokens on current
+            // models, so the old 300 ceiling truncated the reply before it
+            // reached a single visible word. Effort 'low' keeps a short
+            // reflective note short without starving it.
+            max_tokens: 4096,
+            output_config: { effort: 'low' },
             system: AI_COACH_SYSTEM_PROMPT,
             messages: [{ role: 'user', content: message }],
           }),
@@ -184,18 +194,55 @@ Deno.serve(async (req: Request) => {
 
         if (res.ok) {
           const aiData = await res.json();
-          reply =
-            aiData.content?.[0]?.text?.trim() ||
-            'Thank you for sharing your thoughts.';
-          promptTokens = aiData.usage?.input_tokens ?? promptTokens;
-          completionTokens = aiData.usage?.output_tokens ?? 0;
+          // Safety classifiers can decline (HTTP 200 + stop_reason 'refusal').
+          // Journals in this app are explicitly intimate, so this is a live
+          // path, not a theoretical one: fall through to the built-in prompt
+          // rather than returning an empty bubble.
+          if (aiData.stop_reason === 'refusal') {
+            console.warn(
+              'Anthropic declined the request:',
+              aiData.stop_details?.category ?? 'unknown',
+            );
+          } else {
+            // content[] is a mixed list of thinking and text blocks. Indexing
+            // [0] reads the thinking block, whose .text is undefined.
+            const textBlock = Array.isArray(aiData.content)
+              ? aiData.content.find(
+                  (b: { type?: string }) => b?.type === 'text',
+                )
+              : undefined;
+            const text = textBlock?.text?.trim();
+            if (text) {
+              reply = text;
+              modelUsed = ANTHROPIC_MODEL;
+              promptTokens = aiData.usage?.input_tokens ?? promptTokens;
+              completionTokens = aiData.usage?.output_tokens ?? 0;
+            } else {
+              console.warn(
+                'Anthropic returned no text block; stop_reason:',
+                aiData.stop_reason,
+              );
+            }
+          }
+        } else {
+          // Without this, a revoked key or a 429 was indistinguishable from
+          // the feature simply being switched off: callers got a canned
+          // reflective prompt and the logs said nothing at all.
+          console.error(
+            `Anthropic API returned ${res.status}:`,
+            (await res.text()).slice(0, 500),
+          );
         }
       } catch (err) {
         console.warn('Anthropic API call failed, falling back:', err);
       }
-    } else if (openAiKey) {
+    }
+
+    // A real fallback. This was `else if (openAiKey)`, which meant OpenAI was
+    // only ever reached when ANTHROPIC_API_KEY was absent — so a present but
+    // broken Anthropic key disabled the configured backup provider too.
+    if (!reply && openAiKey) {
       try {
-        modelUsed = 'gpt-4o-mini';
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -214,11 +261,18 @@ Deno.serve(async (req: Request) => {
 
         if (res.ok) {
           const aiData = await res.json();
-          reply =
-            aiData.choices?.[0]?.message?.content?.trim() ||
-            'Thank you for sharing your reflection.';
-          promptTokens = aiData.usage?.prompt_tokens ?? promptTokens;
-          completionTokens = aiData.usage?.completion_tokens ?? 0;
+          const text = aiData.choices?.[0]?.message?.content?.trim();
+          if (text) {
+            reply = text;
+            modelUsed = OPENAI_MODEL;
+            promptTokens = aiData.usage?.prompt_tokens ?? promptTokens;
+            completionTokens = aiData.usage?.completion_tokens ?? 0;
+          }
+        } else {
+          console.error(
+            `OpenAI API returned ${res.status}:`,
+            (await res.text()).slice(0, 500),
+          );
         }
       } catch (err) {
         console.warn('OpenAI API call failed, falling back:', err);
