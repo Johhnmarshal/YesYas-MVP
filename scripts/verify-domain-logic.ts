@@ -4,7 +4,7 @@ import type { ConsentEventRow } from '../lib/consent';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { computeConsentPayloadHash, verifyConsentChain } from '../lib/consent.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
-import { MasterKeyUnavailableError, adoptMasterKey, bytesToHex, clearMasterKey, decryptForUser, decryptText, encryptForUser, encryptText, exportMasterKey, generateRecoveryCode, hasMasterKey, hashUserIdForLogging, isValidRecoveryCode, normalizeRecoveryCode, provisionMasterKey, sha256Hex, unwrapMasterKey, wrapMasterKey } from '../lib/crypto.ts';
+import { hashPin, verifyPin, MasterKeyUnavailableError, adoptMasterKey, bytesToHex, clearMasterKey, decryptForUser, decryptText, encryptForUser, encryptText, exportMasterKey, generateRecoveryCode, hasMasterKey, hashUserIdForLogging, isValidRecoveryCode, normalizeRecoveryCode, provisionMasterKey, sha256Hex, unwrapMasterKey, wrapMasterKey } from '../lib/crypto.ts';
 
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
@@ -161,6 +161,24 @@ async function main() {
     'note written before the reinstall',
     'Recovery code must restore access to content written before the wipe',
   );
+
+  // 4d. Device PIN is stored as a verifier, never as the PIN
+  const pin = '481620';
+  const pinVerifier = await hashPin(pin);
+  assert.ok(pinVerifier.startsWith('pin:v1:'), 'PIN verifier must use the pin:v1: envelope');
+  assert.ok(!pinVerifier.includes(pin), 'PIN verifier must not contain the PIN itself');
+  assert.ok(await verifyPin(pin, pinVerifier), 'Correct PIN must verify');
+  assert.ok(!(await verifyPin('481621', pinVerifier)), 'Wrong PIN must not verify');
+
+  // Same PIN, fresh salt each time — two users with the same PIN must not
+  // share a verifier.
+  assert.notEqual(await hashPin(pin), pinVerifier, 'Each hashPin call must use a new salt');
+
+  // A corrupted verifier fails the unlock rather than throwing, so the lock
+  // screen cannot be crashed into an open state.
+  for (const bad of ['', 'garbage', 'pin:v1:xx:50000:yy', 'pin:v2:aa:50000:bb']) {
+    assert.equal(await verifyPin(pin, bad), false, `Malformed verifier must return false: ${bad}`);
+  }
 
   // 5. Consent hash chain verification
   const event1Base = {

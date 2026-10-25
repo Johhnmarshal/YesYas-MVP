@@ -19,43 +19,127 @@ import {
   hapticSelection,
   hapticSuccess,
 } from '@/lib/haptics';
+import { hashPin, verifyPin } from '@/lib/crypto';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export const LOCK_ENABLED_KEY = '@yesyas/lock_enabled';
+/** Pre-hashing location. Read once so an existing PIN can be migrated, then deleted. */
 export const PIN_CODE_KEY = '@yesyas/pin_code';
+/** SecureStore keys allow alphanumerics, ".", "-" and "_" only. */
+const PIN_VERIFIER_KEY = 'yesyas_pin_verifier_v1';
 
 export interface BiometricSettings {
   enabled: boolean;
   hasPin: boolean;
-  pin: string | null;
 }
 
-/**
- * Reads device biometric/PIN lock preferences from AsyncStorage.
- */
-export async function getBiometricSettings(): Promise<BiometricSettings> {
+// expo-secure-store is unavailable on web, where this degrades to AsyncStorage.
+// The verifier is a PBKDF2 hash either way, so the stored value is never the PIN.
+async function loadSecureStore() {
+  if (Platform.OS === 'web') return null;
   try {
-    const [enabledRaw, pinRaw] = await Promise.all([
-      AsyncStorage.getItem(LOCK_ENABLED_KEY),
-      AsyncStorage.getItem(PIN_CODE_KEY),
-    ]);
-    const validPin = pinRaw && /^\d{6}$/.test(pinRaw) ? pinRaw : null;
-    return {
-      enabled: enabledRaw === 'true',
-      hasPin: validPin !== null,
-      pin: validPin,
-    };
+    const mod = await import('expo-secure-store');
+    if (!(await mod.isAvailableAsync())) return null;
+    return mod;
   } catch {
-    return {
-      enabled: false,
-      hasPin: false,
-      pin: null,
-    };
+    return null;
   }
 }
 
+async function readVerifier(): Promise<string | null> {
+  const secure = await loadSecureStore();
+  if (secure) {
+    try {
+      const v = await secure.getItemAsync(PIN_VERIFIER_KEY);
+      if (v) return v;
+    } catch {
+      // Fall through to the migration path.
+    }
+  }
+  try {
+    const webVerifier = await AsyncStorage.getItem(PIN_VERIFIER_KEY);
+    if (webVerifier) return webVerifier;
+  } catch {
+    // Ignore.
+  }
+
+  // Migration: a 6-digit PIN was previously stored in cleartext. Convert it to
+  // a verifier and remove the cleartext copy, so an existing lock keeps working
+  // without the user re-entering anything.
+  try {
+    const legacy = await AsyncStorage.getItem(PIN_CODE_KEY);
+    if (legacy && /^\d{6}$/.test(legacy)) {
+      const verifier = await hashPin(legacy);
+      await writeVerifier(verifier);
+      await AsyncStorage.removeItem(PIN_CODE_KEY);
+      return verifier;
+    }
+  } catch {
+    // Ignore.
+  }
+  return null;
+}
+
+async function writeVerifier(verifier: string): Promise<void> {
+  const secure = await loadSecureStore();
+  if (secure) {
+    try {
+      await secure.setItemAsync(PIN_VERIFIER_KEY, verifier, {
+        keychainAccessible: secure.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
+      return;
+    } catch {
+      // Fall through.
+    }
+  }
+  await AsyncStorage.setItem(PIN_VERIFIER_KEY, verifier);
+}
+
+async function clearVerifier(): Promise<void> {
+  const secure = await loadSecureStore();
+  if (secure) {
+    try {
+      await secure.deleteItemAsync(PIN_VERIFIER_KEY);
+    } catch {
+      // Best effort.
+    }
+  }
+  try {
+    await AsyncStorage.removeItem(PIN_VERIFIER_KEY);
+    await AsyncStorage.removeItem(PIN_CODE_KEY);
+  } catch {
+    // Best effort.
+  }
+}
+
+/** Reads lock preferences. Never returns the PIN — it is not stored. */
+export async function getBiometricSettings(): Promise<BiometricSettings> {
+  try {
+    const [enabledRaw, verifier] = await Promise.all([
+      AsyncStorage.getItem(LOCK_ENABLED_KEY),
+      readVerifier(),
+    ]);
+    return {
+      enabled: enabledRaw === 'true',
+      hasPin: verifier !== null,
+    };
+  } catch {
+    return { enabled: false, hasPin: false };
+  }
+}
+
+/** Checks an entered PIN against the stored verifier, in constant time. */
+export async function checkPin(pin: string): Promise<boolean> {
+  const verifier = await readVerifier();
+  if (!verifier) return false;
+  return verifyPin(pin, verifier);
+}
+
 /**
- * Persists device biometric/PIN lock preferences in AsyncStorage.
+ * Persists lock preferences. The PIN is hashed with PBKDF2 and the verifier is
+ * kept in the device keychain; the PIN itself is never written anywhere. It
+ * used to be stored as cleartext in AsyncStorage, which is a plain file on
+ * native and localStorage on web.
  */
 export async function saveBiometricSettings(
   enabled: boolean,
@@ -64,7 +148,7 @@ export async function saveBiometricSettings(
   if (!enabled) {
     await AsyncStorage.setItem(LOCK_ENABLED_KEY, 'false');
     if (pin === '') {
-      await AsyncStorage.removeItem(PIN_CODE_KEY);
+      await clearVerifier();
     }
     return;
   }
@@ -74,12 +158,9 @@ export async function saveBiometricSettings(
     if (!/^\d{6}$/.test(trimmed)) {
       throw new Error('PIN must be a 6-digit number.');
     }
-    await AsyncStorage.setItem(PIN_CODE_KEY, trimmed);
-  } else {
-    const existingPin = await AsyncStorage.getItem(PIN_CODE_KEY);
-    if (!existingPin || !/^\d{6}$/.test(existingPin)) {
-      throw new Error('Cannot enable lock without configuring a PIN.');
-    }
+    await writeVerifier(await hashPin(trimmed));
+  } else if ((await readVerifier()) === null) {
+    throw new Error('Cannot enable lock without configuring a PIN.');
   }
 
   await AsyncStorage.setItem(LOCK_ENABLED_KEY, 'true');
@@ -107,8 +188,8 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
   const colors = useThemeColors();
   const [initializing, setInitializing] = useState(true);
   const [locked, setLocked] = useState(false);
-  const [storedPin, setStoredPin] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState('');
+  const [verifyingPin, setVerifyingPin] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
@@ -161,7 +242,6 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
     }
 
     const settings = await getBiometricSettings();
-    setStoredPin(settings.pin);
 
     if (settings.enabled) {
       setLocked(true);
@@ -198,6 +278,10 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
 
   const handleKeyPress = useCallback(
     (key: string) => {
+      // The verifier is a PBKDF2 derivation and takes a moment on a phone.
+      // Swallow presses while it runs, so a sixth digit typed twice cannot
+      // start a second check or leave a stray digit in the next attempt.
+      if (verifyingPin) return;
       void hapticSelection();
       if (key === 'clear') {
         setPinInput('');
@@ -215,21 +299,28 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
         if (prev.length >= 6) return prev;
         const next = prev + key;
         if (next.length === 6) {
-          if (storedPin && next === storedPin) {
-            void hapticSuccess();
-            setLocked(false);
-            setErrorMessage(null);
-            return '';
-          }
-          void hapticError();
-          setErrorMessage('Incorrect PIN. Please try again.');
+          // checkPin is a PBKDF2 derivation, so it cannot run inside the state
+          // updater. Clear the field immediately and verify alongside.
+          void (async () => {
+            setVerifyingPin(true);
+            const ok = await checkPin(next);
+            setVerifyingPin(false);
+            if (ok) {
+              void hapticSuccess();
+              setLocked(false);
+              setErrorMessage(null);
+              return;
+            }
+            void hapticError();
+            setErrorMessage('Incorrect PIN. Please try again.');
+          })();
           return '';
         }
         setErrorMessage(null);
         return next;
       });
     },
-    [storedPin],
+    [verifyingPin],
   );
 
   if (initializing) {

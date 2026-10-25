@@ -774,3 +774,55 @@ export async function unwrapMasterKey(
   }
   return masterKey;
 }
+
+// ---------------------------------------------------------------------------
+// Device PIN
+// ---------------------------------------------------------------------------
+
+/**
+ * Iterations for the PIN KDF. Lower than RECOVERY_KDF_ITERATIONS on purpose:
+ * the PIN is checked every time the app comes back to the foreground, so a
+ * half-second derivation would be felt constantly, where the recovery code is
+ * entered once per device.
+ *
+ * The honest position on a 6-digit PIN is that no KDF saves it — the keyspace
+ * is a million, so an attacker holding the stored value can exhaust it given
+ * time whatever the cost factor. The real protection is that the value lives
+ * in the OS keychain rather than a readable file. This raises the price of an
+ * offline attack if that ever leaks, which is worth having and is not the
+ * primary defence.
+ */
+export const PIN_KDF_ITERATIONS = 50_000;
+
+/**
+ * Derives a verifier for a device PIN. Returns `pin:v1:<saltHex>:<iterations>:<hashHex>`,
+ * which is what gets stored — never the PIN itself.
+ */
+export async function hashPin(pin: string): Promise<string> {
+  const salt = randomBytes(16);
+  const hash = await pbkdf2Sha256(utf8ToBytes(pin), salt, PIN_KDF_ITERATIONS, 32);
+  return `pin:v1:${bytesToHex(salt)}:${PIN_KDF_ITERATIONS}:${bytesToHex(hash)}`;
+}
+
+/**
+ * Checks a PIN against a stored verifier, in constant time.
+ * Returns false rather than throwing on a malformed verifier, so a corrupted
+ * value fails the unlock instead of crashing the gate.
+ */
+export async function verifyPin(pin: string, stored: string): Promise<boolean> {
+  const parts = stored.split(':');
+  if (parts.length !== 5 || parts[0] !== 'pin' || parts[1] !== 'v1') {
+    return false;
+  }
+  const [, , saltHex, iterationsRaw, expectedHex] = parts;
+  const iterations = Number.parseInt(iterationsRaw, 10);
+  if (!Number.isFinite(iterations) || iterations < 1000) {
+    return false;
+  }
+  try {
+    const actual = await pbkdf2Sha256(utf8ToBytes(pin), hexToBytes(saltHex), iterations, 32);
+    return constantTimeEqual(actual, hexToBytes(expectedHex));
+  } catch {
+    return false;
+  }
+}

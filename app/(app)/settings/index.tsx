@@ -60,7 +60,6 @@ export default function SettingsScreen() {
     useState<BiometricSettings>({
       enabled: false,
       hasPin: false,
-      pin: null,
     });
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinInput, setPinInput] = useState('');
@@ -218,11 +217,7 @@ export default function SettingsScreen() {
     }
     try {
       await saveBiometricSettings(true, trimmed);
-      setBiometricSettings({
-        enabled: true,
-        hasPin: true,
-        pin: trimmed,
-      });
+      setBiometricSettings({ enabled: true, hasPin: true });
       setPinModalVisible(false);
       setPinInput('');
       setPinError(null);
