@@ -84,8 +84,11 @@ export async function fetchConsentEvents(userId: string): Promise<ConsentEventRo
     .from('consent_events')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true });
+    // Must match the order consent_events_chain() builds the chain in. seq is
+    // monotonic insertion order; created_at is the transaction timestamp and
+    // ties for every row a single statement writes, which made the verifier
+    // report valid logs as tampered.
+    .order('seq', { ascending: true });
 
   if (error) {
     throw error;

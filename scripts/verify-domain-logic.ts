@@ -191,6 +191,7 @@ async function main() {
     created_at: '2026-06-01T10:00:00.000Z',
   };
   const event1: ConsentEventRow = {
+    seq: 1,
     ...event1Base,
     payload_hash: computeConsentPayloadHash(event1Base),
   };
@@ -205,6 +206,7 @@ async function main() {
     created_at: '2026-06-01T11:00:00.000Z',
   };
   const event2: ConsentEventRow = {
+    seq: 2,
     ...event2Base,
     payload_hash: computeConsentPayloadHash(event2Base),
   };

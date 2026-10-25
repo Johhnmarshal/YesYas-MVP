@@ -266,6 +266,7 @@ export interface Database {
       };
       consent_events: {
         Row: {
+          seq: number;
           id: string;
           user_id: string;
           pairing_id: string | null;
@@ -276,6 +277,7 @@ export interface Database {
           created_at: string;
         };
         Insert: {
+          seq?: number;
           id?: string;
           user_id: string;
           pairing_id?: string | null;

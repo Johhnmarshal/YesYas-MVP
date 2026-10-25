@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(33);
+select plan(34);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -559,6 +559,39 @@ select throws_ok(
   '28000',
   null,
   'expire_old_reveals rejects a caller with no authenticated identity'
+);
+
+-- ---------- 34. The consent chain links correctly in the order it is read ----------
+-- The chain is built by consent_events_chain() and read back by
+-- lib/consent.ts, which compares events[i].prev_hash to events[i-1].payload_hash
+-- positionally. If those two orders ever disagree, the audit screen accuses
+-- the system of tampering with an untouched log.
+--
+-- They did disagree: the trigger ordered by (created_at desc, id desc) while
+-- the client read (created_at asc, id asc), and created_at is the transaction
+-- timestamp — constant for the three rows trigger_reveal writes in one
+-- statement, leaving a random v4 UUID as the only tie-break. Fixed in
+-- 20261025000003 by chaining on seq, a monotonic insertion order.
+--
+-- This asserts the property rather than the implementation: every non-genesis
+-- row's prev_hash must equal the payload_hash of the row before it in read
+-- order, and each user must have exactly one genesis row.
+reset role;
+select is(
+  (
+    with ordered as (
+      select user_id, prev_hash, payload_hash,
+             lag(payload_hash) over (partition by user_id order by seq) as expected_prev,
+             row_number() over (partition by user_id order by seq) as rn
+      from public.consent_events
+    )
+    select
+      count(*) filter (where rn = 1 and prev_hash is not null) = 0
+      and count(*) filter (where rn > 1 and prev_hash is distinct from expected_prev) = 0
+    from ordered
+  ),
+  true,
+  'consent chain links correctly when read in seq order, including rows written by one statement'
 );
 
 select * from finish();
