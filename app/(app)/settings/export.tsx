@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -18,6 +17,7 @@ import {
   getActiveOrPendingPairing,
 } from '@/lib/pairing';
 import { showMessage } from '@/lib/alert';
+import { shareText } from '@/lib/share';
 import { fetchPairReveals, requestTherapistExport } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -266,13 +266,20 @@ export default function TherapistExportScreen() {
 
   async function handleShareReport() {
     if (!reportText) return;
-    try {
-      await Share.share({
-        message: reportText,
-        title: 'YesYas Couples Clinical Summary',
-      });
-    } catch {
-      // User cancelled or share unavailable
+    const outcome = await shareText({
+      message: reportText,
+      title: 'YesYas Couples Clinical Summary',
+    });
+    if (outcome === 'copied') {
+      showMessage(
+        'Copied',
+        'The clinical summary is on your clipboard — paste it wherever you need it.',
+      );
+    } else if (outcome === 'unavailable') {
+      showMessage(
+        'Could not share',
+        'This browser cannot share or copy automatically. Use Print / Save as PDF, or select the summary text and copy it manually.',
+      );
     }
   }
 

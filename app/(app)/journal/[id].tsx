@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -22,6 +21,7 @@ import {
   useScreenCaptureProtection,
 } from '@/lib/screen-capture';
 import { confirm, showMessage } from '@/lib/alert';
+import { shareText } from '@/lib/share';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -99,13 +99,17 @@ export default function JournalDetailScreen() {
 
   async function handleShare() {
     if (!entry || entry.bodyState !== 'ok') return;
-    try {
-      await Share.share({
-        message: entry.body,
-        title: 'My YesYas Reflection',
-      });
-    } catch {
-      // User cancelled or share unavailable
+    const outcome = await shareText({
+      message: entry.body,
+      title: 'My YesYas Reflection',
+    });
+    if (outcome === 'copied') {
+      showMessage('Copied', 'The reflection is on your clipboard.');
+    } else if (outcome === 'unavailable') {
+      showMessage(
+        'Could not share',
+        'This browser cannot share or copy automatically. Select the text and copy it manually.',
+      );
     }
   }
 

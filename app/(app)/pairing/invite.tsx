@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -19,6 +18,8 @@ import {
   describePairingError,
   getActiveOrPendingPairing,
 } from '@/lib/pairing';
+import { showMessage } from '@/lib/alert';
+import { shareText } from '@/lib/share';
 import { supabase } from '@/lib/supabase';
 import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -130,25 +131,20 @@ export default function PairingInviteScreen() {
 
   const handleCopyCode = useCallback(async () => {
     if (!invite?.invite_code) return;
-    try {
-      if (
-        Platform.OS === 'web' &&
-        typeof navigator !== 'undefined' &&
-        navigator.clipboard?.writeText
-      ) {
-        await navigator.clipboard.writeText(invite.invite_code);
-      } else {
-        await Share.share({
-          message: invite.invite_code,
-        });
-      }
-      setCopied(true);
-      setTimeout(() => {
-        setCopied(false);
-      }, 3000);
-    } catch {
-      // User dismissed share sheet or clipboard unavailable
+    const outcome = await shareText({ message: invite.invite_code });
+    if (outcome === 'unavailable') {
+      // Previously this branch was a silent catch, so the "Copied!" state
+      // simply never arrived and the button looked broken.
+      showMessage(
+        'Could not copy',
+        `This browser blocked the clipboard. Your code is ${invite.invite_code} — write it down or select it on screen.`,
+      );
+      return;
     }
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+    }, 3000);
   }, [invite?.invite_code]);
 
   const handleShareInvite = useCallback(async () => {
@@ -164,19 +160,29 @@ export default function PairingInviteScreen() {
         ? `${window.location.origin}/pairing/accept?code=${encodeURIComponent(code)}`
         : `yesyasapp://pairing/accept?code=${encodeURIComponent(code)}`;
 
-    try {
-      await Share.share({
-        title: 'Pair with me on YesYas!',
-        // The code leads, because the code always works. The link needs the
-        // recipient to be signed in already: the accept screen sits inside the
-        // (app) group behind auth, and the root layout's redirect to
-        // /(auth)/sign-in does not carry the query parameter through. Someone
-        // signed out follows the link, lands on sign-in, and arrives with no
-        // code — so they need to have it in front of them regardless.
-        message: `Join me on YesYas! My private invite code is ${code} — enter it on the "Join your partner" screen within 48 hours. Already signed in? This opens it directly: ${link}`,
-      });
-    } catch {
-      // User dismissed system share sheet
+    // The code leads, because the code always works. The link needs the
+    // recipient to be signed in already: the accept screen sits inside the
+    // (app) group behind auth, and the root layout's redirect to
+    // /(auth)/sign-in does not carry the query parameter through. Someone
+    // signed out follows the link, lands on sign-in, and arrives with no code
+    // — so they need to have it in front of them regardless.
+    const message = `Join me on YesYas! My private invite code is ${code} — enter it on the "Join your partner" screen within 48 hours. Already signed in? This opens it directly: ${link}`;
+
+    const outcome = await shareText({
+      title: 'Pair with me on YesYas!',
+      message,
+    });
+
+    if (outcome === 'copied') {
+      showMessage(
+        'Invite copied',
+        'The invitation is on your clipboard — paste it into a message to your partner.',
+      );
+    } else if (outcome === 'unavailable') {
+      showMessage(
+        'Could not share',
+        `This browser cannot share or copy automatically. Send your partner this code: ${code}`,
+      );
     }
   }, [invite?.invite_code]);
 
