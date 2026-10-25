@@ -230,6 +230,7 @@ export default function SignInScreen() {
           <View style={styles.modeTabs}>
             <Pressable
               accessibilityRole="tab"
+              accessibilityLabel="Sign in by email link or code"
               accessibilityState={{ selected: mode === 'magic_link' }}
               onPress={() => {
                 setMode('magic_link');
@@ -252,6 +253,7 @@ export default function SignInScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="tab"
+              accessibilityLabel="Sign in instantly with a passphrase"
               accessibilityState={{ selected: mode === 'password' }}
               onPress={() => {
                 setMode('password');
@@ -314,6 +316,8 @@ export default function SignInScreen() {
               placeholderTextColor="#9AA3AE"
               keyboardType="number-pad"
               autoCapitalize="none"
+              accessibilityLabel="Sign-in code from your email"
+              accessibilityHint="Enter the code we emailed you"
               value={otpCode}
               onChangeText={setOtpCode}
               editable={!verifyingOtp}
@@ -327,6 +331,9 @@ export default function SignInScreen() {
               ]}
               disabled={verifyingOtp || !otpCode.trim()}
               onPress={() => void onVerifyOtpCode()}
+              accessibilityRole="button"
+              accessibilityLabel="Verify sign-in code"
+              accessibilityState={{ disabled: verifyingOtp || !otpCode.trim() }}
             >
               {verifyingOtp ? (
                 <ActivityIndicator color="#fff" />
@@ -343,6 +350,8 @@ export default function SignInScreen() {
                   setErrorMessage(null);
                 }}
                 style={styles.linkBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Use a different email address"
               >
                 <Text style={styles.linkText}>Use a different email</Text>
               </Pressable>
@@ -354,6 +363,8 @@ export default function SignInScreen() {
                   setErrorMessage(null);
                 }}
                 style={styles.linkBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Switch to instant passphrase sign-in"
               >
                 <Text style={styles.linkText}>
                   Didn&apos;t get it? Use Instant Passphrase
@@ -367,6 +378,7 @@ export default function SignInScreen() {
               style={styles.input}
               placeholder="you@domain.com"
               placeholderTextColor="#9AA3AE"
+              accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -413,6 +425,7 @@ export default function SignInScreen() {
               style={styles.input}
               placeholder="you@domain.com"
               placeholderTextColor="#9AA3AE"
+              accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -422,7 +435,9 @@ export default function SignInScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Passphrase (6+ characters)"
+              placeholder={`Passphrase (${MIN_PASSPHRASE_LENGTH}+ characters)`}
+              accessibilityLabel="Passphrase"
+              accessibilityHint={`At least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits`}
               placeholderTextColor="#9AA3AE"
               secureTextEntry
               autoCapitalize="none"
@@ -439,6 +454,14 @@ export default function SignInScreen() {
               ]}
               disabled={loading || !email.trim() || password.length < MIN_PASSPHRASE_LENGTH}
               onPress={() => void onSubmitPassword()}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with passphrase"
+              accessibilityState={{
+                disabled:
+                  loading ||
+                  !email.trim() ||
+                  password.length < MIN_PASSPHRASE_LENGTH,
+              }}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
