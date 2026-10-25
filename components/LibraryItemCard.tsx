@@ -55,14 +55,33 @@ export function LibraryItemCard({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
+  // Latest values, for the unmount flush below. The cleanup closes over its
+  // first render otherwise, and would save stale text.
+  const noteRef = useRef(note);
+  const ratingRef = useRef(rating);
+  const flushRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    noteRef.current = note;
+  }, [note]);
+
+  useEffect(() => {
+    ratingRef.current = rating;
+  }, [rating]);
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
+      // Order matters: clearing the mounted flag first makes persistNote skip
+      // its setState calls, while the encrypted write still goes out.
       isMountedRef.current = false;
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
+      // Flush, do not discard. This cleanup used to clearTimeout and stop,
+      // which threw away up to 800ms of typing every time the card unmounted
+      // — and this card is inside a FlatList, so it unmounts when the row
+      // scrolls out of the window or a tier/tone/search filter stops matching
+      // it, not only when the user navigates. The editor had already said
+      // "saving", so the note looked saved as it vanished.
+      flushRef.current();
     };
   }, []);
 
@@ -190,13 +209,21 @@ export function LibraryItemCard({
     [persistNote, rating],
   );
 
-  const handleNoteBlur = useCallback(() => {
+  const flushPendingNote = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
-      void persistNote(note, rating);
+      void persistNote(noteRef.current, ratingRef.current);
     }
-  }, [note, persistNote, rating]);
+  }, [persistNote]);
+
+  useEffect(() => {
+    flushRef.current = flushPendingNote;
+  }, [flushPendingNote]);
+
+  const handleNoteBlur = useCallback(() => {
+    flushPendingNote();
+  }, [flushPendingNote]);
 
   const handleOpenDetail = useCallback(() => {
     router.push(`/(app)/library/${item.id}` as Href);

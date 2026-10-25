@@ -67,14 +67,22 @@ export default function DesireLibraryItemDetailScreen() {
     ratingRef.current = rating;
   }, [rating]);
 
+  // Holds the latest flushPendingNote, which is defined further down. The
+  // cleanup cannot reference it directly without closing over the first render.
+  const flushRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
+      // Clearing the flag first makes persistNote skip its setState calls
+      // while the encrypted write still goes out.
       isMountedRef.current = false;
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
+      // Flush rather than discard. handleBack and the input's onBlur already
+      // flushed, so the common paths were safe — but every other way out of
+      // this screen (Android hardware back, the iOS back gesture, a tab
+      // switch) went through this cleanup and silently dropped up to 800ms of
+      // typing.
+      flushRef.current();
     };
   }, []);
 
@@ -230,6 +238,10 @@ export default function DesireLibraryItemDetailScreen() {
       void persistNote(noteRef.current, ratingRef.current);
     }
   }, [persistNote]);
+
+  useEffect(() => {
+    flushRef.current = flushPendingNote;
+  }, [flushPendingNote]);
 
   const handleBack = useCallback(() => {
     flushPendingNote();
