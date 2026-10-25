@@ -242,6 +242,12 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Tier ceiling, part 2 | The item detail screen fetched by id and never read the user's tier, so an above-ceiling item rendered in full with a working rating. Reachable by browsing explicit items, lowering the tier, and pressing Back |
 | Onboarding | Reaching step 3 without parameters committed the parser defaults — a content tier the user was never shown — and marked onboarding complete |
 | Passphrase copy | The button said "Sign in / Create beta account" and the hint promised account creation, months after that fall-through was deliberately removed |
+| Every share button on web | `react-native-web`'s `Share` rejects without the Web Share API, and all four call sites swallowed it as "user cancelled". "Share invite" — the path a partner joins by — did nothing on Firefox desktop and in embedded Chromium. Now falls back to the clipboard |
+| Privacy shield | The Privacy Model promised a blur "whenever you switch apps"; it existed only on the reveal screen, so journal contents sat unobscured in the iOS app switcher. Now on all three screens, and the screen no longer omits the web, where no such protection can exist |
+| Home vs reveal disagreement | Home read only `status`, so it announced "Active reveal: N matches" for up to 15 minutes after the reveal screen called it expired, and "waiting for your partner" days after the 72-hour window shut |
+| Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
+| Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
+| Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
 | CI | Read nothing in `supabase/functions/` — now type-checked with Deno |
 
 ### Worth doing before mobile ships
