@@ -391,3 +391,115 @@ select
   (select summary::text from public.reveals where pairing_id = (select pid from tp)) as summary;
 
 rollback;
+
+-- ---------------------------------------------------------------------------
+-- Seventh check: the weekly reveal cannot be spent on an empty one, AND the
+-- guard that enforces that is actually deployed here.
+--
+-- This check exists for two reasons.
+--
+-- The first is the bug. trigger_reveal() enforced a 7-day cadence but never
+-- checked the caller had rated anything, so the most likely first thing a
+-- couple does — both tapping "ready" to see what the feature does — returned
+-- a valid reveal of {"match_count": 0, "mismatch_count": 0} and then refused
+-- every further attempt for a week with P0001. A week is a long time to wait
+-- to discover the product is not broken.
+--
+-- The second is deployment drift, which is the whole point of running this
+-- file against production rather than trusting pgTAP. pgTAP builds a database
+-- from the migrations in the repo, so it can only ever tell you the repo is
+-- self-consistent. It cannot tell you the hosted project got the migration.
+-- When 20261025000004 was written, production had the 180-item library, 14
+-- migrations and both Edge Functions live — and still ran the old
+-- trigger_reveal. Only a call against the real database says so.
+--
+-- Expected: refuses_at_two = t, no_half_consumed_state = t, allows_at_three = t.
+--
+-- refuses_at_two = f means this database has not had 20261025000004 applied;
+-- run `supabase db push`. Measured against production on 2026-10-25 before
+-- that push, this check reported exactly that:
+--
+--   refuses_at_two   f
+--   refusal_detail   ALLOWED - 20261025000004 is not applied to this database
+--   allows_at_three  t
+--
+-- which is the check doing its job.
+-- ---------------------------------------------------------------------------
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('cccc3333-3333-4333-8333-333333333333','00000000-0000-0000-0000-000000000000','authenticated','authenticated','g1@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now()),
+       ('dddd4444-4444-4444-8444-444444444444','00000000-0000-0000-0000-000000000000','authenticated','authenticated','g2@yesyas.invalid','',now(),'{}'::jsonb,'{}'::jsonb,now(),now());
+
+create temp table guard_result (step text, passed boolean, detail text);
+grant insert, select on guard_result to authenticated;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"cccc3333-3333-4333-8333-333333333333","role":"authenticated"}';
+create temp table gi as select * from public.create_pairing_invite();
+set local request.jwt.claims = '{"sub":"dddd4444-4444-4444-8444-444444444444","role":"authenticated"}';
+create temp table gp as select public.accept_pairing_invite((select invite_code from gi)) as pid;
+
+-- The partner is fully rated, so any refusal below is about the caller alone.
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select 'dddd4444-4444-4444-8444-444444444444', (select pid from gp), id, 5
+from (select id from public.desire_library_items order by slug limit 3) x;
+
+-- The caller rates two: one short of the threshold.
+set local request.jwt.claims = '{"sub":"cccc3333-3333-4333-8333-333333333333","role":"authenticated"}';
+insert into public.desires (user_id, pairing_id, library_item_id, rating)
+select 'cccc3333-3333-4333-8333-333333333333', (select pid from gp), id, 5
+from (select id from public.desire_library_items order by slug limit 2) x;
+
+do $$
+declare
+  v_pid uuid;
+begin
+  select pid into v_pid from gp;
+
+  begin
+    perform public.trigger_reveal(v_pid);
+    insert into guard_result values ('refuses_at_two', false,
+      'ALLOWED - 20261025000004 is not applied to this database');
+  exception
+    when sqlstate 'P0002' then
+      insert into guard_result values ('refuses_at_two', true, sqlerrm);
+    when others then
+      insert into guard_result values ('refuses_at_two', false,
+        'wrong error: ' || sqlstate || ' / ' || sqlerrm);
+  end;
+
+  -- Measured here, not at the end: the allowed call below legitimately writes
+  -- a readiness row, so a count taken afterwards reads 1 whether the guard is
+  -- present or not. A guarded refusal must leave nothing.
+  insert into guard_result
+  select 'readiness_after_refusal',
+         (select count(*) from public.reveal_readiness where pairing_id = v_pid) = 0,
+         (select count(*)::text from public.reveal_readiness where pairing_id = v_pid);
+
+  -- Third rating, then the same call must be allowed through.
+  insert into public.desires (user_id, pairing_id, library_item_id, rating)
+  select 'cccc3333-3333-4333-8333-333333333333', v_pid, id, 5
+  from (select id from public.desire_library_items order by slug limit 3) x
+  on conflict (user_id, pairing_id, library_item_id) where pairing_id is not null
+  do nothing;
+
+  begin
+    perform public.trigger_reveal(v_pid);
+    insert into guard_result values ('allows_at_three', true, null);
+  exception when others then
+    insert into guard_result values ('allows_at_three', false,
+      sqlstate || ' / ' || sqlerrm);
+  end;
+end $$;
+
+reset role;
+
+select
+  (select passed from guard_result where step = 'refuses_at_two')          as refuses_at_two,
+  (select passed from guard_result where step = 'readiness_after_refusal') as no_half_consumed_state,
+  (select passed from guard_result where step = 'allows_at_three')         as allows_at_three,
+  (select detail from guard_result where step = 'refuses_at_two')          as refusal_detail;
+
+rollback;
