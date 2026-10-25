@@ -344,6 +344,25 @@ async function main() {
   assert.ok(TIER_ORDER.sensory < TIER_ORDER.suggestive && TIER_ORDER.suggestive < TIER_ORDER.explicit,
     'Tier ranking must be strictly increasing');
 
+
+  // 9. An empty consent log verifies vacuously, and that is deliberate.
+  //
+  //    verifyConsentChain([]) returns valid: true because the loop never
+  //    runs. The settings/consent.tsx badge must therefore distinguish "empty"
+  //    from "verified" itself — it used to show a green "Cryptographic
+  //    Hash-Chain Verified" shield over zero records, which every new tester
+  //    saw, since consent events only begin when you pair.
+  //
+  //    Pinned here so the opposite fix is not attempted: making this return
+  //    valid: false for an empty log would mean a brand-new account showing an
+  //    integrity FAILURE, which is worse. The emptiness check belongs in the
+  //    screen, and this assertion is what says so.
+  assert.deepEqual(
+    verifyConsentChain([]),
+    { valid: true, brokenAtId: null },
+    'An empty consent log must verify vacuously; the UI distinguishes empty from verified',
+  );
+
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
 

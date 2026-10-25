@@ -51,6 +51,53 @@ export default function ConsentAuditScreen() {
 
   const verificationResult = verifyConsentChain(events);
 
+  /**
+   * Four states, not two.
+   *
+   * verifyConsentChain([]) returns { valid: true } — the loop never runs, so
+   * an empty log is vacuously intact. Driving the badge straight off that
+   * showed a green shield reading "Cryptographic Hash-Chain Verified" and
+   * "All consent records form an unbroken, tamper-evident SHA-256 chain" over
+   * nothing at all. Every new tester saw it, because consent events only
+   * start when you pair, and this screen's entire purpose is to be believable
+   * about the audit trail. Asserting verification of an empty set is the same
+   * mistake the on-device therapist export was careful to avoid.
+   *
+   * 'loading' is separate for the same reason: events is [] until the fetch
+   * lands, so the green badge would flash first either way.
+   */
+  const chainState: 'loading' | 'empty' | 'valid' | 'broken' = loading
+    ? 'loading'
+    : events.length === 0
+      ? 'empty'
+      : verificationResult.valid
+        ? 'valid'
+        : 'broken';
+
+  const chainIsNeutral = chainState === 'loading' || chainState === 'empty';
+  const chainAccent =
+    chainState === 'valid'
+      ? '#10B981'
+      : chainState === 'broken'
+        ? '#EF4444'
+        : colors.muted;
+  const chainTitle =
+    chainState === 'valid'
+      ? 'Cryptographic Hash-Chain Verified'
+      : chainState === 'broken'
+        ? 'Audit Chain Integrity Failure'
+        : chainState === 'loading'
+          ? 'Checking the audit chain…'
+          : 'No Consent Events Yet';
+  const chainSubtitle =
+    chainState === 'valid'
+      ? 'All consent records form an unbroken, tamper-evident SHA-256 chain.'
+      : chainState === 'broken'
+        ? `Discrepancy detected at event ID: ${verificationResult.brokenAtId}`
+        : chainState === 'loading'
+          ? 'Reading your consent records.'
+          : 'Nothing to verify yet. Records appear here when you accept a pairing, trigger a reveal, or consent to a therapist export.';
+
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -124,41 +171,36 @@ export default function ConsentAuditScreen() {
               style={[
                 styles.verificationCard,
                 {
-                  backgroundColor: verificationResult.valid
-                    ? '#10B98115'
-                    : '#EF444415',
-                  borderColor: verificationResult.valid ? '#10B981' : '#EF4444',
+                  backgroundColor: chainIsNeutral
+                    ? colors.surface
+                    : chainState === 'valid'
+                      ? '#10B98115'
+                      : '#EF444415',
+                  borderColor: chainIsNeutral ? colors.border : chainAccent,
                 },
               ]}
             >
               <Ionicons
                 name={
-                  verificationResult.valid
+                  chainState === 'valid'
                     ? 'shield-checkmark'
-                    : 'alert-circle'
+                    : chainState === 'broken'
+                      ? 'alert-circle'
+                      : 'shield-outline'
                 }
                 size={24}
-                color={verificationResult.valid ? '#10B981' : '#EF4444'}
+                color={chainAccent}
               />
               <View style={{ flex: 1 }}>
                 <Text
-                  style={[
-                    styles.verificationTitle,
-                    {
-                      color: verificationResult.valid ? '#10B981' : '#EF4444',
-                    },
-                  ]}
+                  style={[styles.verificationTitle, { color: chainAccent }]}
                 >
-                  {verificationResult.valid
-                    ? 'Cryptographic Hash-Chain Verified'
-                    : 'Audit Chain Integrity Failure'}
+                  {chainTitle}
                 </Text>
                 <Text
                   style={[styles.verificationSubtitle, { color: colors.muted }]}
                 >
-                  {verificationResult.valid
-                    ? 'All consent records form an unbroken, tamper-evident SHA-256 chain.'
-                    : `Discrepancy detected at event ID: ${verificationResult.brokenAtId}`}
+                  {chainSubtitle}
                 </Text>
               </View>
             </View>
