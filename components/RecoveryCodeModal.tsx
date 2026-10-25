@@ -91,6 +91,42 @@ export function RecoveryCodeModal({
     );
   }, [confirmInput, userId]);
 
+  const [copied, setCopied] = useState(false);
+
+  /**
+   * Clipboard only — deliberately not the share sheet.
+   *
+   * shareText() would offer the OS share targets, and a recovery code handed
+   * to a chat app is a recovery code in someone else's message history. The
+   * destination for this is a password manager.
+   *
+   * This does not weaken the re-entry step below. The code is already
+   * `selectable`, so copy and paste was always possible; the button only makes
+   * the supported path findable. And pasting from a password manager satisfies
+   * what re-entry is actually checking — that the code left this screen intact
+   * — better than transcribing 24 characters by hand on a phone, which is the
+   * alternative that has produced zero saved codes so far.
+   */
+  const handleCopyCode = useCallback(async () => {
+    if (!code) return;
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+    if (!nav?.clipboard?.writeText) {
+      setErrorMessage(
+        'This device will not let the app copy for you. Select the code above and copy it manually.',
+      );
+      return;
+    }
+    try {
+      await nav.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      setErrorMessage(
+        'Copying was blocked. Select the code above and copy it manually.',
+      );
+    }
+  }, [code]);
+
   const confirmLooksComplete = isValidRecoveryCode(confirmInput);
 
   return (
@@ -197,6 +233,20 @@ export function RecoveryCodeModal({
                   </Text>
                 </View>
 
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy the recovery code to the clipboard"
+                  onPress={() => void handleCopyCode()}
+                  style={({ pressed }) => [
+                    styles.copyButton,
+                    { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.copyButtonText, { color: colors.primary }]}>
+                    {copied ? 'Copied — now paste it somewhere safe' : 'Copy code'}
+                  </Text>
+                </Pressable>
+
                 <Text style={[styles.label, { color: colors.text }]}>
                   Type it back to confirm you saved it
                 </Text>
@@ -293,6 +343,18 @@ const styles = StyleSheet.create({
   text: { ...TYPOGRAPHY.body },
   label: { ...TYPOGRAPHY.h3, marginTop: SPACING.xs },
   caption: { ...TYPOGRAPHY.caption },
+  copyButton: {
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  copyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   codeBox: {
     borderWidth: 1,
     borderRadius: 12,
