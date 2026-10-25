@@ -262,6 +262,7 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Private notes | The 800ms debounce was cleared on unmount without flushing, so typing was discarded when a library row scrolled out of the FlatList window, a filter stopped matching it, or the user left by any route other than the back button |
 | Onboarding re-run | `fetchProfileOnboardingStatus` returned `false` on any error, so a dropped request routed a signed-in user back through onboarding — which overwrites tone and content tier on completion |
 | Recovery code | Could only be transcribed by hand, 24 characters, on the one screen standing between a tester and silent permanent data loss. Now copyable (clipboard only, never the share sheet) |
+| Private note became a shared signal | Writing a note on an unrated item stored `rating: 3` — exactly `trigger_reveal`'s Curiosity Bridge threshold — so if the partner rated it 4 or 5, the item surfaced in the couple's shared reveal as something one of them was "open to exploring". Verified end to end: a note-only item came back inside `reveals.mismatches` |
 | Consent audit screen | **The worst one.** `consent_events_chain()` hashes `payload::text`, and jsonb sorts object keys by byte length then bytewise; `lib/consent.ts` sorted alphabetically. Both `reveal_triggered` payloads order differently under the two rules, so `verifyConsentChain` returned `valid: false` and the screen rendered "Audit Chain Integrity Failure" over an intact log — for every couple that had triggered a reveal |
 | Library slug | One of 180 slugs had a capital letter. Harmless alone, but `seed.sql` ends `on conflict (slug) do nothing`, so lowercasing it in the seed alone would insert a second near-identical item on the next reseed |
 | Locked-content copy | Four messages sent users to Settings to "unlock with your recovery code". Settings has no unlock — it offers create and replace, and replacing destroys the key that would have worked |
@@ -269,6 +270,13 @@ rolled-back transaction. Production still has 1 user, 0 pairings, 0 desires,
 | Pairing resume error | Pausing one pairing, pairing with someone else, then resuming the first showed `duplicate key value violates unique constraint "pairings_one_active_inviter"`. The invariant held; the wording was unusable |
 | PIN setup | Entered once, so a single mistyped digit armed a lock the user could not open. Now asked twice |
 | CI | Read nothing in `supabase/functions/` — now type-checked with Deno. It also now diffs the `(app)` route files against the Tabs layout, since a missing declaration silently adds a tab |
+
+### Worth doing when you next touch the schema
+
+`desires.rating` is `NOT NULL`, which is why a note had to carry a rating at
+all. Making it nullable and having `trigger_reveal` ignore null ratings would
+let a note exist with no rating — the honest representation. Today's fix
+refuses instead, which is correct but means a note needs a rating first.
 
 ### Worth doing before mobile ships
 
