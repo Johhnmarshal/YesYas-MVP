@@ -33,41 +33,7 @@ export const UUID_REGEX =
  * link, an invite left for three days, trying to pair while already paired —
  * so each needs to say what happened and what to do next.
  */
-export function describePairingError(err: unknown, fallback: string): string {
-  const raw = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
-
-  if (raw.includes('inviter cannot accept own invite')) {
-    return 'This is your own invite link. Send it to your partner and ask them to open it on their device.';
-  }
-  if (raw.includes('already has an active pairing')) {
-    return 'One of you is already paired with someone. End that pairing in Settings before starting a new one.';
-  }
-  if (raw.includes('has expired') || raw.includes('invalid or expired')) {
-    return 'This invite has expired — they only last 48 hours. Ask your partner to send a fresh one.';
-  }
-  if (raw.includes('authentication required')) {
-    return 'Your session has ended. Sign in again and reopen the invite.';
-  }
-  if (raw.includes('invite code is required')) {
-    return 'Enter the 8-character code from your partner’s invite.';
-  }
-  if (raw.includes('failed to generate unique invite code')) {
-    return 'Could not create an invite just now. Please try again.';
-  }
-  if (raw.includes('not a member of this pairing')) {
-    return 'You are no longer part of this pairing.';
-  }
-  if (raw.includes('cannot transition an ended pairing')) {
-    return 'This pairing has already ended. Start a new invite to pair again.';
-  }
-  if (raw.includes('pending pairing can only be cancelled')) {
-    return 'This invite has not been accepted yet — you can cancel it, but not pause or resume it.';
-  }
-  if (raw.includes('invalid target pairing status')) {
-    return 'That change is not available for this pairing.';
-  }
-  return fallback;
-}
+export { describePairingError } from './pairing-errors';
 
 export async function createPairingInvite(): Promise<PairingInviteResult> {
   const { data, error } = await supabase.rpc('create_pairing_invite');

@@ -12,6 +12,9 @@ import { TIER_ORDER, filterLibraryItems, isLibraryItemVisible, isTierWithinCeili
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { isReadinessWindowClosed, isRevealContentExpired } from '../lib/reveal-state.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { describePairingError } from '../lib/pairing-errors.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -445,6 +448,64 @@ async function main() {
   assert.equal(isReadinessWindowClosed(computedFresh, t0), false,
     'the readiness window only applies to a pending reveal');
   assert.equal(isReadinessWindowClosed(null, t0), false, 'no reveal has no window');
+
+
+  // 12. Pairing errors reach the user as sentences, not as Postgres.
+  //
+  //     The one that prompted this: pause a pairing, pair with someone else,
+  //     then resume the first. update_pairing_status has no active-pairing
+  //     check of its own, so the partial unique index catches it and raises
+  //
+  //       duplicate key value violates unique constraint
+  //       "pairings_one_active_inviter"
+  //
+  //     Measured on the hosted project. The invariant held; the wording did
+  //     not. PairingManageModal routes status transitions through this mapper,
+  //     so the index message was going straight to the screen.
+  const FALLBACK = 'fallback text';
+
+  assert.equal(
+    describePairingError(
+      new Error('duplicate key value violates unique constraint "pairings_one_active_inviter"'),
+      FALLBACK,
+    ),
+    'You already have another active pairing. End or pause that one first, then resume this one.',
+    'the inviter-side active-pairing index is explained, not echoed',
+  );
+  assert.equal(
+    describePairingError(
+      new Error('duplicate key value violates unique constraint "pairings_one_active_invitee"'),
+      FALLBACK,
+    ),
+    'You already have another active pairing. End or pause that one first, then resume this one.',
+    'the invitee-side index gets the same explanation',
+  );
+
+  // The RPC-level checks keep their own wording.
+  assert.match(
+    describePairingError(new Error('one of the users already has an active pairing'), FALLBACK),
+    /already paired with someone/,
+    'the RPC active-pairing check keeps its own message',
+  );
+  assert.match(
+    describePairingError(new Error('invite code has expired'), FALLBACK),
+    /only last 48 hours/,
+    'an expired invite says how long they last',
+  );
+  assert.match(
+    describePairingError(new Error('inviter cannot accept own invite'), FALLBACK),
+    /your own invite link/,
+    'self-accept is explained',
+  );
+
+  // Anything unrecognised must fall through rather than guess.
+  assert.equal(
+    describePairingError(new Error('some unmapped postgres thing'), FALLBACK),
+    FALLBACK,
+    'an unmapped error uses the caller fallback',
+  );
+  assert.equal(describePairingError(null, FALLBACK), FALLBACK, 'null uses the fallback');
+  assert.equal(describePairingError(undefined, FALLBACK), FALLBACK, 'undefined uses the fallback');
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
