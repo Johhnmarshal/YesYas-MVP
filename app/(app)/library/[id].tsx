@@ -610,7 +610,7 @@ export default function DesireLibraryItemDetailScreen() {
                   accessibilityLiveRegion="polite"
                 >
                   {noteState === 'locked'
-                    ? 'You saved a note here, but this device cannot read it yet. Unlock with your recovery code in Settings to see it again.'
+                    ? 'You saved a note here, but this device has no key for it. Close and reopen YesYas! to enter your recovery code.'
                     : 'You saved a note here, but it can no longer be decrypted. Anything you type now replaces it.'}
                 </Text>
               ) : null}

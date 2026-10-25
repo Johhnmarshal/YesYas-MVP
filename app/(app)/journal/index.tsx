@@ -600,7 +600,7 @@ export default function JournalScreen() {
                       {entry.bodyState === 'ok'
                         ? entry.body
                         : entry.bodyState === 'locked'
-                          ? 'This entry is still encrypted. Unlock this device with your recovery code in Settings to read it.'
+                          ? 'This entry is still encrypted because this device has no key for it. Close and reopen YesYas! to enter your recovery code.'
                           : 'This entry can no longer be decrypted on this account.'}
                     </Text>
                   </Pressable>

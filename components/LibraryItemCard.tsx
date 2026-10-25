@@ -360,7 +360,7 @@ export function LibraryItemCard({
                 accessibilityLiveRegion="polite"
               >
                 {desire.noteState === 'locked'
-                  ? 'You saved a note here, but this device cannot read it yet. Unlock with your recovery code in Settings.'
+                  ? 'You saved a note here, but this device has no key for it. Reopen YesYas! to enter your recovery code.'
                   : 'You saved a note here, but it can no longer be decrypted. Anything you type now replaces it.'}
               </Text>
             ) : null}
