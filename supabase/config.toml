@@ -52,6 +52,13 @@ project_id = "flauqfikspnywcvtevnq"
 [remotes.production.auth]
 enable_signup = true
 enable_anonymous_sign_ins = false
+# The passphrase path was added to work around the built-in SMTP cap, which
+# means accounts holding encrypted journals can now be reached with a password.
+# Supabase's default floor is 6 characters, and leaked-password protection is
+# off on this project, so "123456" was acceptable. 12 plus mixed classes is the
+# minimum defensible for this data.
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits"
 site_url = "https://yesyas.vercel.app"
 additional_redirect_urls = [
   "https://yesyas.vercel.app",

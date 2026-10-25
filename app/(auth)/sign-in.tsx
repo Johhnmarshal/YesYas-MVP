@@ -15,6 +15,10 @@ import { supabase } from '@/lib/supabase';
 
 type AuthMode = 'magic_link' | 'password';
 
+// Must match minimum_password_length in supabase/config.toml. Lower than the
+// server floor just means the server rejects what the UI accepted.
+const MIN_PASSPHRASE_LENGTH = 12;
+
 /**
  * Email sign-in screen supporting:
  * 1. Magic Link + emailed OTP code verification (`signInWithOtp` + `verifyOtp`).
@@ -80,7 +84,7 @@ export default function SignInScreen() {
       ) {
         setMode('password');
         setInfoMessage(
-          'Hourly email limit reached on the beta server. Choose a passphrase (6+ characters) below to sign in immediately without waiting for an email.',
+          'Hourly email limit reached on the beta server. Choose a passphrase (12+ characters) below to sign in immediately without waiting for an email.',
         );
         return;
       }
@@ -113,8 +117,10 @@ export default function SignInScreen() {
 
   async function onSubmitPassword() {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || password.length < 6) {
-      setErrorMessage('Please enter your email and a passphrase of at least 6 characters.');
+    if (!trimmedEmail || password.length < MIN_PASSPHRASE_LENGTH) {
+      setErrorMessage(
+        `Please enter your email and a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits.`,
+      );
       return;
     }
 
@@ -356,10 +362,10 @@ export default function SignInScreen() {
             <Pressable
               style={[
                 styles.button,
-                (loading || !email.trim() || password.length < 6) &&
+                (loading || !email.trim() || password.length < MIN_PASSPHRASE_LENGTH) &&
                   styles.buttonDisabled,
               ]}
-              disabled={loading || !email.trim() || password.length < 6}
+              disabled={loading || !email.trim() || password.length < MIN_PASSPHRASE_LENGTH}
               onPress={() => void onSubmitPassword()}
             >
               {loading ? (
