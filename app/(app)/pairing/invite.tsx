@@ -270,7 +270,14 @@ export default function PairingInviteScreen() {
                 },
               ]}
             >
-              <Text style={styles.primaryButtonText}>Try Again</Text>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
+                Try Again
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -307,7 +314,14 @@ export default function PairingInviteScreen() {
                 },
               ]}
             >
-              <Text style={styles.primaryButtonText}>Go to Home</Text>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
+                Go to Home
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -382,8 +396,19 @@ export default function PairingInviteScreen() {
                   },
                 ]}
               >
-                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Share Invite</Text>
+                <Ionicons
+                  name="share-outline"
+                  size={20}
+                  color={colors.onPrimary}
+                />
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    { color: colors.onPrimary },
+                  ]}
+                >
+                  Share Invite
+                </Text>
               </Pressable>
 
               <Pressable

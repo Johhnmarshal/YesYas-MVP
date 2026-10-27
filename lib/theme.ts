@@ -7,10 +7,14 @@ export const COLORS = {
   surface: '#FFFFFF',
   surfaceElevated: '#FFFDFB',
   primary: '#1E293B',
+  onPrimary: '#FFFFFF',
   secondary: '#5A6878',
   muted: '#94A3B8',
+  textMuted: '#64748B',
+  surfaceHighlight: 'rgba(30, 41, 59, 0.05)',
   border: '#E8E2D9',
   accentWarm: '#C9856B',
+  onAccentWarm: '#FFFFFF',
   accentWarmSubtle: '#F6ECE7',
   accentGold: '#D4AF37',
   accentCool: '#4A85A3',
@@ -24,10 +28,14 @@ export const DARK_COLORS = {
   surface: '#181E26',
   surfaceElevated: '#212934',
   primary: '#F1EDE6',
-  secondary: '#9BA7B6',
-  muted: '#5F6D7E',
+  onPrimary: '#0F1318',
+  secondary: '#A3B0BF',
+  muted: '#8A99AA',
+  textMuted: '#94A3B8',
+  surfaceHighlight: 'rgba(241, 237, 230, 0.08)',
   border: '#28323E',
   accentWarm: '#D99880',
+  onAccentWarm: '#0F1318',
   accentWarmSubtle: '#2E221E',
   accentGold: '#E6C665',
   accentCool: '#5A96B4',
@@ -177,4 +185,19 @@ export const TIER_OPTIONS: TierOption[] = [
 export function useThemeColors(): ThemeColors {
   const scheme = useColorScheme();
   return scheme === 'dark' ? DARK_COLORS : COLORS;
+}
+
+/**
+ * Returns a hex color with alpha applied, e.g. withAlpha('#1E293B', 0.15) -> '#1e293b26'.
+ * If color is not a 6-digit hex string (#RRGGBB), returns the color string unmodified.
+ */
+export function withAlpha(color: string, opacity: number): string {
+  if (typeof color === 'string' && color.startsWith('#') && color.length === 7) {
+    const clamped = Math.min(1, Math.max(0, opacity));
+    const alphaHex = Math.round(clamped * 255)
+      .toString(16)
+      .padStart(2, '0');
+    return `${color}${alphaHex}`;
+  }
+  return color;
 }

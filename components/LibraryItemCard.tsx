@@ -16,6 +16,7 @@ import {
   upsertDesireNote,
   upsertDesireRating,
 } from '@/lib/desires';
+import { supabase } from '@/lib/supabase';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export interface LibraryItemCardProps {
@@ -24,6 +25,7 @@ export interface LibraryItemCardProps {
   pairingId: string | null;
   desire?: DesireWithNote;
   onDesireUpdated?: (updated: DesireWithNote) => void;
+  onDesireDeleted?: (libraryItemId: string) => void;
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -43,12 +45,14 @@ export function LibraryItemCard({
   pairingId,
   desire,
   onDesireUpdated,
+  onDesireDeleted,
 }: LibraryItemCardProps) {
   const colors = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const [rating, setRating] = useState<number | null>(desire?.rating ?? null);
   const [note, setNote] = useState<string>(desire?.note ?? '');
   const [ratingSaving, setRatingSaving] = useState(false);
+  const [clearingRating, setClearingRating] = useState(false);
   const [noteSaveState, setNoteSaveState] = useState<SaveState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -143,9 +147,49 @@ export function LibraryItemCard({
     [item.id, onDesireUpdated, pairingId, userId],
   );
 
+  const handleClearRating = useCallback(async () => {
+    if (!userId) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    setClearingRating(true);
+    setErrorMsg(null);
+
+    try {
+      const { error } = await supabase
+        .from('desires')
+        .delete()
+        .eq('user_id', userId)
+        .eq('library_item_id', item.id);
+
+      if (error) throw error;
+
+      if (!isMountedRef.current) return;
+      setRating(null);
+      setNote('');
+      setNoteSaveState('idle');
+      onDesireDeleted?.(item.id);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      setErrorMsg(
+        err instanceof Error ? err.message : 'Could not clear rating.',
+      );
+    } finally {
+      if (isMountedRef.current) {
+        setClearingRating(false);
+      }
+    }
+  }, [item.id, onDesireDeleted, userId]);
+
   const handleRatingChange = useCallback(
     async (nextRating: number) => {
       if (!userId) return;
+      if (nextRating === 0) {
+        void handleClearRating();
+        return;
+      }
       const previousRating = rating;
       setRating(nextRating);
       setRatingSaving(true);
@@ -188,7 +232,7 @@ export function LibraryItemCard({
         }
       }
     },
-    [item.id, note, onDesireUpdated, pairingId, rating, userId],
+    [handleClearRating, item.id, note, onDesireUpdated, pairingId, rating, userId],
   );
 
   const handleNoteChange = useCallback(
@@ -262,7 +306,9 @@ export function LibraryItemCard({
           <View
             style={[styles.tierBadge, { backgroundColor: colors.primary }]}
           >
-            <Text style={styles.tierBadgeText}>{item.tier.toUpperCase()}</Text>
+            <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
+              {item.tier.toUpperCase()}
+            </Text>
           </View>
 
           {item.tone_tags.map((tag) => (
@@ -316,8 +362,9 @@ export function LibraryItemCard({
         <StarRating
           value={rating}
           onChange={handleRatingChange}
-          disabled={ratingSaving}
+          disabled={ratingSaving || clearingRating}
           showCaption={expanded}
+          allowClear
         />
         <Text style={[styles.privacyLabel, { color: colors.secondary }]}>
           🔒 Only you see your ratings
@@ -408,21 +455,42 @@ export function LibraryItemCard({
             </Text>
           ) : null}
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open full screen detail for ${item.title}`}
-            onPress={handleOpenDetail}
-            style={({ pressed }) => [
-              styles.detailLinkButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Text
-              style={[styles.detailLinkText, { color: colors.accentCool }]}
+          <View style={styles.cardActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open full screen detail for ${item.title}`}
+              onPress={handleOpenDetail}
+              style={({ pressed }) => [
+                styles.detailLinkButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
             >
-              Open full view →
-            </Text>
-          </Pressable>
+              <Text
+                style={[styles.detailLinkText, { color: colors.accentCool }]}
+              >
+                Open full view →
+              </Text>
+            </Pressable>
+
+            {isRated ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Clear rating for ${item.title}`}
+                disabled={clearingRating || ratingSaving}
+                onPress={() => void handleClearRating()}
+                style={({ pressed }) => [
+                  styles.clearRatingButton,
+                  { opacity: pressed || clearingRating ? 0.6 : 1 },
+                ]}
+              >
+                <Text
+                  style={[styles.clearRatingButtonText, { color: colors.error }]}
+                >
+                  {clearingRating ? 'Clearing…' : 'Clear rating'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       ) : null}
     </View>
@@ -542,6 +610,23 @@ const styles = StyleSheet.create({
   detailLinkText: {
     ...TYPOGRAPHY.button,
     fontSize: 14,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  clearRatingButton: {
+    minHeight: 44,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+  clearRatingButtonText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+    fontSize: 13,
   },
 });
 

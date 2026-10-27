@@ -348,6 +348,76 @@ async function main() {
     'Tone filter must select within the ceiling',
   );
 
+  // Status filter (all, unrated, rated) respects user ratings while maintaining tier ceiling
+  const ratingsMap = new Map([
+    ['Slow morning', 4],
+    ['Explicit item', 5],
+  ]); // 'Teasing note' is unrated
+
+  assert.deepEqual(
+    filterLibraryItems(
+      libraryFixture,
+      {
+        tierCeiling: 'explicit',
+        tierFilter: 'up_to_ceiling',
+        toneFilter: 'all',
+        statusFilter: 'all',
+        searchQuery: '',
+      },
+      (item) => ratingsMap.get(item.title) ?? null,
+    ).map((i) => i.title),
+    ['Slow morning', 'Teasing note', 'Explicit item'],
+    'statusFilter "all" returns all items within ceiling',
+  );
+
+  assert.deepEqual(
+    filterLibraryItems(
+      libraryFixture,
+      {
+        tierCeiling: 'explicit',
+        tierFilter: 'up_to_ceiling',
+        toneFilter: 'all',
+        statusFilter: 'unrated',
+        searchQuery: '',
+      },
+      (item) => ratingsMap.get(item.title) ?? null,
+    ).map((i) => i.title),
+    ['Teasing note'],
+    'statusFilter "unrated" returns only unrated items within ceiling',
+  );
+
+  assert.deepEqual(
+    filterLibraryItems(
+      libraryFixture,
+      {
+        tierCeiling: 'explicit',
+        tierFilter: 'up_to_ceiling',
+        toneFilter: 'all',
+        statusFilter: 'rated',
+        searchQuery: '',
+      },
+      (item) => ratingsMap.get(item.title) ?? null,
+    ).map((i) => i.title),
+    ['Slow morning', 'Explicit item'],
+    'statusFilter "rated" returns only rated items within ceiling',
+  );
+
+  assert.deepEqual(
+    filterLibraryItems(
+      libraryFixture,
+      {
+        tierCeiling: 'sensory',
+        tierFilter: 'up_to_ceiling',
+        toneFilter: 'all',
+        statusFilter: 'rated',
+        searchQuery: '',
+      },
+      (item) => ratingsMap.get(item.title) ?? null,
+    ).map((i) => i.title),
+    ['Slow morning'],
+    'statusFilter "rated" under sensory ceiling never breaches tier ceiling',
+  );
+
   // A selection the ceiling no longer permits collapses back to the safe default.
   assert.equal(reconcileTierFilter('explicit', 'sensory'), 'up_to_ceiling',
     'Lowering the ceiling must drop a now-locked tier filter');

@@ -665,7 +665,12 @@ export default function DesireLibraryItemDetailScreen() {
                   },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    { color: colors.onPrimary },
+                  ]}
+                >
                   {ratingSaving ? 'Saving privately…' : 'Save Privately'}
                 </Text>
               </Pressable>

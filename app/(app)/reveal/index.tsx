@@ -3,8 +3,10 @@ import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -98,6 +100,7 @@ export default function RevealScreen() {
 
   const [startFreshMode, setStartFreshMode] = useState<boolean>(false);
   const [confirmingWithdraw, setConfirmingWithdraw] = useState<boolean>(false);
+  const [guideExpanded, setGuideExpanded] = useState<boolean>(true);
 
   const [bridgeModalVisible, setBridgeModalVisible] = useState<boolean>(false);
   const [selectedBridgeItem, setSelectedBridgeItem] =
@@ -330,6 +333,30 @@ export default function RevealScreen() {
 
   const partnerName = pairing?.partner_display_name?.trim() || 'your partner';
 
+  const handleNudgePartner = useCallback(async () => {
+    void hapticLight();
+    const message = `Hey! I just marked myself ready for our YesYas! reveal. When you have a moment, tap ready so we can see what we share 💕`;
+    try {
+      if (
+        Platform.OS === 'web' &&
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard
+      ) {
+        await navigator.clipboard.writeText(message);
+        setStatusBanner(
+          'Nudge message copied to clipboard! Send it to your partner whenever you like.',
+        );
+      } else {
+        await Share.share({
+          message,
+          title: 'YesYas! Reveal Invitation',
+        });
+      }
+    } catch {
+      // User cancelled share sheet or clipboard error — non-fatal
+    }
+  }, []);
+
   const matches: RevealMatchItem[] = useMemo(() => {
     if (!reveal || !Array.isArray(reveal.matches)) return [];
     return reveal.matches;
@@ -543,7 +570,14 @@ export default function RevealScreen() {
                   },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>Create Invite Code</Text>
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    { color: colors.onPrimary },
+                  ]}
+                >
+                  Create Invite Code
+                </Text>
               </Pressable>
 
               <Pressable
@@ -604,7 +638,14 @@ export default function RevealScreen() {
                 {actionBusy ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Resume Pairing</Text>
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.onPrimary },
+                    ]}
+                  >
+                    Resume Pairing
+                  </Text>
                 )}
               </Pressable>
 
@@ -712,7 +753,12 @@ export default function RevealScreen() {
                 {actionBusy ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.onPrimary },
+                    ]}
+                  >
                     {effectiveState === 'partner_waiting_for_you' ||
                     effectiveState === 'both_ready'
                       ? '✨ I’m ready — See our matches'
@@ -824,6 +870,36 @@ export default function RevealScreen() {
 
             {!confirmingWithdraw ? (
               <View style={styles.actionsColumn}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Nudge ${partnerName} to let them know you're ready`}
+                  disabled={actionBusy}
+                  onPress={() => void handleNudgePartner()}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    {
+                      backgroundColor: colors.primary,
+                      flexDirection: 'row',
+                      gap: 8,
+                      opacity: pressed || actionBusy ? 0.8 : 1,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="paper-plane-outline"
+                    size={18}
+                    color={colors.onPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.onPrimary },
+                    ]}
+                  >
+                    Nudge {partnerName}
+                  </Text>
+                </Pressable>
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Withdraw Reveal"
@@ -980,6 +1056,95 @@ export default function RevealScreen() {
                   This reveal disappears in {computedExpiryLabel}
                 </Text>
               </View>
+            </View>
+
+            {/* Reveal Conversation Guide */}
+            <View
+              style={[
+                styles.guideCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Toggle conversation guide"
+                onPress={() => setGuideExpanded((prev) => !prev)}
+                style={styles.guideHeader}
+              >
+                <View style={styles.guideHeaderTitleRow}>
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={18}
+                    color={colors.accentWarm}
+                  />
+                  <Text style={[styles.guideTitle, { color: colors.primary }]}>
+                    Reveal Conversation Guide
+                  </Text>
+                </View>
+                <Ionicons
+                  name={guideExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.secondary}
+                />
+              </Pressable>
+
+              {guideExpanded ? (
+                <View style={styles.guideContent}>
+                  <View style={styles.guideItem}>
+                    <Text
+                      style={[
+                        styles.guideBulletTitle,
+                        { color: colors.accentWarm },
+                      ]}
+                    >
+                      1. Celebrate alignment
+                    </Text>
+                    <Text
+                      style={[styles.guideText, { color: colors.secondary }]}
+                    >
+                      Start by enjoying the things you both rated 4 or 5. Focus
+                      on the joy of shared excitement.
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideItem}>
+                    <Text
+                      style={[
+                        styles.guideBulletTitle,
+                        { color: colors.accentWarm },
+                      ]}
+                    >
+                      2. Curiosity without pressure
+                    </Text>
+                    <Text
+                      style={[styles.guideText, { color: colors.secondary }]}
+                    >
+                      Curiosity Bridges are gentle invitations, not commitments.
+                      Explore what would make them feel safe, fun, and warm.
+                    </Text>
+                  </View>
+
+                  <View style={styles.guideItem}>
+                    <Text
+                      style={[
+                        styles.guideBulletTitle,
+                        { color: colors.accentWarm },
+                      ]}
+                    >
+                      3. Respect boundaries
+                    </Text>
+                    <Text
+                      style={[styles.guideText, { color: colors.secondary }]}
+                    >
+                      Any unrevealed items remain completely private. Silence is
+                      protection, never rejection.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {/* Mutual Matches Section (both >= 4) */}
@@ -1168,8 +1333,19 @@ export default function RevealScreen() {
                   },
                 ]}
               >
-                <Ionicons name="journal-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Discuss in Journal</Text>
+                <Ionicons
+                  name="journal-outline"
+                  size={20}
+                  color={colors.onPrimary}
+                />
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    { color: colors.onPrimary },
+                  ]}
+                >
+                  Discuss in Journal
+                </Text>
               </Pressable>
 
               <Pressable
@@ -1258,7 +1434,12 @@ export default function RevealScreen() {
                     },
                   ]}
                 >
-                  <Text style={styles.primaryButtonText}>
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.onPrimary },
+                    ]}
+                  >
                     Start a new reveal
                   </Text>
                 </Pressable>
@@ -1632,5 +1813,43 @@ const styles = StyleSheet.create({
   bridgeExploreText: {
     ...TYPOGRAPHY.caption,
     fontWeight: '700',
+  },
+  guideCard: {
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    padding: SPACING.sm + 2,
+    marginBottom: SPACING.md,
+  },
+  guideHeader: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  guideHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  guideTitle: {
+    ...TYPOGRAPHY.h3,
+    fontSize: 15,
+  },
+  guideContent: {
+    marginTop: SPACING.xs,
+    paddingTop: SPACING.xs,
+    gap: SPACING.xs + 2,
+  },
+  guideItem: {
+    gap: 2,
+  },
+  guideBulletTitle: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  guideText: {
+    ...TYPOGRAPHY.caption,
+    lineHeight: 18,
   },
 });

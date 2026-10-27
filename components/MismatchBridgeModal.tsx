@@ -232,7 +232,7 @@ export function MismatchBridgeModal({
                       { backgroundColor: colors.primary },
                     ]}
                   >
-                    <Text style={styles.tierBadgeText}>
+                    <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
                       {activeItem.tier.toUpperCase()}
                     </Text>
                   </View>
@@ -349,9 +349,11 @@ export function MismatchBridgeModal({
               <Ionicons
                 name="chatbubbles-outline"
                 size={20}
-                color="#FFFFFF"
+                color={colors.onPrimary}
               />
-              <Text style={styles.primaryButtonText}>Talk about it</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
+                Talk about it
+              </Text>
             </Pressable>
 
             <View style={styles.secondaryButtonsRow}>

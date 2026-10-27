@@ -217,11 +217,22 @@ export default function PairingAcceptScreen() {
               ]}
             >
               {previewLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <>
-                  <Ionicons name="search-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.primaryButtonText}>Preview Invite</Text>
+                  <Ionicons
+                    name="search-outline"
+                    size={18}
+                    color={colors.onPrimary}
+                  />
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.onPrimary },
+                    ]}
+                  >
+                    Preview Invite
+                  </Text>
                 </>
               )}
             </Pressable>

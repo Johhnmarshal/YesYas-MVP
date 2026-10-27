@@ -48,12 +48,14 @@ export function isTierWithinCeiling(
 
 export type TierFilterValue = 'up_to_ceiling' | DesireTier;
 export type ToneFilterValue = 'all' | ToneLabel;
+export type StatusFilterValue = 'all' | 'unrated' | 'rated';
 
 export interface LibraryFilterState {
   /** The user's `content_tier_preference`. Never exceeded, whatever else is set. */
   tierCeiling: DesireTier;
   tierFilter: TierFilterValue;
   toneFilter: ToneFilterValue;
+  statusFilter?: StatusFilterValue;
   /** Raw search box text; trimmed and lowercased here. */
   searchQuery: string;
 }
@@ -74,6 +76,7 @@ export interface LibraryFilterState {
 export function isLibraryItemVisible(
   item: FilterableLibraryItem,
   state: LibraryFilterState,
+  rating?: number | null,
 ): boolean {
   if (!isTierWithinCeiling(item.tier, state.tierCeiling)) {
     return false;
@@ -85,6 +88,16 @@ export function isLibraryItemVisible(
 
   if (state.toneFilter !== 'all' && !item.tone_tags.includes(state.toneFilter)) {
     return false;
+  }
+
+  if (state.statusFilter && state.statusFilter !== 'all') {
+    const isRated = rating !== null && rating !== undefined;
+    if (state.statusFilter === 'unrated' && isRated) {
+      return false;
+    }
+    if (state.statusFilter === 'rated' && !isRated) {
+      return false;
+    }
   }
 
   const search = state.searchQuery.trim().toLowerCase();
@@ -102,8 +115,11 @@ export function isLibraryItemVisible(
 export function filterLibraryItems<T extends FilterableLibraryItem>(
   items: T[],
   state: LibraryFilterState,
+  getRatingForItem?: (item: T) => number | null | undefined,
 ): T[] {
-  return items.filter((item) => isLibraryItemVisible(item, state));
+  return items.filter((item) =>
+    isLibraryItemVisible(item, state, getRatingForItem ? getRatingForItem(item) : undefined),
+  );
 }
 
 /**

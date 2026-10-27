@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { useThemeColors } from '@/lib/theme';
 
 type AuthMode = 'magic_link' | 'password';
 
@@ -43,6 +44,7 @@ const MIN_PASSPHRASE_LENGTH = 12;
  * Renders inline error banners so web users never hit silent `Alert.alert` no-ops.
  */
 export default function SignInScreen() {
+  const colors = useThemeColors();
   const [mode, setMode] = useState<AuthMode>('magic_link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -227,18 +229,27 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <Text style={styles.title}>YesYas!</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.text }]}>YesYas!</Text>
+        <Text style={[styles.subtitle, { color: colors.secondary }]}>
           A quieter way to say what you want — together.
         </Text>
 
         {!sent && (
-          <View style={styles.modeTabs}>
+          <View
+            style={[
+              styles.modeTabs,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <Pressable
               accessibilityRole="tab"
               accessibilityLabel="Sign in by email link or code"
@@ -250,13 +261,21 @@ export default function SignInScreen() {
               }}
               style={[
                 styles.modeTab,
-                mode === 'magic_link' && styles.modeTabActive,
+                { minHeight: 44, justifyContent: 'center' },
+                mode === 'magic_link' && [
+                  styles.modeTabActive,
+                  { backgroundColor: colors.bg },
+                ],
               ]}
             >
               <Text
                 style={[
                   styles.modeTabText,
-                  mode === 'magic_link' && styles.modeTabTextActive,
+                  { color: colors.textMuted ?? colors.muted },
+                  mode === 'magic_link' && [
+                    styles.modeTabTextActive,
+                    { color: colors.text },
+                  ],
                 ]}
               >
                 Email Link / Code
@@ -272,13 +291,21 @@ export default function SignInScreen() {
               }}
               style={[
                 styles.modeTab,
-                mode === 'password' && styles.modeTabActive,
+                { minHeight: 44, justifyContent: 'center' },
+                mode === 'password' && [
+                  styles.modeTabActive,
+                  { backgroundColor: colors.bg },
+                ],
               ]}
             >
               <Text
                 style={[
                   styles.modeTabText,
-                  mode === 'password' && styles.modeTabTextActive,
+                  { color: colors.textMuted ?? colors.muted },
+                  mode === 'password' && [
+                    styles.modeTabTextActive,
+                    { color: colors.text },
+                  ],
                 ]}
               >
                 Instant Passphrase
@@ -288,29 +315,57 @@ export default function SignInScreen() {
         )}
 
         {infoMessage ? (
-          <View style={styles.infoBanner}>
-            <Text style={styles.infoBannerText}>{infoMessage}</Text>
+          <View
+            style={[
+              styles.infoBanner,
+              { backgroundColor: colors.surface, borderColor: colors.accentGold },
+            ]}
+          >
+            <Text style={[styles.infoBannerText, { color: colors.accentGold }]}>
+              {infoMessage}
+            </Text>
           </View>
         ) : null}
 
         {errorMessage ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{errorMessage}</Text>
+          <View
+            style={[
+              styles.errorBanner,
+              { backgroundColor: colors.surface, borderColor: colors.error },
+            ]}
+          >
+            <Text style={[styles.errorBannerText, { color: colors.error }]}>
+              {errorMessage}
+            </Text>
           </View>
         ) : null}
 
         {sent ? (
-          <View style={styles.sentCard}>
-            <Text style={styles.sentTitle}>Check your email</Text>
-            <Text style={styles.sentBody}>
+          <View
+            style={[
+              styles.sentCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.sentTitle, { color: colors.text }]}>Check your email</Text>
+            <Text style={[styles.sentBody, { color: colors.secondary }]}>
               We sent a sign-in link and an 8-digit code to {email.trim()}. Tap
               the link in your email or enter the 8-digit code below:
             </Text>
 
             <TextInput
-              style={[styles.input, styles.otpInput]}
+              style={[
+                styles.input,
+                styles.otpInput,
+                {
+                  backgroundColor: colors.bg,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  minHeight: 48,
+                },
+              ]}
               placeholder="8-digit code from email"
-              placeholderTextColor="#9AA3AE"
+              placeholderTextColor={colors.muted}
               keyboardType="number-pad"
               autoCapitalize="none"
               accessibilityLabel="Sign-in code from your email"
@@ -324,6 +379,11 @@ export default function SignInScreen() {
             <Pressable
               style={[
                 styles.button,
+                {
+                  backgroundColor: colors.primary,
+                  minHeight: 48,
+                  justifyContent: 'center',
+                },
                 (verifyingOtp || !otpCode.trim()) && styles.buttonDisabled,
               ]}
               disabled={verifyingOtp || !otpCode.trim()}
@@ -333,7 +393,7 @@ export default function SignInScreen() {
               accessibilityState={{ disabled: verifyingOtp || !otpCode.trim() }}
             >
               {verifyingOtp ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.buttonText}>Verify sign-in code</Text>
               )}
@@ -346,11 +406,13 @@ export default function SignInScreen() {
                   setOtpCode('');
                   setErrorMessage(null);
                 }}
-                style={styles.linkBtn}
+                style={[styles.linkBtn, { minHeight: 44, justifyContent: 'center' }]}
                 accessibilityRole="button"
                 accessibilityLabel="Use a different email address"
               >
-                <Text style={styles.linkText}>Use a different email</Text>
+                <Text style={[styles.linkText, { color: colors.accentWarm }]}>
+                  Use a different email
+                </Text>
               </Pressable>
 
               <Pressable
@@ -359,11 +421,11 @@ export default function SignInScreen() {
                   setMode('password');
                   setErrorMessage(null);
                 }}
-                style={styles.linkBtn}
+                style={[styles.linkBtn, { minHeight: 44, justifyContent: 'center' }]}
                 accessibilityRole="button"
                 accessibilityLabel="Switch to instant passphrase sign-in"
               >
-                <Text style={styles.linkText}>
+                <Text style={[styles.linkText, { color: colors.accentWarm }]}>
                   Didn&apos;t get it? Use Instant Passphrase
                 </Text>
               </Pressable>
@@ -372,9 +434,17 @@ export default function SignInScreen() {
         ) : mode === 'magic_link' ? (
           <>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  minHeight: 48,
+                },
+              ]}
               placeholder="you@domain.com"
-              placeholderTextColor="#9AA3AE"
+              placeholderTextColor={colors.muted}
               accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
@@ -386,6 +456,11 @@ export default function SignInScreen() {
             <Pressable
               style={[
                 styles.button,
+                {
+                  backgroundColor: colors.primary,
+                  minHeight: 48,
+                  justifyContent: 'center',
+                },
                 (loading || !email.trim() || cooldown > 0) &&
                   styles.buttonDisabled,
               ]}
@@ -400,7 +475,7 @@ export default function SignInScreen() {
               accessibilityState={{ disabled: loading || cooldown > 0 }}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : cooldown > 0 ? (
                 <Text style={styles.buttonText}>
                   {cooldown >= 60
@@ -411,7 +486,7 @@ export default function SignInScreen() {
                 <Text style={styles.buttonText}>Send me a sign-in link</Text>
               )}
             </Pressable>
-            <Text style={styles.hint}>
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
               We&apos;ll email you a one-tap link and an 8-digit code. Or switch
               to Instant Passphrase above to sign in immediately without email.
             </Text>
@@ -419,9 +494,17 @@ export default function SignInScreen() {
         ) : (
           <>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  minHeight: 48,
+                },
+              ]}
               placeholder="you@domain.com"
-              placeholderTextColor="#9AA3AE"
+              placeholderTextColor={colors.muted}
               accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
@@ -431,11 +514,19 @@ export default function SignInScreen() {
               editable={!loading}
             />
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  minHeight: 48,
+                },
+              ]}
               placeholder={`Passphrase (${MIN_PASSPHRASE_LENGTH}+ characters)`}
               accessibilityLabel="Passphrase"
               accessibilityHint={`At least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits`}
-              placeholderTextColor="#9AA3AE"
+              placeholderTextColor={colors.muted}
               secureTextEntry
               autoCapitalize="none"
               autoComplete="password"
@@ -446,6 +537,11 @@ export default function SignInScreen() {
             <Pressable
               style={[
                 styles.button,
+                {
+                  backgroundColor: colors.primary,
+                  minHeight: 48,
+                  justifyContent: 'center',
+                },
                 (loading || !email.trim() || password.length < MIN_PASSPHRASE_LENGTH) &&
                   styles.buttonDisabled,
               ]}
@@ -461,18 +557,23 @@ export default function SignInScreen() {
               }}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.buttonText}>Sign in</Text>
               )}
             </Pressable>
-            <Text style={styles.hint}>
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
               Signs you in straight away — no waiting on email. New here? Enter
               your email and a passphrase, then use Create account.
             </Text>
             <Pressable
               style={[
                 styles.createAccountButton,
+                {
+                  borderColor: colors.accentWarm,
+                  minHeight: 48,
+                  justifyContent: 'center',
+                },
                 (loading ||
                   !email.trim() ||
                   password.length < MIN_PASSPHRASE_LENGTH) &&
@@ -487,7 +588,12 @@ export default function SignInScreen() {
               accessibilityRole="button"
               accessibilityLabel="Create a new account with this email and passphrase"
             >
-              <Text style={styles.createAccountButtonText}>
+              <Text
+                style={[
+                  styles.createAccountButtonText,
+                  { color: colors.accentWarm },
+                ]}
+              >
                 Create account
               </Text>
             </Pressable>

@@ -18,6 +18,7 @@ export interface StarRatingProps {
   disabled?: boolean;
   showCaption?: boolean;
   size?: number;
+  allowClear?: boolean;
 }
 
 const STARS = [1, 2, 3, 4, 5] as const;
@@ -32,11 +33,17 @@ export function StarRating({
   disabled = false,
   showCaption = false,
   size = 26,
+  allowClear = false,
 }: StarRatingProps) {
   const colors = useThemeColors();
 
   const handlePress = (star: number) => {
     if (disabled) return;
+    if (allowClear && value === star) {
+      void hapticLight();
+      onChange(0);
+      return;
+    }
     if (star >= 4) {
       void hapticMedium();
     } else {
@@ -61,9 +68,9 @@ export function StarRating({
             <Pressable
               key={star}
               disabled={disabled}
-              accessibilityRole="button"
+              accessibilityRole="radio"
               accessibilityState={{
-                selected: isSelected,
+                checked: isSelected,
                 disabled,
               }}
               accessibilityLabel={`Rate ${star} out of 5 stars: ${label}`}

@@ -23,6 +23,7 @@ import {
   fetchUserDesires,
 } from '@/lib/desires';
 import {
+  type StatusFilterValue,
   type TierFilterValue,
   type ToneFilterValue,
   filterLibraryItems,
@@ -51,6 +52,12 @@ const TONE_FILTER_PILLS: { value: ToneFilterValue; label: string }[] = [
   ...TONE_OPTIONS.map((t) => ({ value: t.value, label: t.label })),
 ];
 
+const STATUS_FILTER_SEGMENTS: { value: StatusFilterValue; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'unrated', label: 'Unrated' },
+  { value: 'rated', label: 'Rated' },
+];
+
 /**
  * Desire Library screen (`/(app)/library`).
  * Displays the 180 curated intimacy items filtered by content tier, tone tags,
@@ -67,6 +74,7 @@ export default function DesireLibraryScreen() {
   const [tierFilter, setTierFilter] =
     useState<TierFilterValue>('up_to_ceiling');
   const [toneFilter, setToneFilter] = useState<ToneFilterValue>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [allItems, setAllItems] = useState<DesireLibraryItem[]>([]);
@@ -174,6 +182,14 @@ export default function DesireLibraryScreen() {
     }));
   }, []);
 
+  const handleDesireDeleted = useCallback((deletedItemId: string) => {
+    setDesiresByItemId((prev) => {
+      const next = { ...prev };
+      delete next[deletedItemId];
+      return next;
+    });
+  }, []);
+
   const handleSelectTierFilter = useCallback(
     (selected: TierFilterValue) => {
       if (
@@ -226,18 +242,24 @@ export default function DesireLibraryScreen() {
 
   const filteredItems = useMemo(
     () =>
-      filterLibraryItems(allItems, {
-        tierCeiling,
-        tierFilter,
-        toneFilter,
-        searchQuery,
-      }),
-    [allItems, searchQuery, tierCeiling, tierFilter, toneFilter],
+      filterLibraryItems(
+        allItems,
+        {
+          tierCeiling,
+          tierFilter,
+          toneFilter,
+          statusFilter,
+          searchQuery,
+        },
+        (item) => desiresByItemId[item.id]?.rating,
+      ),
+    [allItems, desiresByItemId, searchQuery, statusFilter, tierCeiling, tierFilter, toneFilter],
   );
 
   const handleResetFilters = useCallback(() => {
     setTierFilter('up_to_ceiling');
     setToneFilter('all');
+    setStatusFilter('all');
     setSearchQuery('');
   }, []);
 
@@ -383,7 +405,7 @@ export default function DesireLibraryScreen() {
                           styles.filterPillText,
                           {
                             color: isSelected
-                              ? '#FFFFFF'
+                              ? colors.onPrimary
                               : isLocked
                                 ? colors.muted
                                 : colors.primary,
@@ -433,10 +455,64 @@ export default function DesireLibraryScreen() {
                       <Text
                         style={[
                           styles.filterPillText,
-                          { color: isSelected ? '#FFFFFF' : colors.primary },
+                          {
+                            color: isSelected
+                              ? colors.onAccentWarm
+                              : colors.primary,
+                          },
                         ]}
                       >
                         {pill.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Rating Status Filter Pills */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterLabel, { color: colors.secondary }]}>
+                Rating Status
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.pillsScrollContent}
+              >
+                {STATUS_FILTER_SEGMENTS.map((segment) => {
+                  const isSelected = statusFilter === segment.value;
+                  return (
+                    <Pressable
+                      key={segment.value}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`Filter by ${segment.label} rating status`}
+                      onPress={() => setStatusFilter(segment.value)}
+                      style={({ pressed }) => [
+                        styles.filterPill,
+                        {
+                          backgroundColor: isSelected
+                            ? colors.primary
+                            : colors.surface,
+                          borderColor: isSelected
+                            ? colors.primary
+                            : colors.border,
+                          opacity: pressed ? 0.8 : 1,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterPillText,
+                          {
+                            color: isSelected
+                              ? colors.onPrimary
+                              : colors.primary,
+                          },
+                        ]}
+                      >
+                        {segment.label}
                       </Text>
                     </Pressable>
                   );
@@ -564,6 +640,7 @@ export default function DesireLibraryScreen() {
             pairingId={pairingId}
             desire={desiresByItemId[item.id]}
             onDesireUpdated={handleDesireUpdated}
+            onDesireDeleted={handleDesireDeleted}
           />
         )}
       />
@@ -611,7 +688,12 @@ export default function DesireLibraryScreen() {
                 },
               ]}
             >
-              <Text style={styles.modalPrimaryButtonText}>
+              <Text
+                style={[
+                  styles.modalPrimaryButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
                 {unlockingTier
                   ? 'Updating…'
                   : `Unlock ${pendingUnlockTier ?? ''} tier`}

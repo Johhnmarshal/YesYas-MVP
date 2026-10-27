@@ -345,9 +345,11 @@ export default function SettingsScreen() {
                     ]}
                   >
                     {savingName ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.onPrimary} />
                     ) : (
-                      <Text style={styles.saveButtonText}>Save</Text>
+                      <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
+                        Save
+                      </Text>
                     )}
                   </Pressable>
                 </View>
@@ -435,7 +437,7 @@ export default function SettingsScreen() {
                     <Text style={[styles.soloTitle, { color: colors.text }]}>
                       Solo Mode Active
                     </Text>
-                    <Text style={[styles.soloDescription, { color: colors.muted }]}>
+                    <Text style={[styles.soloDescription, { color: colors.textMuted }]}>
                       Your ratings and reflections are 100% private. When you are
                       ready, invite a partner to discover mutual alignment.
                     </Text>
@@ -449,8 +451,13 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Invite a partner to pair"
                   >
-                    <Ionicons name="heart-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.invitePartnerButtonText}>
+                    <Ionicons name="heart-outline" size={16} color={colors.onPrimary} />
+                    <Text
+                      style={[
+                        styles.invitePartnerButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
                       Invite Partner
                     </Text>
                   </Pressable>
@@ -940,7 +947,14 @@ export default function SettingsScreen() {
                   { backgroundColor: colors.primary },
                 ]}
               >
-                <Text style={styles.modalConfirmButtonText}>Save PIN</Text>
+                <Text
+                  style={[
+                    styles.modalConfirmButtonText,
+                    { color: colors.onPrimary },
+                  ]}
+                >
+                  Save PIN
+                </Text>
               </Pressable>
             </View>
           </View>

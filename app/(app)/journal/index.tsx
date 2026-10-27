@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -49,6 +49,12 @@ const REPORT_REASONS = [
   'Other safety concern',
 ];
 
+const PROMPT_STARTERS = [
+  { icon: '💡', text: 'What made me feel most connected recently?' },
+  { icon: '🌿', text: 'A boundary that helps me feel safe and open' },
+  { icon: '✨', text: "A curiosity I haven't quite found the words for" },
+];
+
 export default function JournalScreen() {
   const colors = useThemeColors();
   useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.journalList);
@@ -60,6 +66,7 @@ export default function JournalScreen() {
   });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const inputRef = useRef<TextInput | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [pastEntries, setPastEntries] = useState<JournalEntryWithBody[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
@@ -394,7 +401,7 @@ export default function JournalScreen() {
                         style={[
                           styles.bubbleText,
                           isUser
-                            ? { color: '#FFFFFF' }
+                            ? { color: colors.onPrimary }
                             : { color: colors.text },
                         ]}
                       >
@@ -656,6 +663,54 @@ export default function JournalScreen() {
           </View>
         ) : null}
 
+        {/* Reflection Prompt Starters (when no active messages) */}
+        {messages.length === 0 && (
+          <View
+            style={[
+              styles.promptsContainer,
+              {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.promptsLabel, { color: colors.secondary }]}>
+              Reflection starters:
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.promptsScrollContent}
+            >
+              {PROMPT_STARTERS.map((prompt, idx) => (
+                <Pressable
+                  key={idx}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use prompt: ${prompt.text}`}
+                  onPress={() => {
+                    setInputText(prompt.text);
+                    inputRef.current?.focus();
+                  }}
+                  style={({ pressed }) => [
+                    styles.promptChip,
+                    {
+                      backgroundColor: colors.bg,
+                      borderColor: colors.border,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.promptChipText, { color: colors.primary }]}
+                  >
+                    {prompt.icon} {prompt.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Input Bar at Bottom */}
         <View
           style={[
@@ -667,6 +722,7 @@ export default function JournalScreen() {
           ]}
         >
           <TextInput
+            ref={inputRef}
             style={[
               styles.textInput,
               {
@@ -700,15 +756,19 @@ export default function JournalScreen() {
             ]}
           >
             {isTyping ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.onPrimary} />
             ) : (
-              <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+              <Ionicons
+                name="arrow-up"
+                size={18}
+                color={inputText.trim() ? colors.onPrimary : colors.muted}
+              />
             )}
           </Pressable>
         </View>
 
-        {/* Sticky Graduation Footer (only visible when user is unpaired) */}
-        {!checkingPairing && !isPaired && (
+        {/* Sticky Graduation Footer (only visible when user is unpaired and not typing) */}
+        {!checkingPairing && !isPaired && inputText.trim().length === 0 && (
           <View
             style={[
               styles.stickyFooter,
@@ -722,7 +782,7 @@ export default function JournalScreen() {
               <Text style={[styles.footerTitle, { color: colors.text }]}>
                 Ready to share with a partner?
               </Text>
-              <Text style={[styles.footerSubtitle, { color: colors.muted }]}>
+              <Text style={[styles.footerSubtitle, { color: colors.textMuted }]}>
                 Your solo ratings and journal remain private.
               </Text>
             </View>
@@ -735,8 +795,19 @@ export default function JournalScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Ionicons name="heart-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.graduateButtonText}>Invite partner</Text>
+              <Ionicons
+                name="heart-outline"
+                size={16}
+                color={colors.onPrimary}
+              />
+              <Text
+                style={[
+                  styles.graduateButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
+                Invite partner
+              </Text>
             </Pressable>
           </View>
         )}
@@ -1354,5 +1425,35 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 18,
+  },
+  promptsContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.xs,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+  },
+  promptsLabel: {
+    ...TYPOGRAPHY.caption,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  promptsScrollContent: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  promptChip: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptChipText: {
+    ...TYPOGRAPHY.caption,
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

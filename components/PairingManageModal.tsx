@@ -233,7 +233,7 @@ export function PairingManageModal({
                 >
                   {submittingStatus === 'paused' ||
                   submittingStatus === 'active' ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.onPrimary} />
                   ) : (
                     <>
                       <Ionicons
@@ -243,9 +243,14 @@ export function PairingManageModal({
                             : 'play-circle-outline'
                         }
                         size={20}
-                        color="#FFFFFF"
+                        color={colors.onPrimary}
                       />
-                      <Text style={styles.primaryButtonText}>
+                      <Text
+                        style={[
+                          styles.primaryButtonText,
+                          { color: colors.onPrimary },
+                        ]}
+                      >
                         {isActive ? 'Pause Pairing' : 'Resume Pairing'}
                       </Text>
                     </>

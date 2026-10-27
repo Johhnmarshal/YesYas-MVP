@@ -354,7 +354,14 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <Text style={styles.primaryButtonText}>Try Again</Text>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: colors.onPrimary },
+                ]}
+              >
+                Try Again
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -432,7 +439,12 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    <Text style={styles.primaryButtonText}>
+                    <Text
+                      style={[
+                        styles.primaryButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
                       {reveal?.status === 'computed'
                         ? 'Open active reveal →'
                         : reveal?.status === 'pending' &&
@@ -529,7 +541,12 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    <Text style={styles.primaryButtonText}>Share Code →</Text>
+                    <Text
+                      style={[
+                        styles.primaryButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >Share Code →</Text>
                   </Pressable>
 
                   <Pressable
@@ -630,7 +647,12 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    <Text style={styles.primaryButtonText}>
+                    <Text
+                      style={[
+                        styles.primaryButtonText,
+                        { color: colors.onPrimary },
+                      ]}
+                    >
                       Create Invite Code
                     </Text>
                   </Pressable>
