@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(42);
+select plan(49);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -129,6 +129,7 @@ declare
   v_pair uuid := 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   v_bridge_item uuid;
   v_veto_item uuid;
+  v_retired_item uuid;
 begin
   select id into v_bridge_item from public.desire_library_items where slug = 'unrushed-kissing';
   select id into v_veto_item from public.desire_library_items where slug = 'slow-undressing';
@@ -144,6 +145,15 @@ begin
   values
     ('11111111-1111-1111-1111-111111111111', v_pair, v_veto_item, 5, 'A veto note'),
     ('22222222-2222-2222-2222-222222222222', v_pair, v_veto_item, 1, 'B veto note');
+
+  -- Retired item (20261031000001): both rate 5. It must never reach the reveal,
+  -- because neither user can see or change that rating in the app any more.
+  select id into v_retired_item from public.desire_library_items
+  where slug = 'silent-eye-blink-sync';
+  insert into public.desires (user_id, pairing_id, library_item_id, rating)
+  values
+    ('11111111-1111-1111-1111-111111111111', v_pair, v_retired_item, 5),
+    ('22222222-2222-2222-2222-222222222222', v_pair, v_retired_item, 5);
 end;
 $$;
 
@@ -270,6 +280,22 @@ select is(
   ),
   true,
   'Rejection privacy: (5,1) item is completely excluded from both matches and mismatches'
+);
+
+-- 17b. A retired item both partners rated 5 is excluded from the reveal. Test 15
+--      already pins matches to exactly one item; this names the reason.
+select is(
+  (
+    select not exists (
+      select 1 from jsonb_array_elements(matches || mismatches) m
+      where m->>'slug' = 'silent-eye-blink-sync'
+    )
+    from public.reveals
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and status = 'computed'
+  ),
+  true,
+  'a retired library item never surfaces in a reveal, even when both rated it 5'
 );
 
 -- 18. trigger_reveal writes reveal_triggered and reveal_revealed rows to public.consent_events with valid non-null payload_hash and prev_hash chain.
@@ -778,6 +804,73 @@ select is(
   (select count(*)::int from public.ai_logs),
   0,
   'ai_logs is not readable by a signed-in client at all'
+);
+
+-- ---------- assertions 43-45: desire library clean-up (20261031000001) ----------
+reset role;
+
+-- 43. All 23 retired near-duplicates still exist (ratings keep their row)
+--     and none is active.
+select is(
+  (select count(*)::int || '/' || count(*) filter (where active)::int
+   from public.desire_library_items
+   where slug in ('silent-eye-blink-sync', 'forehead-to-forehead-calm', 'ice-cube-on-collarbones', 'gentle-temple-acupressure', 'gentle-ribcage-hug', 'sensory-contrast-velvet-ice', 'undressing-with-eyes-closed', 'silk-blindfold-kissing', 'whispering-fantasies-at-twilight', 'erotic-compliment-exchange', 'slow-grazing-with-lips', 'warm-lotion-bottle-glide', 'sensual-shower-soap-lather', 'soft-restraint-with-fingers', 'gentle-wrist-pinning-with-kisses', 'edging-with-prolonged-denial', 'exploring-erotic-roleplay-scenario', 'deep-throat-or-slow-suction', 'erotic-blindfold-surprise', 'submissive-surrender-protocol', 'over-the-knee-spanking', 'whispered-explicit-dirty-talk', 'guided-hand-manual-stimulation')),
+  '23/0',
+  'the 23 retired near-duplicates exist and are all inactive'
+);
+
+-- 44. Restraint and hair-pulling are out of the default tier. No active
+--     Suggestive item is a wrist hold or hair-pull.
+select is(
+  (select count(*)::int from public.desire_library_items
+   where active
+     and tier = 'suggestive'::public.desire_tier
+     and slug in ('sensual-hair-pulling', 'soft-restraint-with-fingers',
+                  'gentle-wrist-pinning-with-kisses')),
+  0,
+  'no wrist-hold or hair-pulling item is active in the default Suggestive tier'
+);
+
+-- 45. The neck item is gone under its old slug, and its replacement does not
+--     name the neck in its title.
+select is(
+  (select (select count(*) from public.desire_library_items
+           where slug = 'breath-play-and-chest-pressure')::int
+        + (select count(*) from public.desire_library_items
+           where slug = 'gentle-chest-pressure' and title ilike '%neck%')::int),
+  0,
+  'the breath-play slug is gone and the chest-pressure item does not suggest the neck'
+);
+
+-- ---------- assertions 46-48: library refresh (20261031000002) ----------
+
+-- 46. The library is exactly the reviewed set: 217 active items, 55 / 49 / 113.
+select is(
+  (select count(*) filter (where tier = 'sensory')::int || '/'
+       || count(*) filter (where tier = 'suggestive')::int || '/'
+       || count(*) filter (where tier = 'explicit')::int
+   from public.desire_library_items where active),
+  '55/49/113',
+  'the active library is 55 sensory, 49 suggestive and 113 explicit items'
+);
+
+-- 47. No dash characters in any active title or description (hyphen, the
+--     Unicode hyphens, en dash, em dash, minus). Slugs are exempt: internal.
+select is(
+  (select count(*)::int from public.desire_library_items
+   where active
+     and (title || ' ' || description) ~ '[-‐‑‒–—―−]'),
+  0,
+  'no active library title or description contains a dash'
+);
+
+-- 48. Nothing in the active library suggests breath play or neck pressure.
+select is(
+  (select count(*)::int from public.desire_library_items
+   where active
+     and (title || ' ' || description) ~* '(chok|strangl|asphyx|breath play|breath control)'),
+  0,
+  'no active library item suggests choking or breath play'
 );
 
 select * from finish();
