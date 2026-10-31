@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(46);
+select plan(49);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -840,6 +840,37 @@ select is(
            where slug = 'gentle-chest-pressure' and title ilike '%neck%')::int),
   0,
   'the breath-play slug is gone and the chest-pressure item does not suggest the neck'
+);
+
+-- ---------- assertions 46-48: library refresh (20261031000002) ----------
+
+-- 46. The library is exactly the reviewed set: 217 active items, 55 / 49 / 113.
+select is(
+  (select count(*) filter (where tier = 'sensory')::int || '/'
+       || count(*) filter (where tier = 'suggestive')::int || '/'
+       || count(*) filter (where tier = 'explicit')::int
+   from public.desire_library_items where active),
+  '55/49/113',
+  'the active library is 55 sensory, 49 suggestive and 113 explicit items'
+);
+
+-- 47. No dash characters in any active title or description (hyphen, the
+--     Unicode hyphens, en dash, em dash, minus). Slugs are exempt: internal.
+select is(
+  (select count(*)::int from public.desire_library_items
+   where active
+     and (title || ' ' || description) ~ '[-‐‑‒–—―−]'),
+  0,
+  'no active library title or description contains a dash'
+);
+
+-- 48. Nothing in the active library suggests breath play or neck pressure.
+select is(
+  (select count(*)::int from public.desire_library_items
+   where active
+     and (title || ' ' || description) ~* '(chok|strangl|asphyx|breath play|breath control)'),
+  0,
+  'no active library item suggests choking or breath play'
 );
 
 select * from finish();
