@@ -937,6 +937,45 @@ async function main() {
     `Found unapproved hardcoded hex color literals in UI code: ${JSON.stringify(hexViolations)}`,
   );
 
+  // 18. Muted-text contrast guard. `colors.muted` is 2.56:1 on white, below
+  // the WCAG AA 4.5:1 floor, so it must never be the colour of text, a
+  // placeholder, a tab label or a meaningful icon. Use `colors.textMuted`
+  // (4.76:1). `muted` stays available for disabled fills and conditional
+  // disabled states, which this pattern deliberately does not match.
+  const mutedTextPattern =
+    /(?:\bcolor:\s*|color=\{|placeholderTextColor=\{|TintColor:\s*)(?:colors|COLORS)\.muted\b/;
+  const mutedViolations: { file: string; line: number }[] = [];
+
+  function scanDirForMutedText(dirPath: string) {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        scanDirForMutedText(fullPath);
+      } else if (entry.name.endsWith('.tsx')) {
+        fs.readFileSync(fullPath, 'utf8')
+          .split(/\r?\n/)
+          .forEach((line, idx) => {
+            if (mutedTextPattern.test(line)) {
+              mutedViolations.push({ file: fullPath, line: idx + 1 });
+            }
+          });
+      }
+    }
+  }
+
+  for (const dir of uiDirs) {
+    const abs = path.resolve(import.meta.dirname ?? '.', '..', dir);
+    if (fs.existsSync(abs)) {
+      scanDirForMutedText(abs);
+    }
+  }
+
+  assert.equal(
+    mutedViolations.length,
+    0,
+    `colors.muted fails WCAG AA as a text colour; use colors.textMuted: ${JSON.stringify(mutedViolations)}`,
+  );
+
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
 

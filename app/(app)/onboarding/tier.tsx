@@ -90,7 +90,7 @@ export default function OnboardingTierScreen() {
                     style={[
                       styles.radioOuter,
                       {
-                        borderColor: isSelected ? colors.primary : colors.muted,
+                        borderColor: isSelected ? colors.primary : colors.textMuted,
                       },
                     ]}
                   >
@@ -122,7 +122,7 @@ export default function OnboardingTierScreen() {
           })}
         </View>
 
-        <Text style={[styles.hint, { color: colors.muted }]}>
+        <Text style={[styles.hint, { color: colors.textMuted }]}>
           You can change this any time in settings.
         </Text>
 

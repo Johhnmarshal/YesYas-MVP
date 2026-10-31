@@ -325,12 +325,12 @@ export default function JournalScreen() {
                 <Text style={[styles.welcomeTitle, { color: colors.text }]}>
                   AI Intimacy Self-Reflection Coach
                 </Text>
-                <Text style={[styles.welcomeSubtitle, { color: colors.muted }]}>
+                <Text style={[styles.welcomeSubtitle, { color: colors.textMuted }]}>
                   Reflect on your boundaries, curiosities, and desires.
                 </Text>
               </View>
             </View>
-            <Text style={[styles.welcomeDisclaimer, { color: colors.muted }]}>
+            <Text style={[styles.welcomeDisclaimer, { color: colors.textMuted }]}>
               Note: The AI Coach is an intimacy self-reflection companion, not a
               licensed therapist. All entries are encrypted with your device key
               before saving.
@@ -420,12 +420,12 @@ export default function JournalScreen() {
                             <Ionicons
                               name="flag-outline"
                               size={12}
-                              color={colors.muted}
+                              color={colors.textMuted}
                             />
                             <Text
                               style={[
                                 styles.flagButtonText,
-                                { color: colors.muted },
+                                { color: colors.textMuted },
                               ]}
                             >
                               Report
@@ -469,7 +469,7 @@ export default function JournalScreen() {
                       <Text
                         style={[
                           styles.typingText,
-                          { color: colors.muted },
+                          { color: colors.textMuted },
                         ]}
                       >
                         AI Coach is reflecting...
@@ -506,7 +506,7 @@ export default function JournalScreen() {
                 accessibilityLabel="Refresh past entries"
                 style={styles.refreshButton}
               >
-                <Ionicons name="refresh" size={16} color={colors.muted} />
+                <Ionicons name="refresh" size={16} color={colors.textMuted} />
               </Pressable>
             </View>
 
@@ -529,7 +529,7 @@ export default function JournalScreen() {
                 <Ionicons
                   name="document-text-outline"
                   size={32}
-                  color={colors.muted}
+                  color={colors.textMuted}
                 />
                 <Text
                   style={[styles.emptyCardTitle, { color: colors.text }]}
@@ -537,7 +537,7 @@ export default function JournalScreen() {
                   Your Journal Is Waiting
                 </Text>
                 <Text
-                  style={[styles.emptyCardBody, { color: colors.muted }]}
+                  style={[styles.emptyCardBody, { color: colors.textMuted }]}
                 >
                   Write a thought, emotion, or question above. Your entries are
                   never visible to anyone else, even if you pair with a partner.
@@ -567,12 +567,12 @@ export default function JournalScreen() {
                         <Ionicons
                           name="calendar-outline"
                           size={13}
-                          color={colors.muted}
+                          color={colors.textMuted}
                         />
                         <Text
                           style={[
                             styles.entryCardDate,
-                            { color: colors.muted },
+                            { color: colors.textMuted },
                           ]}
                         >
                           {formatEntryDate(entry.created_at)}
@@ -600,7 +600,7 @@ export default function JournalScreen() {
                         styles.entryCardSnippet,
                         {
                           color:
-                            entry.bodyState === 'ok' ? colors.text : colors.muted,
+                            entry.bodyState === 'ok' ? colors.text : colors.textMuted,
                         },
                       ]}
                     >
@@ -732,7 +732,7 @@ export default function JournalScreen() {
               },
             ]}
             placeholder="Write a private reflection or question..."
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textMuted}
             value={inputText}
             onChangeText={setInputText}
             multiline
@@ -840,7 +840,7 @@ export default function JournalScreen() {
               Graduating to Paired Mode
             </Text>
 
-            <Text style={[styles.modalBody, { color: colors.muted }]}>
+            <Text style={[styles.modalBody, { color: colors.textMuted }]}>
               Your solo ratings and journal reflections will carry over and
               remain 100% private to you.
             </Text>
@@ -957,7 +957,7 @@ export default function JournalScreen() {
                           : 'radio-button-off'
                       }
                       size={18}
-                      color={selected ? colors.primary : colors.muted}
+                      color={selected ? colors.primary : colors.textMuted}
                     />
                     <Text
                       style={[

@@ -147,7 +147,7 @@ export function RecoveryCodeModal({
             {step === 'generating' ? (
               <View style={styles.centered}>
                 <ActivityIndicator color={colors.primary} />
-                <Text style={[styles.caption, { color: colors.muted }]}>
+                <Text style={[styles.caption, { color: colors.textMuted }]}>
                   Creating your recovery code…
                 </Text>
               </View>
@@ -260,7 +260,7 @@ export function RecoveryCodeModal({
                     },
                   ]}
                   placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-                  placeholderTextColor={colors.muted}
+                  placeholderTextColor={colors.textMuted}
                   value={confirmInput}
                   onChangeText={(next) => {
                     setConfirmInput(next);
@@ -311,7 +311,7 @@ export function RecoveryCodeModal({
                   accessibilityRole="button"
                   accessibilityLabel="Close without confirming the recovery code"
                 >
-                  <Text style={[styles.textButtonLabel, { color: colors.muted }]}>
+                  <Text style={[styles.textButtonLabel, { color: colors.textMuted }]}>
                     I&apos;ll confirm later
                   </Text>
                 </Pressable>

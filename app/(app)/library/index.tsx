@@ -315,12 +315,12 @@ export default function DesireLibraryScreen() {
                 },
               ]}
             >
-              <Ionicons name="search" size={18} color={colors.muted} />
+              <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Search desires by title or description…"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.textMuted}
                 accessibilityLabel="Search desire library items"
                 style={[styles.searchInput, { color: colors.primary }]}
               />
@@ -334,7 +334,7 @@ export default function DesireLibraryScreen() {
                   <Ionicons
                     name="close-circle"
                     size={18}
-                    color={colors.muted}
+                    color={colors.textMuted}
                   />
                 </Pressable>
               ) : null}
@@ -405,7 +405,7 @@ export default function DesireLibraryScreen() {
                             color: isSelected
                               ? colors.onPrimary
                               : isLocked
-                                ? colors.muted
+                                ? colors.textMuted
                                 : colors.primary,
                           },
                         ]}
@@ -668,7 +668,7 @@ export default function DesireLibraryScreen() {
                 ?.description ??
                 'You can adjust your preferred content tier at any time in Settings.'}
             </Text>
-            <Text style={[styles.modalHint, { color: colors.muted }]}>
+            <Text style={[styles.modalHint, { color: colors.textMuted }]}>
               🔒 Changing your tier only affects what you see in your own
               library. Your partner is never notified.
             </Text>

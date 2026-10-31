@@ -25,7 +25,10 @@ import {
 import {
   type PairingWithPartner,
   getActiveOrPendingPairing,
+  updatePairingStatus,
 } from '@/lib/pairing';
+import { describePairingError } from '@/lib/pairing-errors';
+import { hapticMedium } from '@/lib/haptics';
 import { type RevealRow, fetchCurrentReveal } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -90,6 +93,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manageModalVisible, setManageModalVisible] = useState<boolean>(false);
+  const [pauseBusy, setPauseBusy] = useState<boolean>(false);
+  const [pauseError, setPauseError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async (showSkeleton = false) => {
     if (showSkeleton) {
@@ -243,6 +248,32 @@ export default function HomeScreen() {
     }
     return lastRevealLine();
   }, [nowMs, pairing, partnerName, reveal, userId]);
+
+  // "Pause is always one tap away." Pause and Resume sit in the same spot on
+  // the pairing card, so the button that just paused is also the one-tap undo.
+  const handleTogglePause = useCallback(async () => {
+    if (!pairing || pauseBusy) return;
+    if (pairing.status !== 'active' && pairing.status !== 'paused') return;
+    const next = pairing.status === 'active' ? 'paused' : 'active';
+    setPauseBusy(true);
+    setPauseError(null);
+    try {
+      await updatePairingStatus(pairing.id, next);
+      void hapticMedium();
+      await loadDashboard(false);
+    } catch (err: unknown) {
+      setPauseError(
+        describePairingError(
+          err,
+          next === 'paused'
+            ? 'Could not pause pairing. Please try again.'
+            : 'Could not resume pairing. Please try again.',
+        ),
+      );
+    } finally {
+      setPauseBusy(false);
+    }
+  }, [loadDashboard, pairing, pauseBusy]);
 
   const isPairedActiveOrPaused =
     pairing?.status === 'active' || pairing?.status === 'paused';
@@ -454,33 +485,89 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
 
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="View pairing details and pause or end options"
-                    onPress={() => setManageModalVisible(true)}
-                    style={({ pressed }) => [
-                      styles.managePairingButton,
-                      {
-                        borderColor: colors.border,
-                        backgroundColor: colors.bg,
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="options-outline"
-                      size={16}
-                      color={colors.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.managePairingText,
-                        { color: colors.primary },
+                  <View style={styles.secondaryActionsRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        pairing.status === 'active'
+                          ? 'Pause pairing. Place reveals on hold'
+                          : 'Resume pairing'
+                      }
+                      accessibilityState={{ disabled: pauseBusy, busy: pauseBusy }}
+                      disabled={pauseBusy}
+                      onPress={() => void handleTogglePause()}
+                      style={({ pressed }) => [
+                        styles.managePairingButton,
+                        styles.secondaryActionButton,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.bg,
+                          opacity: pressed || pauseBusy ? 0.7 : 1,
+                        },
                       ]}
                     >
-                      View pairing details
+                      {pauseBusy ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name={
+                              pairing.status === 'active'
+                                ? 'pause-circle-outline'
+                                : 'play-circle-outline'
+                            }
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.managePairingText,
+                              { color: colors.primary },
+                            ]}
+                          >
+                            {pairing.status === 'active' ? 'Pause' : 'Resume'}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="View pairing details and end options"
+                      onPress={() => setManageModalVisible(true)}
+                      style={({ pressed }) => [
+                        styles.managePairingButton,
+                        styles.secondaryActionButton,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.bg,
+                          opacity: pressed ? 0.8 : 1,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name="options-outline"
+                        size={16}
+                        color={colors.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.managePairingText,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        Pairing details
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {pauseError ? (
+                    <Text
+                      accessibilityRole="alert"
+                      style={[styles.pauseErrorText, { color: colors.error }]}
+                    >
+                      {pauseError}
                     </Text>
-                  </Pressable>
+                  ) : null}
                 </View>
               </View>
             ) : isPendingInvite && pairing ? (
@@ -696,7 +783,7 @@ export default function HomeScreen() {
               <View style={styles.metricColumn}>
                 <Text style={[styles.metricValue, { color: colors.primary }]}>
                   {ratedInTierCount}
-                  <Text style={[styles.metricTotal, { color: colors.muted }]}>
+                  <Text style={[styles.metricTotal, { color: colors.textMuted }]}>
                     /{allowedItemsCount}
                   </Text>
                 </Text>
@@ -706,7 +793,7 @@ export default function HomeScreen() {
                   Desires Rated
                 </Text>
                 {totalRatedCount > ratedInTierCount ? (
-                  <Text style={[styles.metricSubHint, { color: colors.muted }]}>
+                  <Text style={[styles.metricSubHint, { color: colors.textMuted }]}>
                     ({totalRatedCount} total across all tiers)
                   </Text>
                 ) : null}
@@ -973,6 +1060,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: SPACING.sm,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  secondaryActionButton: {
+    flex: 1,
+  },
+  pauseErrorText: {
+    ...TYPOGRAPHY.caption,
+    marginTop: 4,
   },
   managePairingText: {
     ...TYPOGRAPHY.caption,

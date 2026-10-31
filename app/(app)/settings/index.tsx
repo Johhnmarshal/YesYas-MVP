@@ -313,7 +313,7 @@ export default function SettingsScreen() {
               </Text>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.muted }]}>
+                <Text style={[styles.label, { color: colors.textMuted }]}>
                   Display Name
                 </Text>
                 <View style={styles.inlineEditRow}>
@@ -329,7 +329,7 @@ export default function SettingsScreen() {
                     value={displayName}
                     onChangeText={setDisplayName}
                     placeholder="Enter your name or nickname"
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={colors.textMuted}
                     maxLength={50}
                     accessibilityLabel="Display name input"
                   />
@@ -356,7 +356,7 @@ export default function SettingsScreen() {
 
               {email && (
                 <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.muted }]}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>
                     Account Email
                   </Text>
                   <Text style={[styles.infoValue, { color: colors.text }]}>
@@ -387,7 +387,7 @@ export default function SettingsScreen() {
                             ? 'Pairing Pending'
                             : 'Your Partner')}
                       </Text>
-                      <Text style={[styles.pairingStatusText, { color: colors.muted }]}>
+                      <Text style={[styles.pairingStatusText, { color: colors.textMuted }]}>
                         Status:{' '}
                         <Text
                           style={{
@@ -474,7 +474,7 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Tone Preference
               </Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.muted }]}>
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                 Adjust how desire titles and prompts are phrased.
               </Text>
 
@@ -514,7 +514,7 @@ export default function SettingsScreen() {
                           {opt.label}
                         </Text>
                         <Text
-                          style={[styles.optionDescription, { color: colors.muted }]}
+                          style={[styles.optionDescription, { color: colors.textMuted }]}
                         >
                           {opt.description}
                         </Text>
@@ -542,7 +542,7 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Content Tier Preference
               </Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.muted }]}>
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                 Choose the maximum depth of desire prompts shown in your library.
               </Text>
 
@@ -583,7 +583,7 @@ export default function SettingsScreen() {
                           {opt.label}
                         </Text>
                         <Text
-                          style={[styles.optionDescription, { color: colors.muted }]}
+                          style={[styles.optionDescription, { color: colors.textMuted }]}
                         >
                           {opt.description}
                         </Text>
@@ -617,7 +617,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.switchTitle, { color: colors.text }]}>
                     Require Biometrics / 6-digit PIN
                   </Text>
-                  <Text style={[styles.switchSubtitle, { color: colors.muted }]}>
+                  <Text style={[styles.switchSubtitle, { color: colors.textMuted }]}>
                     Lock the app whenever backgrounded to protect your privacy.
                   </Text>
                 </View>
@@ -659,7 +659,7 @@ export default function SettingsScreen() {
                 Encryption Recovery Code
               </Text>
 
-              <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+              <Text style={[styles.navRowSubtitle, { color: colors.textMuted }]}>
                 {hasBackup === null
                   ? 'We could not check whether you have a recovery code. Reopen this screen when you are back online.'
                   : hasBackup
@@ -723,12 +723,12 @@ export default function SettingsScreen() {
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Privacy Model (Plain English)
                     </Text>
-                    <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+                    <Text style={[styles.navRowSubtitle, { color: colors.textMuted }]}>
                       What the server can and cannot see
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
 
               <Pressable
@@ -747,12 +747,12 @@ export default function SettingsScreen() {
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Consent Audit Trail
                     </Text>
-                    <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+                    <Text style={[styles.navRowSubtitle, { color: colors.textMuted }]}>
                       View tamper-evident SHA-256 cryptographic chain
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
 
               <Pressable
@@ -771,12 +771,12 @@ export default function SettingsScreen() {
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Therapist Summary Export
                     </Text>
-                    <Text style={[styles.navRowSubtitle, { color: colors.muted }]}>
+                    <Text style={[styles.navRowSubtitle, { color: colors.textMuted }]}>
                       Dual-consented aggregate report for clinical support
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
             </View>
 
@@ -862,7 +862,7 @@ export default function SettingsScreen() {
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Set 6-Digit PIN
             </Text>
-            <Text style={[styles.modalBody, { color: colors.muted }]}>
+            <Text style={[styles.modalBody, { color: colors.textMuted }]}>
               Enter a 6-digit PIN used to unlock YesYas! if biometrics fail,
               then enter it again to confirm. If you forget it you can sign out
               from the lock screen and back in — your journal is kept either
@@ -884,7 +884,7 @@ export default function SettingsScreen() {
                 setPinError(null);
               }}
               placeholder="123456"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               secureTextEntry
               maxLength={6}
@@ -906,7 +906,7 @@ export default function SettingsScreen() {
                 setPinError(null);
               }}
               placeholder="Confirm PIN"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               secureTextEntry
               maxLength={6}
@@ -987,7 +987,7 @@ export default function SettingsScreen() {
               Delete Account Permanently
             </Text>
 
-            <Text style={[styles.modalBody, { color: colors.muted }]}>
+            <Text style={[styles.modalBody, { color: colors.textMuted }]}>
               This will irreversibly erase your profile, all encrypted journal
               entries, private desire ratings, and dissolve any active pairing.
             </Text>
@@ -1009,7 +1009,7 @@ export default function SettingsScreen() {
               value={deleteConfirmText}
               onChangeText={setDeleteConfirmText}
               placeholder="DELETE"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               autoCapitalize="characters"
               accessibilityLabel="Type DELETE to confirm account deletion"
             />

@@ -344,12 +344,12 @@ export default function TherapistExportScreen() {
             <Ionicons
               name="people-outline"
               size={40}
-              color={colors.muted}
+              color={colors.textMuted}
             />
             <Text style={[styles.cardTitle, { color: colors.text }]}>
               Active Pairing Required
             </Text>
-            <Text style={[styles.cardBody, { color: colors.muted }]}>
+            <Text style={[styles.cardBody, { color: colors.textMuted }]}>
               Therapist summary reports synthesize mutual alignment metrics
               between two partners. Pair with your partner and complete a
               reveal session to use this feature.
@@ -424,7 +424,7 @@ export default function TherapistExportScreen() {
                       : 'Dual Consent Required'}
                 </Text>
                 <Text
-                  style={[styles.statusBannerSubtitle, { color: colors.muted }]}
+                  style={[styles.statusBannerSubtitle, { color: colors.textMuted }]}
                 >
                   {bothConsented
                     ? 'Both partners have granted explicit export consent.'
@@ -449,7 +449,7 @@ export default function TherapistExportScreen() {
                 <Text style={[styles.cardTitle, { color: colors.text }]}>
                   Grant Export Consent
                 </Text>
-                <Text style={[styles.cardBody, { color: colors.muted }]}>
+                <Text style={[styles.cardBody, { color: colors.textMuted }]}>
                   By granting consent, you authorize YesYas! to compile aggregate
                   counts of shared alignment and curiosity zone items for clinical
                   counseling. Individual raw ratings are never exported.
@@ -494,7 +494,7 @@ export default function TherapistExportScreen() {
                       Couples Clinical Summary
                     </Text>
                     <Text
-                      style={[styles.reportSubheading, { color: colors.muted }]}
+                      style={[styles.reportSubheading, { color: colors.textMuted }]}
                     >
                       Match counts & curiosity zone metrics
                     </Text>
@@ -533,7 +533,7 @@ export default function TherapistExportScreen() {
                   <View style={styles.reportLoading}>
                     <ActivityIndicator size="large" color={colors.primary} />
                     <Text
-                      style={[styles.reportLoadingText, { color: colors.muted }]}
+                      style={[styles.reportLoadingText, { color: colors.textMuted }]}
                     >
                       Compiling aggregate metrics...
                     </Text>

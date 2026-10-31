@@ -16,7 +16,7 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary || COLORS.primary,
-        tabBarInactiveTintColor: colors.muted || COLORS.muted,
+        tabBarInactiveTintColor: colors.textMuted || COLORS.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface || COLORS.surface,
           borderTopColor: colors.border || COLORS.border,

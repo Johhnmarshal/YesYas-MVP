@@ -80,7 +80,7 @@ export default function ConsentAuditScreen() {
       ? colors.success
       : chainState === 'broken'
         ? colors.error
-        : colors.muted;
+        : colors.textMuted;
   const chainTitle =
     chainState === 'valid'
       ? 'Cryptographic Hash-Chain Verified'
@@ -198,14 +198,14 @@ export default function ConsentAuditScreen() {
                   {chainTitle}
                 </Text>
                 <Text
-                  style={[styles.verificationSubtitle, { color: colors.muted }]}
+                  style={[styles.verificationSubtitle, { color: colors.textMuted }]}
                 >
                   {chainSubtitle}
                 </Text>
               </View>
             </View>
 
-            <Text style={[styles.sectionHeading, { color: colors.muted }]}>
+            <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>
               {events.length} RECORDED CONSENT EVENT
               {events.length === 1 ? '' : 'S'}
             </Text>
@@ -228,12 +228,12 @@ export default function ConsentAuditScreen() {
               <Ionicons
                 name="document-text-outline"
                 size={36}
-                color={colors.muted}
+                color={colors.textMuted}
               />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 No Consent Events Yet
               </Text>
-              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 When you accept a pairing, trigger a reveal, or consent to an
                 export, a tamper-evident audit record is permanently appended
                 here.
@@ -255,7 +255,7 @@ export default function ConsentAuditScreen() {
             >
               <View style={styles.eventCardHeader}>
                 <View style={styles.eventIndexBadge}>
-                  <Text style={[styles.eventIndexText, { color: colors.muted }]}>
+                  <Text style={[styles.eventIndexText, { color: colors.textMuted }]}>
                     #{index + 1}
                   </Text>
                 </View>
@@ -263,7 +263,7 @@ export default function ConsentAuditScreen() {
                   <Text style={[styles.eventTitle, { color: colors.text }]}>
                     {label}
                   </Text>
-                  <Text style={[styles.eventDate, { color: colors.muted }]}>
+                  <Text style={[styles.eventDate, { color: colors.textMuted }]}>
                     {formatEventDate(item.created_at)}
                   </Text>
                 </View>
@@ -281,7 +281,7 @@ export default function ConsentAuditScreen() {
                   <Ionicons
                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
                     size={18}
-                    color={colors.muted}
+                    color={colors.textMuted}
                   />
                 </Pressable>
               </View>
@@ -289,7 +289,7 @@ export default function ConsentAuditScreen() {
               {/* Hash information */}
               <View style={styles.hashContainer}>
                 <View style={styles.hashRow}>
-                  <Text style={[styles.hashLabel, { color: colors.muted }]}>
+                  <Text style={[styles.hashLabel, { color: colors.textMuted }]}>
                     Payload Hash:
                   </Text>
                   <Text
@@ -302,7 +302,7 @@ export default function ConsentAuditScreen() {
                   </Text>
                 </View>
                 <View style={styles.hashRow}>
-                  <Text style={[styles.hashLabel, { color: colors.muted }]}>
+                  <Text style={[styles.hashLabel, { color: colors.textMuted }]}>
                     Prev Hash:
                   </Text>
                   <Text
@@ -324,7 +324,7 @@ export default function ConsentAuditScreen() {
                     { backgroundColor: colors.bg, borderColor: colors.border },
                   ]}
                 >
-                  <Text style={[styles.payloadTitle, { color: colors.muted }]}>
+                  <Text style={[styles.payloadTitle, { color: colors.textMuted }]}>
                     RAW EVENT METADATA (IMMUTABLE):
                   </Text>
                   <Text

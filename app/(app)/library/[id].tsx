@@ -589,7 +589,7 @@ export default function DesireLibraryItemDetailScreen() {
                   Private note (encrypted — never shared in reveals)
                 </Text>
                 {noteSaveState === 'saving' ? (
-                  <Text style={[styles.saveStatus, { color: colors.muted }]}>
+                  <Text style={[styles.saveStatus, { color: colors.textMuted }]}>
                     Saving…
                   </Text>
                 ) : noteSaveState === 'saved' ? (
@@ -628,7 +628,7 @@ export default function DesireLibraryItemDetailScreen() {
                     ? 'Give this a star rating first, then you can add a private note.'
                     : 'Write a boundary, memory, or what would make this feel safe and exciting…'
                 }
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 accessibilityLabel={
                   rating === null

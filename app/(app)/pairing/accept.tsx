@@ -181,7 +181,7 @@ export default function PairingAcceptScreen() {
             value={code}
             onChangeText={handleCodeChange}
             placeholder="E.G. 7K9M2P4X"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={8}
@@ -197,7 +197,7 @@ export default function PairingAcceptScreen() {
             ]}
           />
 
-          <Text style={[styles.charCounter, { color: colors.muted }]}>
+          <Text style={[styles.charCounter, { color: colors.textMuted }]}>
             {code.length} / 8 characters
           </Text>
 

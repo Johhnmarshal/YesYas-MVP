@@ -513,7 +513,7 @@ export function BiometricGate({ children, active = true }: BiometricGateProps) {
                 { opacity: pressed || signingOut ? 0.6 : 1 },
               ]}
             >
-              <Text style={[styles.forgotPinText, { color: colors.muted }]}>
+              <Text style={[styles.forgotPinText, { color: colors.textMuted }]}>
                 {signingOut
                   ? 'Signing out…'
                   : confirmingSignOut

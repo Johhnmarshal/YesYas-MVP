@@ -57,7 +57,7 @@ export default function OnboardingToneScreen() {
                     style={[
                       styles.radioOuter,
                       {
-                        borderColor: isSelected ? colors.primary : colors.muted,
+                        borderColor: isSelected ? colors.primary : colors.textMuted,
                       },
                     ]}
                   >
