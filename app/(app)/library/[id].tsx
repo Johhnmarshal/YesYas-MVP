@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MatchCommentField } from '@/components/MatchCommentField';
 import { StarRating } from '@/components/StarRating';
 import {
   type DesireLibraryItem,
@@ -46,6 +47,10 @@ export default function DesireLibraryItemDetailScreen() {
   const [note, setNote] = useState<string>('');
   // 'ok' unless a note exists that this device could not decrypt.
   const [noteState, setNoteState] = useState<EncryptedFieldState>('ok');
+  // Partner-visible comment for the current context (paired row when paired,
+  // solo row otherwise). Never mirrored across contexts: a comment written for
+  // one partner must not follow the user to the next.
+  const [matchComment, setMatchComment] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -167,6 +172,9 @@ export default function DesireLibraryItemDetailScreen() {
       setRating(chosenDesire?.rating ?? null);
       setNote(chosenDesire?.note ?? '');
       setNoteState(chosenDesire?.noteState ?? 'ok');
+      setMatchComment(
+        (activePairingId ? matchingPaired : matchingSolo)?.match_comment ?? null,
+      );
       setNoteSaveState(chosenDesire?.note ? 'saved' : 'idle');
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -644,6 +652,16 @@ export default function DesireLibraryItemDetailScreen() {
                     color: colors.primary,
                   },
                 ]}
+              />
+
+              <MatchCommentField
+                userId={userId}
+                pairingId={pairingId}
+                libraryItemId={item.id}
+                itemTitle={item.title}
+                rating={rating}
+                initialComment={matchComment}
+                onSaved={setMatchComment}
               />
 
               {actionError ? (

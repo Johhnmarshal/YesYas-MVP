@@ -7,7 +7,7 @@ import {
   type EncryptedFieldState,
 } from './crypto';
 import type { Database, DesireTier } from './database.types';
-import { ratingForNewNote } from './desire-note-rules';
+import { RatingRequiredError, ratingForNewNote } from './desire-note-rules';
 import { TIER_ORDER, getAllowedTiers } from './library-filter';
 import { supabase } from './supabase';
 
@@ -207,6 +207,57 @@ export async function upsertDesireRating(
     throw error;
   }
   return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
+}
+
+/** Longest partner-visible comment the database accepts. */
+export const MATCH_COMMENT_MAX_LENGTH = 280;
+
+export interface SaveMatchCommentParams {
+  userId: string;
+  pairingId: string | null;
+  libraryItemId: string;
+  /** Empty or whitespace clears the comment. */
+  comment: string;
+}
+
+/**
+ * Saves the partner-visible comment on an existing rating.
+ *
+ * Unlike the private note this is stored as plain text, because the partner
+ * must be able to read it once the item is a mutual match (see migration
+ * 20261031000003). It is only ever shown to them through a reveal. A comment
+ * needs a rating row to live on, so this throws RatingRequiredError when the
+ * item has not been rated yet.
+ */
+export async function saveMatchComment(
+  params: SaveMatchCommentParams,
+): Promise<string | null> {
+  const { userId, pairingId, libraryItemId, comment } = params;
+  const trimmed = comment.trim();
+  if (trimmed.length > MATCH_COMMENT_MAX_LENGTH) {
+    throw new Error(
+      `Keep it to ${MATCH_COMMENT_MAX_LENGTH} characters or fewer.`,
+    );
+  }
+
+  const existing = await findExistingDesire(userId, pairingId, libraryItemId);
+  if (!existing) {
+    throw new RatingRequiredError(
+      'Rate this item before leaving a comment for your partner.',
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('desires')
+    .update({ match_comment: trimmed || null })
+    .eq('id', existing.id)
+    .select('match_comment')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+  return data.match_comment;
 }
 
 // The note/rating rule lives in lib/desire-note-rules.ts so it can be tested

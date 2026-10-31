@@ -153,6 +153,26 @@ export default function PrivacyModelScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.itemRow}>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+              <View style={styles.itemContent}>
+                <Text style={[styles.itemHeader, { color: colors.text }]}>
+                  Comments for Your Partner
+                </Text>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
+                  The optional comment you leave on an item you rate 4 or 5. It is
+                  stored as plain text, not end to end encrypted, so your partner
+                  can read it, but only when a reveal shows that item as a mutual
+                  match. The copy in the reveal is deleted when the reveal expires
+                  after 24 hours; your own copy stays until you edit or clear it,
+                  or clear the rating. Your private note is separate and stays
+                  encrypted.
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.itemRow}>
               <Ionicons name="git-commit-outline" size={18} color={colors.primary} />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
