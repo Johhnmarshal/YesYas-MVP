@@ -86,7 +86,7 @@ export function StarRating({
               <Ionicons
                 name={isFilled ? 'star' : 'star-outline'}
                 size={size}
-                color={isFilled ? colors.accentWarm : colors.muted}
+                color={isFilled ? colors.accentWarm : colors.textMuted}
               />
             </Pressable>
           );

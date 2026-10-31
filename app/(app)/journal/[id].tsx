@@ -199,7 +199,7 @@ export default function JournalDetailScreen() {
         {loading ? (
           <View style={styles.stateContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.stateText, { color: colors.muted }]}>
+            <Text style={[styles.stateText, { color: colors.textMuted }]}>
               Decrypting entry...
             </Text>
           </View>
@@ -240,9 +240,9 @@ export default function JournalDetailScreen() {
               <Ionicons
                 name="calendar-outline"
                 size={14}
-                color={colors.muted}
+                color={colors.textMuted}
               />
-              <Text style={[styles.timestampText, { color: colors.muted }]}>
+              <Text style={[styles.timestampText, { color: colors.textMuted }]}>
                 {formatTimestamp(entry.created_at)}
               </Text>
             </View>
@@ -256,7 +256,7 @@ export default function JournalDetailScreen() {
                 {entry.body}
               </Text>
             ) : (
-              <Text style={[styles.entryBody, { color: colors.muted }]}>
+              <Text style={[styles.entryBody, { color: colors.textMuted }]}>
                 {entry.bodyState === 'locked'
                   ? 'This entry is still encrypted because this device has no key for it. Close and reopen YesYas! to enter your recovery code.'
                   : 'This entry can no longer be decrypted on this account.'}

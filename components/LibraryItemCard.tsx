@@ -391,7 +391,7 @@ export function LibraryItemCard({
                 Private note (encrypted before saving)
               </Text>
               {noteSaveState === 'saving' ? (
-                <Text style={[styles.saveStatus, { color: colors.muted }]}>
+                <Text style={[styles.saveStatus, { color: colors.textMuted }]}>
                   Saving…
                 </Text>
               ) : noteSaveState === 'saved' ? (
@@ -430,7 +430,7 @@ export function LibraryItemCard({
                   ? 'Give this a star rating first, then you can add a private note.'
                   : 'Write a personal thought, boundary, or context…'
               }
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               multiline
               accessibilityLabel={
                 rating === null

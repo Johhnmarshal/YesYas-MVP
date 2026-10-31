@@ -58,7 +58,7 @@ export default function PrivacyModelScreen() {
           <Text style={[styles.heroTitle, { color: colors.text }]}>
             Our Privacy Guarantee in Plain English
           </Text>
-          <Text style={[styles.heroBody, { color: colors.muted }]}>
+          <Text style={[styles.heroBody, { color: colors.textMuted }]}>
             YesYas! is engineered so that neither partner can ever read or deduce
             the other’s private ratings, notes, or rejections.
           </Text>
@@ -82,7 +82,7 @@ export default function PrivacyModelScreen() {
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Personal Desire Notes
                 </Text>
-                <Text style={[styles.itemText, { color: colors.muted }]}>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
                   Encrypted on your device with authenticated AES-CTR + HMAC-SHA256
                   (prefixed `enc:v1:`). The server and database only ever store
                   ciphertext bytes.
@@ -98,7 +98,7 @@ export default function PrivacyModelScreen() {
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Journal Reflections at Rest
                 </Text>
-                <Text style={[styles.itemText, { color: colors.muted }]}>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
                   Stored encrypted with your master key. Reinstalling or switching
                   devices requires your 100-bit recovery code to restore your
                   key.
@@ -114,7 +114,7 @@ export default function PrivacyModelScreen() {
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Individual Numeric Ratings
                 </Text>
-                <Text style={[styles.itemText, { color: colors.muted }]}>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
                   Your 1–5 star ratings are private to you. The double-blind
                   reveal only exposes matching items where both rated 4+, or
                   Curiosity Bridges. Items rated 1 or 2 are permanently omitted
@@ -143,7 +143,7 @@ export default function PrivacyModelScreen() {
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Account Identity & Pairings
                 </Text>
-                <Text style={[styles.itemText, { color: colors.muted }]}>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
                   Your account email (used for magic-link authentication) and your
                   active pairing identifier.
                 </Text>
@@ -158,7 +158,7 @@ export default function PrivacyModelScreen() {
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Consent Audit Events
                 </Text>
-                <Text style={[styles.itemText, { color: colors.muted }]}>
+                <Text style={[styles.itemText, { color: colors.textMuted }]}>
                   Timestamped records of when you accepted a pairing, triggered a
                   reveal, or consented to an export, chained via SHA-256 hashes.
                 </Text>
@@ -182,12 +182,12 @@ export default function PrivacyModelScreen() {
             <Text style={[styles.calloutHeader, { color: colors.text }]}>
               The AI Coach Receives Plaintext During Conversations
             </Text>
-            <Text style={[styles.calloutText, { color: colors.muted }]}>
+            <Text style={[styles.calloutText, { color: colors.textMuted }]}>
               While your journal entries are encrypted before being stored in the
               database, your message is transmitted in plaintext to the AI model
               over TLS so it can generate reflective responses.
             </Text>
-            <Text style={[styles.calloutSubtext, { color: colors.muted }]}>
+            <Text style={[styles.calloutSubtext, { color: colors.textMuted }]}>
               • The AI Coach is strictly solo: it never reads your partner’s
               reflections or ratings.{"\n"}
               • Prompts are strictly bounded by intimacy safety rules.{"\n"}
@@ -208,7 +208,7 @@ export default function PrivacyModelScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <Text style={[styles.osNote, { color: colors.muted }]}>
+            <Text style={[styles.osNote, { color: colors.textMuted }]}>
               <Text style={{ fontWeight: '700', color: colors.text }}>Android: </Text>
               Screen recording and screenshots are blocked by the operating
               system on reveal and journal screens, using the FLAG_SECURE

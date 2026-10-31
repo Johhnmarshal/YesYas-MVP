@@ -194,7 +194,7 @@ export function EncryptionKeyGate({ children, userId }: EncryptionKeyGateProps) 
               },
             ]}
             placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textMuted}
             value={code}
             onChangeText={(next) => {
               setCode(next);
@@ -237,7 +237,7 @@ export function EncryptionKeyGate({ children, userId }: EncryptionKeyGateProps) 
             )}
           </Pressable>
 
-          <Text style={[styles.caption, { color: colors.muted }]}>
+          <Text style={[styles.caption, { color: colors.textMuted }]}>
             Checking the code takes a moment — it is deliberately slow so a
             stolen copy of your data is hard to brute-force.
           </Text>

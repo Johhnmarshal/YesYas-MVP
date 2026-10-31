@@ -104,6 +104,10 @@ export default function RevealScreen() {
   const [guideExpanded, setGuideExpanded] = useState<boolean>(true);
   const [pausingPairing, setPausingPairing] = useState<boolean>(false);
   const [showMatchingRules, setShowMatchingRules] = useState<boolean>(false);
+  // True only straight after a one-tap pause from this screen, so the banner
+  // can offer Undo. Pause takes effect for both partners immediately, so a
+  // mis-tap needs a one-tap way back rather than a hunt for the Resume button.
+  const [pauseUndoVisible, setPauseUndoVisible] = useState<boolean>(false);
 
   const [bridgeModalVisible, setBridgeModalVisible] = useState<boolean>(false);
   const [selectedBridgeItem, setSelectedBridgeItem] =
@@ -324,6 +328,8 @@ export default function RevealScreen() {
     setErrorMessage(null);
     try {
       await updatePairingStatus(pairing.id, 'active');
+      setPauseUndoVisible(false);
+      setStatusBanner(null);
       await loadRevealScreenData(false);
     } catch (err) {
       setErrorMessage(
@@ -446,9 +452,12 @@ export default function RevealScreen() {
       setStatusBanner(
         'Pairing has been paused. Double-blind reveals are placed on hold until you resume.',
       );
+      setPauseUndoVisible(true);
       await loadRevealScreenData(true);
     } catch (err: unknown) {
-      setErrorMessage(describePairingError(err));
+      setErrorMessage(
+        describePairingError(err, 'Could not pause pairing. Please try again.'),
+      );
     } finally {
       setPausingPairing(false);
     }
@@ -494,18 +503,18 @@ export default function RevealScreen() {
                 ]}
               >
                 {pausingPairing ? (
-                  <ActivityIndicator size="small" color={colors.accentWarm} />
+                  <ActivityIndicator size="small" color={colors.secondary} />
                 ) : (
                   <>
                     <Ionicons
                       name="pause-circle-outline"
-                      size={14}
-                      color={colors.accentWarm}
+                      size={16}
+                      color={colors.secondary}
                     />
                     <Text
                       style={[
                         styles.pausePillText,
-                        { color: colors.accentWarm },
+                        { color: colors.secondary },
                       ]}
                     >
                       Pause
@@ -547,6 +556,28 @@ export default function RevealScreen() {
             <Text style={[styles.bannerText, { color: colors.primary }]}>
               {statusBanner}
             </Text>
+            {pauseUndoVisible && pairing?.status === 'paused' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Undo pause and resume pairing"
+                disabled={actionBusy}
+                onPress={() => void handleResumePairing()}
+                style={({ pressed }) => [
+                  styles.bannerUndoButton,
+                  { opacity: pressed || actionBusy ? 0.7 : 1 },
+                ]}
+              >
+                {actionBusy ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text
+                    style={[styles.bannerUndoText, { color: colors.primary }]}
+                  >
+                    Undo
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -749,6 +780,19 @@ export default function RevealScreen() {
                   }. When ${partnerName} is ready too, you’ll see what you share.`}
             </Text>
 
+            {/* Always-visible privacy line ("Privacy is visible"); only the
+                detailed matching rules below are collapsible. */}
+            <View style={styles.privacyLineRow}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={16}
+                color={colors.secondary}
+              />
+              <Text style={[styles.privacyLineText, { color: colors.secondary }]}>
+                Your ratings stay private, always. Only overlaps surface.
+              </Text>
+            </View>
+
             {/* Collapsible Matching Protection Rules */}
             <Pressable
               accessibilityRole="button"
@@ -794,7 +838,7 @@ export default function RevealScreen() {
                 <Text
                   style={[styles.reassuranceTitle, { color: colors.primary }]}
                 >
-                  Your ratings stay private, always.
+                  How matching works
                 </Text>
                 <Text
                   style={[styles.reassuranceBody, { color: colors.secondary }]}
@@ -1615,15 +1659,26 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: RADII.pill,
     borderWidth: 1,
-    minHeight: 32,
+    minHeight: 44,
   },
   pausePillText: {
     ...TYPOGRAPHY.caption,
     fontWeight: '600',
   },
+  privacyLineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACING.xs,
+  },
+  privacyLineText: {
+    ...TYPOGRAPHY.caption,
+    flex: 1,
+  },
   matchingRulesToggle: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     gap: 6,
     paddingVertical: SPACING.xs,
     marginBottom: SPACING.xs,
@@ -1643,6 +1698,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
     borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
@@ -1651,6 +1709,18 @@ const styles = StyleSheet.create({
   bannerText: {
     ...TYPOGRAPHY.caption,
     fontWeight: '600',
+    flex: 1,
+  },
+  bannerUndoButton: {
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: SPACING.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerUndoText: {
+    ...TYPOGRAPHY.button,
+    textDecorationLine: 'underline',
   },
   errorCard: {
     flexDirection: 'row',
