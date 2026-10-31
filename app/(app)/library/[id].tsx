@@ -24,7 +24,7 @@ import type { EncryptedFieldState } from '@/lib/crypto';
 import { isTierWithinCeiling } from '@/lib/library-filter';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 type NoteSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -463,7 +463,7 @@ export default function DesireLibraryItemDetailScreen() {
                 },
               ]}
             >
-              <Text style={styles.primaryButtonText}>Try again</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>Try again</Text>
             </Pressable>
           </View>
         ) : (
@@ -485,7 +485,7 @@ export default function DesireLibraryItemDetailScreen() {
                     { backgroundColor: colors.primary },
                   ]}
                 >
-                  <Text style={styles.tierBadgeText}>
+                  <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
                     {item.tier.toUpperCase()}
                   </Text>
                 </View>
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -752,7 +752,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tierBadgeText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -834,14 +833,13 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   clearButton: {
     minHeight: 44,

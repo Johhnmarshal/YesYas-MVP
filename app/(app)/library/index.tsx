@@ -31,13 +31,11 @@ import {
 } from '@/lib/library-filter';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
-import {
-  SPACING,
+import { RADII, SPACING,
   TIER_OPTIONS,
   TONE_OPTIONS,
   TYPOGRAPHY,
-  useThemeColors,
-} from '@/lib/theme';
+  useThemeColors, } from '@/lib/theme';
 
 
 const TIER_FILTER_SEGMENTS: { value: TierFilterValue; label: string }[] = [
@@ -591,7 +589,7 @@ export default function DesireLibraryScreen() {
                     },
                   ]}
                 >
-                  <Text style={styles.retryButtonText}>Try again</Text>
+                  <Text style={[styles.retryButtonText, { color: colors.onPrimary }]}>Try again</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -627,7 +625,7 @@ export default function DesireLibraryScreen() {
                     },
                   ]}
                 >
-                  <Text style={styles.retryButtonText}>Reset filters</Text>
+                  <Text style={[styles.retryButtonText, { color: colors.onPrimary }]}>Reset filters</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -753,7 +751,7 @@ const styles = StyleSheet.create({
   modeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
   },
   modeBadgeText: {
@@ -764,7 +762,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingHorizontal: SPACING.sm,
     minHeight: 48,
     marginBottom: SPACING.sm,
@@ -826,7 +824,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   skeletonCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     gap: SPACING.xs,
@@ -847,7 +845,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   stateCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.md,
     alignItems: 'center',
@@ -872,13 +870,12 @@ const styles = StyleSheet.create({
     minHeight: 48,
     minWidth: 140,
     paddingHorizontal: SPACING.md,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   retryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   modalBackdrop: {
     flex: 1,
@@ -909,14 +906,13 @@ const styles = StyleSheet.create({
   },
   modalPrimaryButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xs,
   },
   modalPrimaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
     textTransform: 'capitalize',
   },
   modalSecondaryButton: {

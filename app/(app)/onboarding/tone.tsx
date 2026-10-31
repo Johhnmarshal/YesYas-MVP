@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ToneLabel } from '@/lib/database.types';
-import { SPACING, TONE_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TONE_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 /**
  * Onboarding Step 1/3 — Tone Preference (`romantic`, `playful`, `direct`).
@@ -101,7 +101,7 @@ export default function OnboardingToneScreen() {
             },
           ]}
         >
-          <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>
+          <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
             Continue
           </Text>
         </Pressable>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   card: {
     minHeight: 68,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     justifyContent: 'center',
   },
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,

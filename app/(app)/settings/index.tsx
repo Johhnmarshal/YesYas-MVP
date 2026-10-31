@@ -35,13 +35,12 @@ import {
   getActiveOrPendingPairing,
 } from '@/lib/pairing';
 import { supabase } from '@/lib/supabase';
-import {
-  SPACING,
+import { RADII, SPACING,
   TIER_OPTIONS,
   TONE_OPTIONS,
   TYPOGRAPHY,
   useThemeColors,
-} from '@/lib/theme';
+  withAlpha, } from '@/lib/theme';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
@@ -395,9 +394,9 @@ export default function SettingsScreen() {
                             fontWeight: '600',
                             color:
                               pairing.status === 'active'
-                                ? '#10B981'
+                                ? colors.success
                                 : pairing.status === 'paused'
-                                  ? '#F59E0B'
+                                  ? colors.accentGold
                                   : colors.primary,
                           }}
                         >
@@ -626,7 +625,7 @@ export default function SettingsScreen() {
                   value={biometricSettings.enabled}
                   onValueChange={(val) => void handleToggleBiometric(val)}
                   trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor="#FFFFFF"
+                  thumbColor={colors.surface}
                   accessibilityLabel="Toggle biometric and PIN app lock"
                 />
               </View>
@@ -816,8 +815,8 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Delete your account permanently"
               >
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                <Text style={styles.deleteAccountText}>
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+                <Text style={[styles.deleteAccountText, { color: colors.error }]}>
                   Delete Account & Data
                 </Text>
               </Pressable>
@@ -876,7 +875,7 @@ export default function SettingsScreen() {
                 {
                   color: colors.text,
                   backgroundColor: colors.bg,
-                  borderColor: pinError ? '#EF4444' : colors.border,
+                  borderColor: pinError ? colors.error : colors.border,
                 },
               ]}
               value={pinInput}
@@ -898,7 +897,7 @@ export default function SettingsScreen() {
                 {
                   color: colors.text,
                   backgroundColor: colors.bg,
-                  borderColor: pinError ? '#EF4444' : colors.border,
+                  borderColor: pinError ? colors.error : colors.border,
                 },
               ]}
               value={pinConfirmInput}
@@ -914,7 +913,7 @@ export default function SettingsScreen() {
               accessibilityLabel="Confirm 6 digit PIN"
             />
 
-            {pinError && <Text style={styles.errorText}>{pinError}</Text>}
+            {pinError && <Text style={[styles.errorText, { color: colors.error }]}>{pinError}</Text>}
 
             <View style={styles.modalButtonRow}>
               <Pressable
@@ -978,10 +977,10 @@ export default function SettingsScreen() {
             <View
               style={[
                 styles.modalIconCircle,
-                { backgroundColor: '#EF444420' },
+                { backgroundColor: withAlpha(colors.error, 0.15) },
               ]}
             >
-              <Ionicons name="warning" size={32} color="#EF4444" />
+              <Ionicons name="warning" size={32} color={colors.error} />
             </View>
 
             <Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -1045,15 +1044,15 @@ export default function SettingsScreen() {
                   {
                     backgroundColor:
                       deleteConfirmText.trim() === 'DELETE' && !isDeletingAccount
-                        ? '#EF4444'
-                        : '#EF444450',
+                        ? colors.error
+                        : withAlpha(colors.error, 0.4),
                   },
                 ]}
               >
                 {isDeletingAccount ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.onError} />
                 ) : (
-                  <Text style={styles.modalConfirmButtonText}>
+                  <Text style={[styles.modalConfirmButtonText, { color: colors.onError }]}>
                     Confirm Delete
                   </Text>
                 )}
@@ -1118,19 +1117,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingHorizontal: SPACING.sm,
     fontSize: TYPOGRAPHY.body.fontSize,
   },
   saveButton: {
     paddingHorizontal: SPACING.md,
     height: 44,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveButtonText: {
-    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: TYPOGRAPHY.caption.fontSize,
   },
@@ -1204,10 +1202,9 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 44,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: RADII.md,
   },
   invitePartnerButtonText: {
-    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -1220,7 +1217,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 44,
     padding: SPACING.sm,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
   },
   optionLabel: {
@@ -1290,7 +1287,7 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 44,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     marginBottom: SPACING.sm,
   },
@@ -1307,7 +1304,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   deleteAccountText: {
-    color: '#EF4444',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1350,7 +1346,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 48,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     textAlign: 'center',
     fontSize: 22,
     letterSpacing: 8,
@@ -1358,7 +1354,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   errorText: {
-    color: '#EF4444',
     fontSize: 12,
     marginBottom: SPACING.xs,
   },
@@ -1370,7 +1365,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 44,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingHorizontal: SPACING.md,
     fontSize: 15,
     textAlign: 'center',
@@ -1388,7 +1383,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1399,12 +1394,11 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalConfirmButtonText: {
-    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

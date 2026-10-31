@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { notifyOnboardingComplete } from '@/app/_layout';
 import type { DesireTier, ToneLabel } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 function parseToneParam(raw?: string | string[]): ToneLabel {
   const val = Array.isArray(raw) ? raw[0] : raw;
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   errorCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     minHeight: 88,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     justifyContent: 'center',

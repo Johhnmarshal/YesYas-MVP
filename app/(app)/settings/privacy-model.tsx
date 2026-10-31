@@ -77,7 +77,7 @@ export default function PrivacyModelScreen() {
             ]}
           >
             <View style={styles.itemRow}>
-              <Ionicons name="lock-closed" size={18} color="#10B981" />
+              <Ionicons name="lock-closed" size={18} color={colors.success} />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Personal Desire Notes
@@ -93,7 +93,7 @@ export default function PrivacyModelScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.itemRow}>
-              <Ionicons name="lock-closed" size={18} color="#10B981" />
+              <Ionicons name="lock-closed" size={18} color={colors.success} />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Journal Reflections at Rest
@@ -109,7 +109,7 @@ export default function PrivacyModelScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.itemRow}>
-              <Ionicons name="eye-off" size={18} color="#10B981" />
+              <Ionicons name="eye-off" size={18} color={colors.success} />
               <View style={styles.itemContent}>
                 <Text style={[styles.itemHeader, { color: colors.text }]}>
                   Individual Numeric Ratings
@@ -176,7 +176,7 @@ export default function PrivacyModelScreen() {
           <View
             style={[
               styles.calloutCard,
-              { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: '#D97706' },
+              { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.accentGold },
             ]}
           >
             <Text style={[styles.calloutHeader, { color: colors.text }]}>

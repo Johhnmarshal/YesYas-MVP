@@ -13,7 +13,7 @@ import {
 import type { RevealMismatchItem } from '@/lib/database.types';
 import { hapticLight } from '@/lib/haptics';
 import { CURIOSITY_BRIDGE_SCRIPTS } from '@/lib/reveal';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export type MismatchBridgeItem = RevealMismatchItem & {
   category?: string;
@@ -203,7 +203,7 @@ export function MismatchBridgeModal({
                         numberOfLines={1}
                         style={[
                           styles.itemPillText,
-                          { color: isSelected ? '#FFFFFF' : colors.primary },
+                          { color: isSelected ? colors.onAccentWarm : colors.primary },
                         ]}
                       >
                         {entry.title}
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.xs,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
   },
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   activeItemCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1.5,
     padding: SPACING.sm,
   },
@@ -521,7 +521,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tierBadgeText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -552,7 +551,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   scriptCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1.5,
     padding: SPACING.sm,
     gap: 6,
@@ -580,7 +579,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -589,7 +588,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   secondaryButtonsRow: {
     flexDirection: 'row',

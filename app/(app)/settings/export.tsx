@@ -20,7 +20,7 @@ import { showMessage } from '@/lib/alert';
 import { shareText } from '@/lib/share';
 import { fetchPairReveals, requestTherapistExport } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors, withAlpha } from '@/lib/theme';
 
 export default function TherapistExportScreen() {
   const colors = useThemeColors();
@@ -363,7 +363,7 @@ export default function TherapistExportScreen() {
               accessibilityRole="button"
               accessibilityLabel="Invite partner"
             >
-              <Text style={styles.primaryButtonText}>Invite My Partner</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>Invite My Partner</Text>
             </Pressable>
           </View>
         ) : (
@@ -375,14 +375,14 @@ export default function TherapistExportScreen() {
                 styles.statusBanner,
                 {
                   backgroundColor: bothConsented
-                    ? '#10B98115'
+                    ? withAlpha(colors.success, 0.1)
                     : callerConsented
-                      ? '#F59E0B15'
+                      ? withAlpha(colors.accentGold, 0.1)
                       : colors.surface,
                   borderColor: bothConsented
-                    ? '#10B981'
+                    ? colors.success
                     : callerConsented
-                      ? '#F59E0B'
+                      ? colors.accentGold
                       : colors.border,
                 },
               ]}
@@ -398,9 +398,9 @@ export default function TherapistExportScreen() {
                 size={24}
                 color={
                   bothConsented
-                    ? '#10B981'
+                    ? colors.success
                     : callerConsented
-                      ? '#F59E0B'
+                      ? colors.accentGold
                       : colors.primary
                 }
               />
@@ -410,9 +410,9 @@ export default function TherapistExportScreen() {
                     styles.statusBannerTitle,
                     {
                       color: bothConsented
-                        ? '#10B981'
+                        ? colors.success
                         : callerConsented
-                          ? '#D97706'
+                          ? colors.accentGold
                           : colors.text,
                     },
                   ]}
@@ -465,9 +465,9 @@ export default function TherapistExportScreen() {
                   accessibilityLabel="Grant therapist export consent"
                 >
                   {submittingConsent ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={colors.onPrimary} />
                   ) : (
-                    <Text style={styles.primaryButtonText}>
+                    <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
                       I Consent to Therapist Summary
                     </Text>
                   )}
@@ -523,8 +523,8 @@ export default function TherapistExportScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Share therapist summary report"
                     >
-                      <Ionicons name="share-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.shareButtonText}>Share</Text>
+                      <Ionicons name="share-outline" size={16} color={colors.onPrimary} />
+                      <Text style={[styles.shareButtonText, { color: colors.onPrimary }]}>Share</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -650,7 +650,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -704,7 +703,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   shareButtonText: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -719,7 +717,7 @@ const styles = StyleSheet.create({
   reportTextBox: {
     maxHeight: 400,
     padding: SPACING.md,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
   },
   reportText: {

@@ -21,7 +21,7 @@ import {
 import { showMessage } from '@/lib/alert';
 import { shareText } from '@/lib/share';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 function formatCountdown48h(expiresAtIso: string, nowMs: number): string {
   const targetMs = new Date(expiresAtIso).getTime();
@@ -276,7 +276,7 @@ export default function PairingInviteScreen() {
                   { color: colors.onPrimary },
                 ]}
               >
-                Try Again
+                Try again
               </Text>
             </Pressable>
           </View>
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.md,
     marginBottom: SPACING.md,
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   codeDisplayBox: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 2,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -636,11 +636,10 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   outlineButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -663,7 +662,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   privacyCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -677,7 +676,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   switchFlowCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     flexDirection: 'row',

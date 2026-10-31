@@ -277,7 +277,7 @@ export default function HomeScreen() {
                   { color: colors.accentCool },
                 ]}
               >
-                🔒 Private & Encrypted
+                Private & Encrypted
               </Text>
             </View>
 
@@ -360,7 +360,7 @@ export default function HomeScreen() {
                   { color: colors.onPrimary },
                 ]}
               >
-                Try Again
+                Try again
               </Text>
             </Pressable>
           </View>
@@ -551,7 +551,7 @@ export default function HomeScreen() {
 
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Enter Partner Code"
+                    accessibilityLabel="Enter partner code"
                     onPress={() => router.push('/(app)/pairing/accept' as Href)}
                     style={({ pressed }) => [
                       styles.dualSecondaryButton,
@@ -568,7 +568,7 @@ export default function HomeScreen() {
                         { color: colors.primary },
                       ]}
                     >
-                      Enter Partner Code
+                      Enter partner code
                     </Text>
                   </Pressable>
                 </View>
@@ -637,7 +637,7 @@ export default function HomeScreen() {
                 <View style={styles.dualButtonsRow}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Create Invite Code"
+                    accessibilityLabel="Create invite code"
                     onPress={() => router.push('/(app)/pairing/invite' as Href)}
                     style={({ pressed }) => [
                       styles.dualPrimaryButton,
@@ -653,13 +653,13 @@ export default function HomeScreen() {
                         { color: colors.onPrimary },
                       ]}
                     >
-                      Create Invite Code
+                      Create invite code
                     </Text>
                   </Pressable>
 
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Enter Partner Code"
+                    accessibilityLabel="Enter partner code"
                     onPress={() => router.push('/(app)/pairing/accept' as Href)}
                     style={({ pressed }) => [
                       styles.dualSecondaryButton,
@@ -676,7 +676,7 @@ export default function HomeScreen() {
                         { color: colors.primary },
                       ]}
                     >
-                      Enter Partner Code
+                      Enter partner code
                     </Text>
                   </Pressable>
                 </View>
@@ -731,12 +731,12 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  {isPairedActiveOrPaused ? String(mutualMatchesCount) : '—'}
+                  {isPairedActiveOrPaused ? String(mutualMatchesCount) : 'Solo'}
                 </Text>
                 <Text
                   style={[styles.metricLabel, { color: colors.secondary }]}
                 >
-                  Mutual Matches
+                  {isPairedActiveOrPaused ? 'Mutual Matches' : 'Private Mode'}
                 </Text>
               </View>
             </View>
@@ -783,48 +783,7 @@ export default function HomeScreen() {
                     ? `All ${allowedItemsCount} items in your ${tierCeiling} tier rated · Review or add notes`
                     : `${unratedInTierCount} unrated ${
                         unratedInTierCount === 1 ? 'item' : 'items'
-                      } in your ${tierCeiling} tier · 🔒 Only you see your ratings`}
-                </Text>
-              </Pressable>
-
-              {/* Double-Blind Reveal */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Double-Blind Reveal. Open Reveal flow"
-                onPress={() => router.push('/(app)/reveal' as Href)}
-                style={({ pressed }) => [
-                  styles.actionCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor:
-                      reveal?.status === 'computed' ||
-                      (reveal?.status === 'pending' &&
-                        reveal.triggered_by !== userId)
-                        ? colors.accentWarm
-                        : colors.border,
-                    opacity: pressed ? 0.85 : 1,
-                  },
-                ]}
-              >
-                <View style={styles.actionCardHeader}>
-                  <Text
-                    style={[styles.actionCardTitle, { color: colors.primary }]}
-                  >
-                    ✨ Double-Blind Reveal
-                  </Text>
-                  <Text
-                    style={[styles.actionCardCta, { color: colors.accentWarm }]}
-                  >
-                    Open →
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.actionCardSubtitle,
-                    { color: colors.secondary },
-                  ]}
-                >
-                  {revealStatusSummary}
+                      } in your ${tierCeiling} tier · Only you see your ratings`}
                 </Text>
               </Pressable>
 
@@ -1004,7 +963,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   managePairingButton: {
     minHeight: 44,

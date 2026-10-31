@@ -522,7 +522,6 @@ const styles = StyleSheet.create({
     borderRadius: RADII.xs,
   },
   tierBadgeText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,

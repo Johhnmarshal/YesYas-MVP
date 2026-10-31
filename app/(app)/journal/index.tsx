@@ -31,7 +31,7 @@ import {
   useScreenCaptureProtection,
 } from '@/lib/screen-capture';
 import { supabase } from '@/lib/supabase';
-import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors, withAlpha } from '@/lib/theme';
 
 interface ChatMessage {
   id: string;
@@ -886,7 +886,7 @@ export default function JournalScreen() {
                   { backgroundColor: colors.primary },
                 ]}
               >
-                <Text style={styles.modalConfirmButtonText}>
+                <Text style={[styles.modalConfirmButtonText, { color: colors.onPrimary }]}>
                   Invite my partner
                 </Text>
               </Pressable>
@@ -912,17 +912,17 @@ export default function JournalScreen() {
             <View
               style={[
                 styles.modalIconCircle,
-                { backgroundColor: '#F59E0B20' },
+                { backgroundColor: withAlpha(colors.accentGold, 0.15) },
               ]}
             >
-              <Ionicons name="flag" size={24} color="#F59E0B" />
+              <Ionicons name="flag" size={24} color={colors.accentGold} />
             </View>
 
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Report AI Response
             </Text>
 
-            <Text style={[styles.modalBody, { color: colors.muted }]}>
+            <Text style={[styles.modalBody, { color: colors.textMuted }]}>
               Please select the reason for reporting this response. Our safety
               team reviews flagged interactions to ensure privacy and grounded
               support.
@@ -1000,13 +1000,13 @@ export default function JournalScreen() {
                 accessibilityLabel="Submit report"
                 style={[
                   styles.modalConfirmButton,
-                  { backgroundColor: '#EF4444' },
+                  { backgroundColor: colors.error },
                 ]}
               >
                 {submittingReport ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.onError} />
                 ) : (
-                  <Text style={styles.modalConfirmButtonText}>Submit</Text>
+                  <Text style={[styles.modalConfirmButtonText, { color: colors.onError }]}>Submit</Text>
                 )}
               </Pressable>
             </View>
@@ -1321,7 +1321,6 @@ const styles = StyleSheet.create({
     borderRadius: RADII.pill,
   },
   graduateButtonText: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1403,7 +1402,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalConfirmButtonText: {
-    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: TYPOGRAPHY.body.fontSize,
   },

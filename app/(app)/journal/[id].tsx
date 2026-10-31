@@ -170,9 +170,9 @@ export default function JournalDetailScreen() {
             style={styles.actionIconButton}
           >
             {deleting ? (
-              <ActivityIndicator size="small" color="#EF4444" />
+              <ActivityIndicator size="small" color={colors.error} />
             ) : (
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
             )}
           </Pressable>
         </View>
@@ -210,11 +210,11 @@ export default function JournalDetailScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <Ionicons name="alert-circle-outline" size={36} color="#EF4444" />
+            <Ionicons name="alert-circle-outline" size={36} color={colors.error} />
             <Text style={[styles.errorTitle, { color: colors.text }]}>
               Entry Unavailable
             </Text>
-            <Text style={[styles.errorBody, { color: colors.muted }]}>
+            <Text style={[styles.errorBody, { color: colors.textMuted }]}>
               {errorMsg}
             </Text>
             <Pressable
@@ -226,7 +226,7 @@ export default function JournalDetailScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.returnButtonText}>Back to Journal</Text>
+              <Text style={[styles.returnButtonText, { color: colors.onPrimary }]}>Back to Journal</Text>
             </Pressable>
           </View>
         ) : entry ? (
@@ -391,7 +391,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   returnButtonText: {
-    color: '#FFFFFF',
     fontWeight: '600',
   },
 });

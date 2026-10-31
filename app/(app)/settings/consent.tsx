@@ -18,7 +18,7 @@ import {
   verifyConsentChain,
 } from '@/lib/consent';
 import { supabase } from '@/lib/supabase';
-import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors, withAlpha } from '@/lib/theme';
 
 export default function ConsentAuditScreen() {
   const colors = useThemeColors();
@@ -77,9 +77,9 @@ export default function ConsentAuditScreen() {
   const chainIsNeutral = chainState === 'loading' || chainState === 'empty';
   const chainAccent =
     chainState === 'valid'
-      ? '#10B981'
+      ? colors.success
       : chainState === 'broken'
-        ? '#EF4444'
+        ? colors.error
         : colors.muted;
   const chainTitle =
     chainState === 'valid'
@@ -174,8 +174,8 @@ export default function ConsentAuditScreen() {
                   backgroundColor: chainIsNeutral
                     ? colors.surface
                     : chainState === 'valid'
-                      ? '#10B98115'
-                      : '#EF444415',
+                      ? withAlpha(colors.success, 0.1)
+                      : withAlpha(colors.error, 0.1),
                   borderColor: chainIsNeutral ? colors.border : chainAccent,
                 },
               ]}

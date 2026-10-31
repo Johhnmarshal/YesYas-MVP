@@ -13,13 +13,15 @@ export const COLORS = {
   textMuted: '#64748B',
   surfaceHighlight: 'rgba(30, 41, 59, 0.05)',
   border: '#E8E2D9',
-  accentWarm: '#C9856B',
+  accentWarm: '#A25840',
   onAccentWarm: '#FFFFFF',
   accentWarmSubtle: '#F6ECE7',
   accentGold: '#D4AF37',
   accentCool: '#4A85A3',
   error: '#B23A48',
+  onError: '#FFFFFF',
   success: '#2E7D4E',
+  onSuccess: '#FFFFFF',
   text: '#1E293B',
 } as const;
 
@@ -40,7 +42,9 @@ export const DARK_COLORS = {
   accentGold: '#E6C665',
   accentCool: '#5A96B4',
   error: '#D9534F',
+  onError: '#0F1318',
   success: '#3FB950',
+  onSuccess: '#0F1318',
   text: '#F1EDE6',
 } as const;
 

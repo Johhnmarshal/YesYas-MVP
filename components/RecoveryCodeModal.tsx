@@ -13,7 +13,7 @@ import {
 
 import { isValidRecoveryCode } from '@/lib/crypto';
 import { createRecoveryCode, verifyRecoveryCode } from '@/lib/key-recovery';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 type Step = 'generating' | 'show' | 'confirming' | 'done' | 'error';
 
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   codeBox: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     marginVertical: SPACING.xs,
   },
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     ...TYPOGRAPHY.body,
     letterSpacing: 1,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   },
   error: { ...TYPOGRAPHY.caption },
   primaryButton: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     alignItems: 'center',
     justifyContent: 'center',

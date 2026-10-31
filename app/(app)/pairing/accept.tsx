@@ -19,7 +19,7 @@ import {
   describePairingError,
   previewPairingInvite,
 } from '@/lib/pairing';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 function sanitizeCodeInput(raw: string): string {
   return raw
@@ -279,7 +279,7 @@ export default function PairingAcceptScreen() {
                   { backgroundColor: colors.success },
                 ]}
               >
-                <Text style={styles.verifiedPillText}>VALID INVITE</Text>
+                <Text style={[styles.verifiedPillText, { color: colors.onSuccess }]}>VALID INVITE</Text>
               </View>
               <Text style={[styles.expiryText, { color: colors.secondary }]}>
                 ⏳ {formatExpiryLabel(preview.expires_at)}
@@ -312,7 +312,7 @@ export default function PairingAcceptScreen() {
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Confirm & Pair with ${preview.inviter_display_name}`}
+              accessibilityLabel={`Confirm & pair with ${preview.inviter_display_name}`}
               disabled={accepting}
               onPress={() => void handleAcceptInvite()}
               style={({ pressed }) => [
@@ -324,15 +324,17 @@ export default function PairingAcceptScreen() {
               ]}
             >
               {accepting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.onAccentWarm} />
               ) : (
                 <>
                   <Ionicons
                     name="heart-circle-outline"
                     size={22}
-                    color="#FFFFFF"
+                    color={colors.onAccentWarm}
                   />
-                  <Text style={styles.confirmButtonText}>Confirm & Pair</Text>
+                  <Text style={[styles.confirmButtonText, { color: colors.onAccentWarm }]}>
+                    Confirm & pair
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -424,7 +426,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.md,
     marginBottom: SPACING.md,
@@ -436,7 +438,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   codeInput: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1.5,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
@@ -458,7 +460,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -467,13 +469,12 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   errorCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 2,
     padding: SPACING.md,
     marginBottom: SPACING.md,
@@ -500,7 +501,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   verifiedPillText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -537,7 +537,6 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   secondaryActionButton: {
     minHeight: 44,
@@ -549,7 +548,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
   },
   switchFlowCard: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     flexDirection: 'row',

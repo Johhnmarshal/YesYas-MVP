@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { DesireTier, ToneLabel } from '@/lib/database.types';
-import { SPACING, TIER_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TIER_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 function parseToneParam(raw?: string | string[]): ToneLabel {
   const val = Array.isArray(raw) ? raw[0] : raw;
@@ -138,7 +138,7 @@ export default function OnboardingTierScreen() {
             },
           ]}
         >
-          <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>
+          <Text style={[styles.primaryButtonText, { color: colors.onPrimary }]}>
             Continue
           </Text>
         </Pressable>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   card: {
     minHeight: 68,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     justifyContent: 'center',
   },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,

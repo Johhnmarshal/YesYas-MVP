@@ -1,5 +1,6 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
+import { COLORS } from '@/lib/theme';
 
 /**
  * Static HTML shell for the web build.
@@ -44,7 +45,7 @@ export default function Root({ children }: PropsWithChildren) {
           content="A quieter way to say what you want — together."
         />
         {/* Matches COLORS.primary in lib/theme.ts. */}
-        <meta name="theme-color" content="#1E293B" />
+        <meta name="theme-color" content={COLORS.primary} />
 
         {/*
           Disables body scrolling on web so ScrollView components behave as

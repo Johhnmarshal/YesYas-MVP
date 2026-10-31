@@ -25,7 +25,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
 
 /**
  * Accessible 1–5 star selector with 44x44pt minimum touch targets, sensory
- * haptic feedback, and warm terracotta (`#C9856B`) highlight for selected stars.
+ * haptic feedback, and warm terracotta highlight (`colors.accentWarm`) for selected stars.
  */
 export function StarRating({
   value,
@@ -97,7 +97,7 @@ export function StarRating({
         <Text
           style={[
             styles.caption,
-            { color: value !== null ? colors.secondary : colors.muted },
+            { color: value !== null ? colors.secondary : colors.textMuted },
           ]}
         >
           {value !== null

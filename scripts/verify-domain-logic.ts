@@ -898,6 +898,45 @@ async function main() {
     );
   }
 
+  // 17. Theme Token Integrity Linter: Ban raw hex color literals in app/ and components/
+  const uiDirs = ['app', 'components'];
+  const hexPattern = /#([0-9a-fA-F]{3,8})\b/g;
+  const hexViolations: { file: string; line: number; match: string }[] = [];
+
+  function scanDirForHex(dirPath: string) {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        scanDirForHex(fullPath);
+      } else if (entry.name.endsWith('.tsx')) {
+        const content = fs.readFileSync(fullPath, 'utf8');
+        const lines = content.split(/\r?\n/);
+        lines.forEach((line, idx) => {
+          const matches = line.match(hexPattern);
+          if (matches) {
+            for (const m of matches) {
+              hexViolations.push({ file: fullPath, line: idx + 1, match: m });
+            }
+          }
+        });
+      }
+    }
+  }
+
+  for (const dir of uiDirs) {
+    const abs = path.resolve(import.meta.dirname ?? '.', '..', dir);
+    if (fs.existsSync(abs)) {
+      scanDirForHex(abs);
+    }
+  }
+
+  assert.equal(
+    hexViolations.length,
+    0,
+    `Found unapproved hardcoded hex color literals in UI code: ${JSON.stringify(hexViolations)}`,
+  );
+
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }
 

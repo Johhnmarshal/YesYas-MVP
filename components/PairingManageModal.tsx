@@ -15,7 +15,7 @@ import {
   updatePairingStatus,
   describePairingError,
 } from '@/lib/pairing';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export interface PairingManageModalProps {
   visible: boolean;
@@ -348,9 +348,9 @@ export function PairingManageModal({
                 ]}
               >
                 {submittingStatus === 'ended' ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onError} />
                 ) : (
-                  <Text style={styles.destructiveConfirmButtonText}>
+                  <Text style={[styles.destructiveConfirmButtonText, { color: colors.onError }]}>
                     {isPending
                       ? 'Yes, Cancel Invite'
                       : 'Confirm End Pairing'}
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.xs,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -475,11 +475,10 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   destructiveOutlineButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -500,7 +499,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
   },
   confirmBox: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     gap: SPACING.xs,
@@ -514,14 +513,13 @@ const styles = StyleSheet.create({
   },
   destructiveConfirmButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.md,
   },
   destructiveConfirmButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
 });
 

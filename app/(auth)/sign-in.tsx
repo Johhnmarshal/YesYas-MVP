@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
-import { useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors, withAlpha } from '@/lib/theme';
 
 type AuthMode = 'magic_link' | 'password';
 
@@ -112,7 +112,7 @@ export default function SignInScreen() {
         setCooldown(15 * 60);
         setMode('password');
         setInfoMessage(
-          `Hourly email limit reached on the beta server — it allows 2 sign-in emails an hour. Enter a passphrase (${MIN_PASSPHRASE_LENGTH}+ characters) below to sign in, or create an account, without waiting for an email.`,
+          `Email delivery is temporarily delayed. You can sign in immediately using a passphrase (${MIN_PASSPHRASE_LENGTH}+ characters) below without waiting for an email.`,
         );
         return;
       }
@@ -239,89 +239,17 @@ export default function SignInScreen() {
           A quieter way to say what you want — together.
         </Text>
 
-        {!sent && (
-          <View
-            style={[
-              styles.modeTabs,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                borderWidth: 1,
-              },
-            ]}
-          >
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityLabel="Sign in by email link or code"
-              accessibilityState={{ selected: mode === 'magic_link' }}
-              onPress={() => {
-                setMode('magic_link');
-                setErrorMessage(null);
-                setInfoMessage(null);
-              }}
-              style={[
-                styles.modeTab,
-                { minHeight: 44, justifyContent: 'center' },
-                mode === 'magic_link' && [
-                  styles.modeTabActive,
-                  { backgroundColor: colors.bg },
-                ],
-              ]}
-            >
-              <Text
-                style={[
-                  styles.modeTabText,
-                  { color: colors.textMuted ?? colors.muted },
-                  mode === 'magic_link' && [
-                    styles.modeTabTextActive,
-                    { color: colors.text },
-                  ],
-                ]}
-              >
-                Email Link / Code
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityLabel="Sign in instantly with a passphrase"
-              accessibilityState={{ selected: mode === 'password' }}
-              onPress={() => {
-                setMode('password');
-                setErrorMessage(null);
-              }}
-              style={[
-                styles.modeTab,
-                { minHeight: 44, justifyContent: 'center' },
-                mode === 'password' && [
-                  styles.modeTabActive,
-                  { backgroundColor: colors.bg },
-                ],
-              ]}
-            >
-              <Text
-                style={[
-                  styles.modeTabText,
-                  { color: colors.textMuted ?? colors.muted },
-                  mode === 'password' && [
-                    styles.modeTabTextActive,
-                    { color: colors.text },
-                  ],
-                ]}
-              >
-                Instant Passphrase
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
         {infoMessage ? (
           <View
             style={[
               styles.infoBanner,
-              { backgroundColor: colors.surface, borderColor: colors.accentGold },
+              {
+                backgroundColor: withAlpha(colors.accentGold, 0.12),
+                borderColor: colors.accentGold,
+              },
             ]}
           >
-            <Text style={[styles.infoBannerText, { color: colors.accentGold }]}>
+            <Text style={[styles.infoBannerText, { color: colors.text }]}>
               {infoMessage}
             </Text>
           </View>
@@ -331,7 +259,10 @@ export default function SignInScreen() {
           <View
             style={[
               styles.errorBanner,
-              { backgroundColor: colors.surface, borderColor: colors.error },
+              {
+                backgroundColor: withAlpha(colors.error, 0.1),
+                borderColor: colors.error,
+              },
             ]}
           >
             <Text style={[styles.errorBannerText, { color: colors.error }]}>
@@ -365,7 +296,7 @@ export default function SignInScreen() {
                 },
               ]}
               placeholder="8-digit code from email"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               autoCapitalize="none"
               accessibilityLabel="Sign-in code from your email"
@@ -393,9 +324,11 @@ export default function SignInScreen() {
               accessibilityState={{ disabled: verifyingOtp || !otpCode.trim() }}
             >
               {verifyingOtp ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.buttonText}>Verify sign-in code</Text>
+                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+                  Verify sign-in code
+                </Text>
               )}
             </Pressable>
 
@@ -444,7 +377,7 @@ export default function SignInScreen() {
                 },
               ]}
               placeholder="you@domain.com"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
@@ -475,21 +408,37 @@ export default function SignInScreen() {
               accessibilityState={{ disabled: loading || cooldown > 0 }}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : cooldown > 0 ? (
-                <Text style={styles.buttonText}>
+                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
                   {cooldown >= 60
                     ? `Try again in ${Math.ceil(cooldown / 60)} min`
                     : `Resend in ${cooldown}s`}
                 </Text>
               ) : (
-                <Text style={styles.buttonText}>Send me a sign-in link</Text>
+                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+                  Send me a sign-in link
+                </Text>
               )}
             </Pressable>
             <Text style={[styles.hint, { color: colors.textMuted }]}>
-              We&apos;ll email you a one-tap link and an 8-digit code. Or switch
-              to Instant Passphrase above to sign in immediately without email.
+              We&apos;ll email you a one-tap link and code. No passwords to remember.
             </Text>
+
+            <Pressable
+              onPress={() => {
+                setMode('password');
+                setErrorMessage(null);
+                setInfoMessage(null);
+              }}
+              style={[styles.linkBtn, { minHeight: 44, alignItems: 'center', justifyContent: 'center' }]}
+              accessibilityRole="button"
+              accessibilityLabel="Switch to passphrase sign-in"
+            >
+              <Text style={[styles.linkText, { color: colors.accentWarm }]}>
+                Have a passphrase? Sign in with passphrase →
+              </Text>
+            </Pressable>
           </>
         ) : (
           <>
@@ -504,7 +453,7 @@ export default function SignInScreen() {
                 },
               ]}
               placeholder="you@domain.com"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               accessibilityLabel="Email address"
               autoCapitalize="none"
               autoComplete="email"
@@ -526,7 +475,7 @@ export default function SignInScreen() {
               placeholder={`Passphrase (${MIN_PASSPHRASE_LENGTH}+ characters)`}
               accessibilityLabel="Passphrase"
               accessibilityHint={`At least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits`}
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.textMuted}
               secureTextEntry
               autoCapitalize="none"
               autoComplete="password"
@@ -557,14 +506,15 @@ export default function SignInScreen() {
               }}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+                  Sign in
+                </Text>
               )}
             </Pressable>
             <Text style={[styles.hint, { color: colors.textMuted }]}>
-              Signs you in straight away — no waiting on email. New here? Enter
-              your email and a passphrase, then use Create account.
+              Signs you in straight away without waiting for email.
             </Text>
             <Pressable
               style={[
@@ -597,6 +547,21 @@ export default function SignInScreen() {
                 Create account
               </Text>
             </Pressable>
+
+            <Pressable
+              onPress={() => {
+                setMode('magic_link');
+                setErrorMessage(null);
+                setInfoMessage(null);
+              }}
+              style={[styles.linkBtn, { minHeight: 44, alignItems: 'center', justifyContent: 'center' }]}
+              accessibilityRole="button"
+              accessibilityLabel="Switch to email link sign-in"
+            >
+              <Text style={[styles.linkText, { color: colors.accentWarm }]}>
+                ← Back to email sign-in link
+              </Text>
+            </Pressable>
           </>
         )}
       </KeyboardAvoidingView>
@@ -605,92 +570,57 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FBF8F4' },
+  safe: { flex: 1 },
   container: {
     flex: 1,
-    padding: 24,
+    padding: SPACING.lg,
     justifyContent: 'center',
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
   },
-  title: { fontSize: 36, fontWeight: '700', color: '#2C3E50', marginBottom: 8 },
+  title: { fontSize: 36, fontWeight: '700', marginBottom: 8 },
   subtitle: {
     fontSize: 16,
-    color: '#5B6A7A',
     marginBottom: 24,
     lineHeight: 22,
   },
-  modeTabs: {
-    flexDirection: 'row',
-    backgroundColor: '#EFECE6',
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 16,
-  },
-  modeTab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modeTabActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  modeTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6C7A89',
-  },
-  modeTabTextActive: {
-    color: '#2C3E50',
-  },
   infoBanner: {
-    backgroundColor: '#FDF3E7',
-    borderColor: '#E5B87B',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: RADII.sm + 2,
     padding: 12,
     marginBottom: 14,
   },
   infoBannerText: {
-    color: '#7A4F13',
     fontSize: 14,
     lineHeight: 20,
   },
   createAccountButton: {
     borderWidth: 1,
-    borderColor: '#C86D51',
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
     marginBottom: 16,
   },
-  createAccountButtonText: { color: '#C86D51', fontSize: 16, fontWeight: '600' },
+  createAccountButtonText: { fontSize: 16, fontWeight: '600' },
   errorBanner: {
-    backgroundColor: '#FDECEC',
-    borderColor: '#E58B8B',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: RADII.sm + 2,
     padding: 12,
     marginBottom: 14,
   },
   errorBannerText: {
-    color: '#8B1E1E',
     fontSize: 14,
     lineHeight: 20,
   },
   input: {
-    backgroundColor: '#fff',
-    borderColor: '#D8DEE6',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#2C3E50',
     marginBottom: 12,
   },
   otpInput: {
@@ -700,38 +630,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#C86D51',
-    borderRadius: 12,
+    borderRadius: RADII.md,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { fontSize: 16, fontWeight: '600' },
   hint: {
     marginTop: 16,
     fontSize: 13,
-    color: '#7A8794',
     textAlign: 'center',
     lineHeight: 18,
   },
   sentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: RADII.md,
     padding: 20,
-    borderColor: '#E2E7EE',
     borderWidth: 1,
   },
   sentTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2C3E50',
     marginBottom: 8,
   },
-  sentBody: { fontSize: 15, color: '#5B6A7A', lineHeight: 21 },
+  sentBody: { fontSize: 15, lineHeight: 21 },
   sentActionsRow: {
     marginTop: 16,
     gap: 8,
   },
   linkBtn: { paddingVertical: 6 },
-  linkText: { color: '#C86D51', fontSize: 14, fontWeight: '600' },
+  linkText: { fontSize: 14, fontWeight: '600' },
 });

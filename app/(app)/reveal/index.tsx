@@ -34,6 +34,7 @@ import {
   getActiveOrPendingPairing,
   updatePairingStatus,
 } from '@/lib/pairing';
+import { describePairingError } from '@/lib/pairing-errors';
 import {
   type RevealRow,
   fetchCurrentReveal,
@@ -101,6 +102,8 @@ export default function RevealScreen() {
   const [startFreshMode, setStartFreshMode] = useState<boolean>(false);
   const [confirmingWithdraw, setConfirmingWithdraw] = useState<boolean>(false);
   const [guideExpanded, setGuideExpanded] = useState<boolean>(true);
+  const [pausingPairing, setPausingPairing] = useState<boolean>(false);
+  const [showMatchingRules, setShowMatchingRules] = useState<boolean>(false);
 
   const [bridgeModalVisible, setBridgeModalVisible] = useState<boolean>(false);
   const [selectedBridgeItem, setSelectedBridgeItem] =
@@ -434,6 +437,23 @@ export default function RevealScreen() {
     );
   }, []);
 
+  const handleQuickPausePairing = useCallback(async () => {
+    if (!pairing || pairing.status !== 'active') return;
+    try {
+      setPausingPairing(true);
+      await updatePairingStatus(pairing.id, 'paused');
+      void hapticMedium();
+      setStatusBanner(
+        'Pairing has been paused. Double-blind reveals are placed on hold until you resume.',
+      );
+      await loadRevealScreenData(true);
+    } catch (err: unknown) {
+      setErrorMessage(describePairingError(err));
+    } finally {
+      setPausingPairing(false);
+    }
+  }, [loadRevealScreenData, pairing]);
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <ScrollView
@@ -457,20 +477,59 @@ export default function RevealScreen() {
             </Text>
           </Pressable>
 
-          <View
-            style={[
-              styles.privacyPill,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text
-              style={[styles.privacyPillText, { color: colors.accentCool }]}
+          <View style={styles.topBarActions}>
+            {pairing?.status === 'active' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Pause pairing. Place reveals on hold"
+                disabled={pausingPairing}
+                onPress={() => void handleQuickPausePairing()}
+                style={({ pressed }) => [
+                  styles.pausePill,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: pressed || pausingPairing ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {pausingPairing ? (
+                  <ActivityIndicator size="small" color={colors.accentWarm} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="pause-circle-outline"
+                      size={14}
+                      color={colors.accentWarm}
+                    />
+                    <Text
+                      style={[
+                        styles.pausePillText,
+                        { color: colors.accentWarm },
+                      ]}
+                    >
+                      Pause
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            ) : null}
+
+            <View
+              style={[
+                styles.privacyPill,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
             >
-              🔒 Double-Blind Protected
-            </Text>
+              <Text
+                style={[styles.privacyPillText, { color: colors.accentCool }]}
+              >
+                Double-Blind Protected
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -560,7 +619,7 @@ export default function RevealScreen() {
             <View style={styles.actionsColumn}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Create Invite Code"
+                accessibilityLabel="Create invite code"
                 onPress={() => router.push('/(app)/pairing/invite' as Href)}
                 style={({ pressed }) => [
                   styles.primaryButton,
@@ -576,13 +635,13 @@ export default function RevealScreen() {
                     { color: colors.onPrimary },
                   ]}
                 >
-                  Create Invite Code
+                  Create invite code
                 </Text>
               </Pressable>
 
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Enter Partner Code"
+                accessibilityLabel="Enter partner code"
                 onPress={() => router.push('/(app)/pairing/accept' as Href)}
                 style={({ pressed }) => [
                   styles.outlineButton,
@@ -595,7 +654,7 @@ export default function RevealScreen() {
                 <Text
                   style={[styles.outlineButtonText, { color: colors.primary }]}
                 >
-                  Enter Partner Code
+                  Enter partner code
                 </Text>
               </Pressable>
             </View>
@@ -636,7 +695,7 @@ export default function RevealScreen() {
                 ]}
               >
                 {actionBusy ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onPrimary} />
                 ) : (
                   <Text
                     style={[
@@ -690,31 +749,67 @@ export default function RevealScreen() {
                   }. When ${partnerName} is ready too, you’ll see what you share.`}
             </Text>
 
-            <View
-              style={[
-                styles.reassuranceCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
+            {/* Collapsible Matching Protection Rules */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                showMatchingRules
+                  ? 'Hide matching protection rules'
+                  : 'How double-blind matching protects you'
+              }
+              onPress={() => setShowMatchingRules((prev) => !prev)}
+              style={styles.matchingRulesToggle}
             >
-              <Text style={[styles.reassuranceTitle, { color: colors.primary }]}>
-                🔒 Your ratings stay private, always.
-              </Text>
+              <Ionicons
+                name={
+                  showMatchingRules
+                    ? 'chevron-up-circle-outline'
+                    : 'shield-checkmark-outline'
+                }
+                size={16}
+                color={colors.accentWarm}
+              />
               <Text
-                style={[styles.reassuranceBody, { color: colors.secondary }]}
+                style={[
+                  styles.matchingRulesToggleText,
+                  { color: colors.accentWarm },
+                ]}
               >
-                • <Text style={styles.boldText}>Mutual Matches:</Text> Only
-                items you both rated 4 or 5 appear as shared matches.
-                {'\n'}• <Text style={styles.boldText}>Curiosity Bridge:</Text>{' '}
-                If one of you rated 4–5 and the other rated 3 (open to
-                exploring), the item surfaces anonymously with gentle
-                conversation prompts — never showing who rated which way.
-                {'\n'}• <Text style={styles.boldText}>Hard Veto:</Text> Any item
-                rated 1 or 2 by either of you is strictly excluded.
+                {showMatchingRules
+                  ? 'Hide matching protection rules'
+                  : 'How double-blind matching protects you'}
               </Text>
-            </View>
+            </Pressable>
+
+            {showMatchingRules ? (
+              <View
+                style={[
+                  styles.reassuranceCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.reassuranceTitle, { color: colors.primary }]}
+                >
+                  Your ratings stay private, always.
+                </Text>
+                <Text
+                  style={[styles.reassuranceBody, { color: colors.secondary }]}
+                >
+                  • <Text style={styles.boldText}>Mutual Matches:</Text> Only
+                  items you both rated 4 or 5 appear as shared matches.
+                  {'\n'}• <Text style={styles.boldText}>Curiosity Bridge:</Text>{' '}
+                  If one of you rated 4–5 and the other rated 3 (open to
+                  exploring), the item surfaces anonymously with gentle
+                  conversation prompts — never showing who rated which way.
+                  {'\n'}• <Text style={styles.boldText}>Hard Veto:</Text> Any
+                  item rated 1 or 2 by either of you is strictly excluded.
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.actionsColumn}>
               {tooFewRatingsToReveal ? (
@@ -751,7 +846,7 @@ export default function RevealScreen() {
                 ]}
               >
                 {actionBusy ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onPrimary} />
                 ) : (
                   <Text
                     style={[
@@ -826,7 +921,7 @@ export default function RevealScreen() {
                   { backgroundColor: colors.accentCool },
                 ]}
               >
-                <Text style={styles.avatarInitial}>
+                <Text style={[styles.avatarInitial, { color: colors.onPrimary }]}>
                   {partnerName.charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -978,9 +1073,9 @@ export default function RevealScreen() {
                   ]}
                 >
                   {actionBusy ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.onError} />
                   ) : (
-                    <Text style={styles.destructiveButtonText}>
+                    <Text style={[styles.destructiveButtonText, { color: colors.onError }]}>
                       Confirm Withdraw Reveal
                     </Text>
                   )}
@@ -1190,7 +1285,7 @@ export default function RevealScreen() {
                           { backgroundColor: colors.primary },
                         ]}
                       >
-                        <Text style={styles.tierBadgeText}>
+                        <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
                           {matchItem.tier.toUpperCase()}
                         </Text>
                       </View>
@@ -1200,7 +1295,7 @@ export default function RevealScreen() {
                           { color: colors.accentWarm },
                         ]}
                       >
-                        ★ Mutual Match (Both ≥ 4)
+                        ★ Shared Desire
                       </Text>
                     </View>
 
@@ -1280,7 +1375,7 @@ export default function RevealScreen() {
                               { backgroundColor: colors.primary },
                             ]}
                           >
-                            <Text style={styles.tierBadgeText}>
+                            <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
                               {bridgeItem.tier.toUpperCase()}
                             </Text>
                           </View>
@@ -1507,6 +1602,36 @@ const styles = StyleSheet.create({
   backButtonText: {
     ...TYPOGRAPHY.button,
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  pausePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    minHeight: 32,
+  },
+  pausePillText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+  },
+  matchingRulesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  matchingRulesToggleText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+  },
   privacyPill: {
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -1606,7 +1731,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1615,11 +1740,10 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   outlineButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1650,7 +1774,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitial: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -1676,7 +1799,7 @@ const styles = StyleSheet.create({
   },
   destructiveOutlineButton: {
     minHeight: 52,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1686,7 +1809,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
   },
   withdrawConfirmBox: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     padding: SPACING.sm,
     gap: SPACING.xs,
@@ -1707,7 +1830,6 @@ const styles = StyleSheet.create({
   },
   destructiveButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#FFFFFF',
   },
   celebrationHeaderCard: {
     borderRadius: RADII.xl,
@@ -1772,7 +1894,6 @@ const styles = StyleSheet.create({
     borderRadius: RADII.xs,
   },
   tierBadgeText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,

@@ -20,7 +20,7 @@ import {
   resetEncryptionKey,
   unlockWithRecoveryCode,
 } from '@/lib/key-recovery';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 type GateState = 'checking' | 'ready' | 'locked' | 'error';
 
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   body: { ...TYPOGRAPHY.body, textAlign: 'center', marginBottom: SPACING.xs },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     ...TYPOGRAPHY.body,
     letterSpacing: 1,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   },
   error: { ...TYPOGRAPHY.caption },
   primaryButton: {
-    borderRadius: 12,
+    borderRadius: RADII.md,
     padding: SPACING.sm,
     alignItems: 'center',
     justifyContent: 'center',

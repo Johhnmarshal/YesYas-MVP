@@ -21,7 +21,7 @@ import {
 } from '@/lib/haptics';
 import { hashPin, verifyPin } from '@/lib/crypto';
 import { supabase } from '@/lib/supabase';
-import { SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
 export const LOCK_ENABLED_KEY = '@yesyas/lock_enabled';
 /** Pre-hashing location. Read once so an existing PIN can be migrated, then deleted. */
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   keyButton: {
     minWidth: 80,
     minHeight: 56,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     minWidth: 44,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
