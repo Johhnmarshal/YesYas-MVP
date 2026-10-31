@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { MatchCommentField } from '@/components/MatchCommentField';
 import { StarRating } from '@/components/StarRating';
 import {
   type DesireLibraryItem,
@@ -448,6 +449,20 @@ export function LibraryItemCard({
               ]}
             />
           </View>
+
+          <MatchCommentField
+            userId={userId}
+            pairingId={pairingId}
+            libraryItemId={item.id}
+            itemTitle={item.title}
+            rating={rating}
+            initialComment={desire?.match_comment ?? null}
+            onSaved={(saved) => {
+              if (desire) {
+                onDesireUpdated?.({ ...desire, match_comment: saved });
+              }
+            }}
+          />
 
           {errorMsg ? (
             <Text style={[styles.errorText, { color: colors.error }]}>

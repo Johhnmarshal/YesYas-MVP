@@ -21,12 +21,23 @@ export type ConsentEventType =
   | 'reveal_revealed'
   | 'therapist_export';
 
+/** A partner-visible comment attached to a mutual match. */
+export interface RevealMatchComment {
+  user_id: string;
+  text: string;
+}
+
 export interface RevealMatchItem {
   library_item_id: string;
   slug: string;
   title: string;
   description: string | null;
   tier: DesireTier;
+  /**
+   * Comments both partners left on this item, present only on mutual
+   * matches. Absent on reveals computed before 20261031000003.
+   */
+  comments?: RevealMatchComment[];
 }
 
 export interface RevealMismatchItem {
@@ -152,6 +163,7 @@ export interface Database {
           library_item_id: string;
           rating: number;
           note: string | null;
+          match_comment: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -162,6 +174,7 @@ export interface Database {
           library_item_id: string;
           rating: number;
           note?: string | null;
+          match_comment?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -172,6 +185,7 @@ export interface Database {
           library_item_id?: string;
           rating?: number;
           note?: string | null;
+          match_comment?: string | null;
           created_at?: string;
           updated_at?: string;
         };

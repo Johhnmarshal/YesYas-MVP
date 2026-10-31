@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(49);
+select plan(53);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -154,6 +154,30 @@ begin
   values
     ('11111111-1111-1111-1111-111111111111', v_pair, v_retired_item, 5),
     ('22222222-2222-2222-2222-222222222222', v_pair, v_retired_item, 5);
+
+  -- Partner-visible comments (20261031000003). Both comment on the mutual
+  -- match; A also comments on the bridge item and the vetoed item, and neither
+  -- of those may ever leave A's row.
+  update public.desires d
+  set match_comment = case d.user_id
+        when '11111111-1111-1111-1111-111111111111' then 'A shared comment'
+        else 'B shared comment' end
+  from public.desire_library_items li
+  where li.id = d.library_item_id
+    and li.slug = 'written-note-of-appreciation'
+    and d.pairing_id = v_pair;
+
+  update public.desires d
+  set match_comment = 'A bridge comment'
+  where d.user_id = '11111111-1111-1111-1111-111111111111'
+    and d.pairing_id = v_pair
+    and d.library_item_id = v_bridge_item;
+
+  update public.desires d
+  set match_comment = 'A veto comment'
+  where d.user_id = '11111111-1111-1111-1111-111111111111'
+    and d.pairing_id = v_pair
+    and d.library_item_id = v_veto_item;
 end;
 $$;
 
@@ -296,6 +320,40 @@ select is(
   ),
   true,
   'a retired library item never surfaces in a reveal, even when both rated it 5'
+);
+
+-- 17c. Both partners' comments ride on the mutual match, attributed by user id.
+select is(
+  (
+    select (
+      select pg_catalog.jsonb_agg(c->>'text' order by c->>'text')
+      from jsonb_array_elements(m->'comments') c
+    )::text || '|' || (
+      select count(*) from jsonb_array_elements(m->'comments') c
+      where c->>'user_id' in ('11111111-1111-1111-1111-111111111111',
+                              '22222222-2222-2222-2222-222222222222')
+    )::text
+    from public.reveals r, jsonb_array_elements(r.matches) m
+    where r.pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and r.status = 'computed'
+      and m->>'slug' = 'written-note-of-appreciation'
+  ),
+  '["A shared comment", "B shared comment"]|2',
+  'a mutual match carries both partners'' comments, attributed by user id'
+);
+
+-- 17d. Comments on a Curiosity Bridge or vetoed item never reach the reveal.
+--      On the bridge a comment would reveal which partner was keen.
+select is(
+  (
+    select coalesce(r.matches::text, '') || coalesce(r.mismatches::text, '')
+           ~ '(A bridge comment|A veto comment)'
+    from public.reveals r
+    where r.pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
+      and r.status = 'computed'
+  ),
+  false,
+  'comments on bridge or vetoed items never appear in a reveal'
 );
 
 -- 18. trigger_reveal writes reveal_triggered and reveal_revealed rows to public.consent_events with valid non-null payload_hash and prev_hash chain.
@@ -871,6 +929,28 @@ select is(
      and (title || ' ' || description) ~* '(chok|strangl|asphyx|breath play|breath control)'),
   0,
   'no active library item suggests choking or breath play'
+);
+
+-- ---------- assertions 49-50: partner-visible comments (20261031000003) ----------
+
+-- 49. Before any reveal, a partner cannot read your comment from desires.
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select is(
+  (select count(*)::int from public.desires where match_comment like 'A %'),
+  0,
+  'a partner cannot read your comments from desires; only a reveal shows them'
+);
+reset role;
+
+-- 50. Comments are capped at 280 characters.
+select throws_ok(
+  $$update public.desires set match_comment = repeat('x', 281)
+    where user_id = '11111111-1111-1111-1111-111111111111'$$,
+  '23514',
+  null,
+  'a comment longer than 280 characters is rejected'
 );
 
 select * from finish();

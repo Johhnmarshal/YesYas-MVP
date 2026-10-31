@@ -1359,6 +1359,52 @@ export default function RevealScreen() {
                         {matchItem.description}
                       </Text>
                     ) : null}
+
+                    {/* Partner-visible comments: mutual matches only (20261031000003). */}
+                    {matchItem.comments && matchItem.comments.length > 0 ? (
+                      <View
+                        style={[
+                          styles.matchCommentsBlock,
+                          { borderTopColor: colors.border },
+                        ]}
+                      >
+                        {[...matchItem.comments]
+                          .sort((x, y) =>
+                            x.user_id === userId ? -1 : y.user_id === userId ? 1 : 0,
+                          )
+                          .map((comment) => {
+                            const mine = comment.user_id === userId;
+                            return (
+                              <View
+                                key={comment.user_id}
+                                style={styles.matchCommentRow}
+                                accessible
+                                accessibilityLabel={`${mine ? 'Your comment' : `${partnerName}'s comment`}: ${comment.text}`}
+                              >
+                                <Ionicons
+                                  name="chatbubble-ellipses-outline"
+                                  size={14}
+                                  color={mine ? colors.secondary : colors.accentWarm}
+                                />
+                                <Text
+                                  style={[
+                                    styles.matchCommentText,
+                                    { color: colors.primary },
+                                  ]}
+                                >
+                                  <Text style={styles.matchCommentAuthor}>
+                                    {mine
+                                      ? 'You'
+                                      : partnerName.charAt(0).toUpperCase() +
+                                        partnerName.slice(1)}
+                                  </Text>
+                                  {`  ${comment.text}`}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                      </View>
+                    ) : null}
                   </View>
                 ))}
               </View>
@@ -1979,6 +2025,24 @@ const styles = StyleSheet.create({
   matchDescription: {
     ...TYPOGRAPHY.caption,
     lineHeight: 19,
+  },
+  matchCommentsBlock: {
+    marginTop: SPACING.xs,
+    paddingTop: SPACING.xs,
+    borderTopWidth: 1,
+    gap: 6,
+  },
+  matchCommentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  matchCommentText: {
+    ...TYPOGRAPHY.caption,
+    flex: 1,
+  },
+  matchCommentAuthor: {
+    fontWeight: '700',
   },
   bridgeSection: {
     marginTop: SPACING.xs,
