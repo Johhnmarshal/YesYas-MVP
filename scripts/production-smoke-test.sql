@@ -140,7 +140,9 @@ rollback;
 -- The last column is the other half: the same policy that lets a user write
 -- their own profile must stop them writing anyone else's.
 --
--- Expected: 1, f, t, playful, 120, 0.
+-- Expected: 1, f, t, playful, 104, 0.
+-- (104 = 55 sensory + 49 suggestive after 20261031000001 retired 23
+-- near-duplicates and moved one item to explicit; it was 120 before.)
 -- ---------------------------------------------------------------------------
 
 begin;
