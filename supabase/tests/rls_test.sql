@@ -961,7 +961,7 @@ reset role;
 update public.profiles set display_name = 'Bea'
 where id = '22222222-2222-2222-2222-222222222222';
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
-values ('66666666-6666-4666-8666-666666666666', 'f@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
+values ('77777777-7777-4777-8777-777777777777', 'invite-limit@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
 
 set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
@@ -1035,8 +1035,8 @@ select is(
 );
 
 -- 60. Invites are limited to 10 per user per hour.
-set local request.jwt.claim.sub = '66666666-6666-4666-8666-666666666666';
-set local request.jwt.claims = '{"sub":"66666666-6666-4666-8666-666666666666","role":"authenticated"}';
+set local request.jwt.claim.sub = '77777777-7777-4777-8777-777777777777';
+set local request.jwt.claims = '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated"}';
 do $$
 begin
   for i in 1..10 loop
