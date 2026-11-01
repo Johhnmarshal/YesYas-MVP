@@ -19,6 +19,12 @@ import { describePairingError } from '../lib/pairing-errors.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { RatingRequiredError, ratingForNewNote } from '../lib/desire-note-rules.ts';
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { friendlyError } from '../lib/errors.ts';
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { scrubErrorText } from '../lib/error-scrub.ts';
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { isPlausibleEmail, passphraseProblem } from '../lib/validation.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { parseAuthUrl } from '../lib/auth-url.ts';
@@ -975,6 +981,55 @@ async function main() {
     0,
     `colors.muted fails WCAG AA as a text colour; use colors.textMuted: ${JSON.stringify(mutedViolations)}`,
   );
+
+  // 19. friendlyError: machine messages become sentences, human ones pass.
+  const FRIENDLY_FALLBACK = 'Could not save. Please try again.';
+  assert.equal(
+    friendlyError({ message: 'new row violates row-level security policy for table "desires"', code: '42501' }, FRIENDLY_FALLBACK),
+    'That action is not allowed for your account. If this keeps happening, sign out and back in.',
+  );
+  assert.equal(
+    friendlyError(new TypeError('Failed to fetch'), FRIENDLY_FALLBACK),
+    'We could not reach the server. Check your connection and try again.',
+  );
+  assert.equal(
+    friendlyError({ message: 'JWT expired', code: 'PGRST301' }, FRIENDLY_FALLBACK),
+    'Your session has expired. Sign out and sign in again to continue.',
+  );
+  assert.equal(
+    friendlyError({ message: 'duplicate key value violates unique constraint "x"', code: '23505' }, FRIENDLY_FALLBACK),
+    FRIENDLY_FALLBACK,
+  );
+  assert.equal(
+    friendlyError({ message: 'too many invites, try again later', code: 'P0003' }, FRIENDLY_FALLBACK),
+    'You are doing that a little too often. Wait a few minutes and try again.',
+  );
+  assert.equal(
+    friendlyError(new Error('Rate this item before leaving a comment for your partner.'), FRIENDLY_FALLBACK),
+    'Rate this item before leaving a comment for your partner.',
+  );
+  assert.equal(friendlyError(undefined, FRIENDLY_FALLBACK), FRIENDLY_FALLBACK);
+  assert.equal(friendlyError({ message: '' }, FRIENDLY_FALLBACK), FRIENDLY_FALLBACK);
+
+  // 20. scrubErrorText removes anything personal from error reports.
+  const scrubbed = scrubErrorText(
+    'Failed for jo.bloggs@example.com with token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U, note "I want to try X" at /reset?code=abc123 ref 07700900123 enc:v1:QUJDREVGR0g=',
+  );
+  for (const leaked of ['jo.bloggs@example.com', 'eyJhbGci', 'I want to try X', 'code=abc123', '07700900123', 'QUJDREVGR0g']) {
+    assert.ok(!scrubbed.includes(leaked), `scrubErrorText leaked ${leaked}: ${scrubbed}`);
+  }
+  assert.ok(scrubbed.startsWith('Failed for [email]'), scrubbed);
+
+  // 21. Form validation.
+  assert.equal(isPlausibleEmail('tobi@example.co.uk'), true);
+  assert.equal(isPlausibleEmail('  tobi@example.com  '), true);
+  assert.equal(isPlausibleEmail('tobi@example'), false);
+  assert.equal(isPlausibleEmail('tobi example.com'), false);
+  assert.equal(isPlausibleEmail('@example.com'), false);
+  assert.equal(passphraseProblem('Short1'), 'Use at least 12 characters.');
+  assert.equal(passphraseProblem('alllowercase123'), 'Include upper and lower case letters and at least one number.');
+  assert.equal(passphraseProblem('NoDigitsHereAtAll'), 'Include upper and lower case letters and at least one number.');
+  assert.equal(passphraseProblem('Correct Horse 9 Battery'), null);
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }

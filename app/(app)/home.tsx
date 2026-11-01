@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import {
   isReadinessWindowClosed,
   isRevealContentExpired,
@@ -175,9 +176,7 @@ export default function HomeScreen() {
       setReveal(currentReveal);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not load your Today dashboard.',
+        friendlyError(err, 'Could not load your Today dashboard.'),
       );
     } finally {
       setLoading(false);

@@ -46,6 +46,10 @@ export function describePairingError(err: unknown, fallback: string): string {
   if (raw.includes('invite code is required')) {
     return 'Enter the 8-character code from your partner’s invite.';
   }
+  // create_pairing_invite allows 10 invites per user per hour (20261101000001).
+  if (raw.includes('too many invites')) {
+    return 'You have created a lot of invites in the last hour. Wait a little, then try again.';
+  }
   if (raw.includes('failed to generate unique invite code')) {
     return 'Could not create an invite just now. Please try again.';
   }

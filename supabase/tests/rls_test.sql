@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(53);
+select plan(63);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -80,11 +80,14 @@ select is(
   'A can read own profile'
 );
 
--- 5. A can read B's limited profile via the active pairing.
+-- 5. A cannot read B's profile row, even across an active pairing. RLS is
+--    row level, so the old partner policy exposed every column (content tier
+--    included); 20261101000001 replaced it with get_partner_display_name(),
+--    which returns the name only (assertions 51-52).
 select is(
   (select count(*)::int from public.profiles where id = '22222222-2222-2222-2222-222222222222'),
-  1,
-  'A can read B''s profile (active pairing)'
+  0,
+  'A cannot read B''s profile row, even while paired'
 );
 
 -- ---------- switch to user B ----------
@@ -951,6 +954,101 @@ select throws_ok(
   '23514',
   null,
   'a comment longer than 280 characters is rejected'
+);
+
+-- ---------- assertions 51-60: launch readiness (20261101000001) ----------
+reset role;
+update public.profiles set display_name = 'Bea'
+where id = '22222222-2222-2222-2222-222222222222';
+insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
+values ('77777777-7777-4777-8777-777777777777', 'invite-limit@yesyas.test', 'x', now(), now(), now(), 'authenticated', 'authenticated');
+
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+-- 51. A partner gets the other's display name, and only that.
+select is(
+  public.get_partner_display_name('22222222-2222-2222-2222-222222222222'::uuid),
+  'Bea',
+  'get_partner_display_name returns the partner''s name across an active pairing'
+);
+
+-- 52. Analytics: a signed-in user can record their own event.
+select lives_ok(
+  $$insert into public.analytics_events (event, platform) values ('rating_saved', 'web')$$,
+  'a user can record their own analytics event'
+);
+
+-- 53. ...but not one attributed to someone else.
+select throws_ok(
+  $$insert into public.analytics_events (user_id, event) values ('22222222-2222-2222-2222-222222222222', 'rating_saved')$$,
+  '42501',
+  null,
+  'an analytics event cannot be attributed to another user'
+);
+
+-- 54. ...and cannot read any back, their own included.
+select is(
+  (select count(*)::int from public.analytics_events),
+  0,
+  'analytics events are write-only from the app'
+);
+
+-- 55. Only known event names are accepted, so no content can ride in one.
+select throws_ok(
+  $$insert into public.analytics_events (event) values ('rated: something private')$$,
+  '23514',
+  null,
+  'an unknown analytics event name is rejected'
+);
+
+-- 56. Error reports: a signed-in user can file one...
+select lives_ok(
+  $$insert into public.client_errors (message, platform) values ('TypeError: x is undefined', 'web')$$,
+  'a user can file an error report'
+);
+
+-- 57. ...and cannot read any back.
+select is(
+  (select count(*)::int from public.client_errors),
+  0,
+  'error reports are write-only from the app'
+);
+
+-- 58. Display names are capped at 50 characters.
+select throws_ok(
+  $$update public.profiles set display_name = repeat('x', 51)
+    where id = '11111111-1111-1111-1111-111111111111'$$,
+  '23514',
+  null,
+  'a display name longer than 50 characters is rejected'
+);
+
+-- 59. Someone not paired with B gets nothing.
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+select is(
+  public.get_partner_display_name('22222222-2222-2222-2222-222222222222'::uuid),
+  null::text,
+  'get_partner_display_name returns null for someone you are not paired with'
+);
+
+-- 60. Invites are limited to 10 per user per hour.
+set local request.jwt.claim.sub = '77777777-7777-4777-8777-777777777777';
+set local request.jwt.claims = '{"sub":"77777777-7777-4777-8777-777777777777","role":"authenticated"}';
+do $$
+begin
+  for i in 1..10 loop
+    perform public.create_pairing_invite();
+  end loop;
+end;
+$$;
+select throws_ok(
+  $$select public.create_pairing_invite()$$,
+  'P0003',
+  null,
+  'an eleventh invite within the hour is refused'
 );
 
 select * from finish();

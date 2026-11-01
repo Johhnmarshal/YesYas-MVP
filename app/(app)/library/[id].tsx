@@ -14,12 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MatchCommentField } from '@/components/MatchCommentField';
 import { StarRating } from '@/components/StarRating';
+import { friendlyError } from '@/lib/errors';
 import {
   type DesireLibraryItem,
   fetchLibraryItemById,
   fetchUserDesires,
   upsertDesireNote,
   upsertDesireRating,
+  NOTE_MAX_LENGTH,
 } from '@/lib/desires';
 import type { EncryptedFieldState } from '@/lib/crypto';
 import { isTierWithinCeiling } from '@/lib/library-filter';
@@ -179,7 +181,7 @@ export default function DesireLibraryItemDetailScreen() {
     } catch (err) {
       if (!isMountedRef.current) return;
       setLoadError(
-        err instanceof Error ? err.message : 'Unable to load desire details.',
+        friendlyError(err, 'Unable to load desire details.'),
       );
     } finally {
       if (isMountedRef.current) {
@@ -232,7 +234,7 @@ export default function DesireLibraryItemDetailScreen() {
         if (!isMountedRef.current) return;
         setNoteSaveState('error');
         setActionError(
-          err instanceof Error ? err.message : 'Could not save encrypted note.',
+          friendlyError(err, 'Could not save encrypted note.'),
         );
       }
     },
@@ -296,7 +298,7 @@ export default function DesireLibraryItemDetailScreen() {
         setRating(previousRating);
         ratingRef.current = previousRating;
         setActionError(
-          err instanceof Error ? err.message : 'Failed to save rating.',
+          friendlyError(err, 'Failed to save rating.'),
         );
       } finally {
         if (isMountedRef.current) {
@@ -368,7 +370,7 @@ export default function DesireLibraryItemDetailScreen() {
       if (!isMountedRef.current) return;
       setNoteSaveState('error');
       setActionError(
-        err instanceof Error ? err.message : 'Could not save your desire.',
+        friendlyError(err, 'Could not save your desire.'),
       );
     } finally {
       if (isMountedRef.current) {
@@ -403,7 +405,7 @@ export default function DesireLibraryItemDetailScreen() {
     } catch (err) {
       if (!isMountedRef.current) return;
       setActionError(
-        err instanceof Error ? err.message : 'Could not clear rating.',
+        friendlyError(err, 'Could not clear rating.'),
       );
     } finally {
       if (isMountedRef.current) {
@@ -629,6 +631,7 @@ export default function DesireLibraryItemDetailScreen() {
               <TextInput
                 value={note}
                 onChangeText={handleNoteChange}
+                maxLength={NOTE_MAX_LENGTH}
                 onBlur={flushPendingNote}
                 editable={rating !== null}
                 placeholder={

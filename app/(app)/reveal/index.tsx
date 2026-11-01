@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -17,6 +17,7 @@ import {
   type MismatchBridgeItem,
   MismatchBridgeModal,
 } from '@/components/MismatchBridgeModal';
+import { friendlyError } from '@/lib/errors';
 import type {
   RevealMatchItem,
   RevealMismatchItem,
@@ -45,6 +46,7 @@ import {
   triggerReveal,
   withdrawReveal,
 } from '@/lib/reveal';
+import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
 import { hapticLight, hapticMedium, hapticSuccess } from '@/lib/haptics';
 import {
@@ -171,9 +173,7 @@ export default function RevealScreen() {
       setReveal(currentReveal);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Unable to load reveal status. Please try again.',
+        friendlyError(err, 'Unable to load reveal status. Please try again.'),
       );
     } finally {
       setLoading(false);
@@ -286,9 +286,7 @@ export default function RevealScreen() {
         );
       } else {
         setErrorMessage(
-          err instanceof Error
-            ? err.message
-            : 'Could not trigger reveal. Please try again.',
+          friendlyError(err, 'Could not trigger reveal. Please try again.'),
         );
       }
     } finally {
@@ -313,9 +311,7 @@ export default function RevealScreen() {
       );
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Could not withdraw reveal readiness.',
+        friendlyError(err, 'Could not withdraw reveal readiness.'),
       );
     } finally {
       setActionBusy(false);
@@ -333,7 +329,7 @@ export default function RevealScreen() {
       await loadRevealScreenData(false);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : 'Could not resume pairing.',
+        friendlyError(err, 'Could not resume pairing.'),
       );
     } finally {
       setActionBusy(false);
@@ -409,6 +405,15 @@ export default function RevealScreen() {
     }
     return 'expired' as const;
   }, [nowMs, pairing, reveal, startFreshMode, userId]);
+
+  // Count each reveal once when its matches are actually on screen.
+  const trackedRevealIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (effectiveState !== 'completed' || !reveal?.id) return;
+    if (trackedRevealIdRef.current === reveal.id) return;
+    trackedRevealIdRef.current = reveal.id;
+    track('reveal_viewed');
+  }, [effectiveState, reveal?.id]);
 
   const pendingCountdownLabel = useMemo(() => {
     if (!reveal?.triggered_at) return '72h 00m';

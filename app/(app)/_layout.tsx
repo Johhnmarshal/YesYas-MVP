@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 
 import { COLORS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -32,6 +33,18 @@ export default function AppLayout() {
         tabBarItemStyle: {
           minHeight: 44,
         },
+        // Every screen was designed for a phone; on a desktop browser they
+        // stretched edge to edge. Cap the content column on web only.
+        ...(Platform.OS === 'web'
+          ? {
+              sceneStyle: {
+                width: '100%',
+                maxWidth: 760,
+                alignSelf: 'center',
+                backgroundColor: colors.bg,
+              },
+            }
+          : {}),
       }}
     >
       <Tabs.Screen
@@ -92,6 +105,13 @@ export default function AppLayout() {
       />
 
       {/* Hidden onboarding flow routes */}
+      <Tabs.Screen
+        name="onboarding/consent"
+        options={{
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
       <Tabs.Screen
         name="onboarding/tone"
         options={{
@@ -163,6 +183,12 @@ export default function AppLayout() {
       */}
       <Tabs.Screen
         name="settings/privacy-model"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings/passphrase"
         options={{
           href: null,
         }}

@@ -11,11 +11,13 @@ import {
 
 import { MatchCommentField } from '@/components/MatchCommentField';
 import { StarRating } from '@/components/StarRating';
+import { friendlyError } from '@/lib/errors';
 import {
   type DesireLibraryItem,
   type DesireWithNote,
   upsertDesireNote,
   upsertDesireRating,
+  NOTE_MAX_LENGTH,
 } from '@/lib/desires';
 import { supabase } from '@/lib/supabase';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -141,7 +143,7 @@ export function LibraryItemCard({
         if (!isMountedRef.current) return;
         setNoteSaveState('error');
         setErrorMsg(
-          err instanceof Error ? err.message : 'Could not save encrypted note.',
+          friendlyError(err, 'Could not save encrypted note.'),
         );
       }
     },
@@ -175,7 +177,7 @@ export function LibraryItemCard({
     } catch (err) {
       if (!isMountedRef.current) return;
       setErrorMsg(
-        err instanceof Error ? err.message : 'Could not clear rating.',
+        friendlyError(err, 'Could not clear rating.'),
       );
     } finally {
       if (isMountedRef.current) {
@@ -225,7 +227,7 @@ export function LibraryItemCard({
         if (!isMountedRef.current) return;
         setRating(previousRating);
         setErrorMsg(
-          err instanceof Error ? err.message : 'Failed to save rating.',
+          friendlyError(err, 'Failed to save rating.'),
         );
       } finally {
         if (isMountedRef.current) {
@@ -424,6 +426,7 @@ export function LibraryItemCard({
             <TextInput
               value={note}
               onChangeText={handleNoteChange}
+              maxLength={NOTE_MAX_LENGTH}
               onBlur={handleNoteBlur}
               editable={rating !== null}
               placeholder={

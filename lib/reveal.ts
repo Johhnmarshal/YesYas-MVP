@@ -1,5 +1,6 @@
 import type { Database, RevealStatus } from './database.types';
 import { supabase } from './supabase';
+import { track } from './analytics';
 
 export type RevealRow = Database['public']['Tables']['reveals']['Row'];
 
@@ -115,6 +116,7 @@ export async function triggerReveal(
   if (!row) {
     throw new Error('Failed to trigger reveal');
   }
+  track('reveal_ready');
   return row;
 }
 

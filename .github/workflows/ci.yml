@@ -42,6 +42,9 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
 
+      - name: Content Security Policy covers the export
+        run: node scripts/check-csp.mjs
+
   edge-functions:
     name: Edge Function Typecheck (Deno)
     runs-on: ubuntu-latest

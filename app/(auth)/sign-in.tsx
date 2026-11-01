@@ -1,3 +1,4 @@
+import { type Href, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,14 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { track } from '@/lib/analytics';
+import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import {
+  MIN_PASSPHRASE_LENGTH,
+  isPlausibleEmail,
+  passphraseProblem,
+} from '@/lib/validation';
 import { RADII, SPACING, TYPOGRAPHY, useThemeColors, withAlpha } from '@/lib/theme';
 
 type AuthMode = 'magic_link' | 'password';
 
 // Must match minimum_password_length in supabase/config.toml. Lower than the
 // server floor just means the server rejects what the UI accepted.
-const MIN_PASSPHRASE_LENGTH = 12;
 
 /**
  * Email sign-in screen supporting:
@@ -64,6 +71,10 @@ export default function SignInScreen() {
   async function onSubmitMagicLink() {
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || cooldown > 0) return;
+    if (!isPlausibleEmail(trimmedEmail)) {
+      setErrorMessage(BAD_EMAIL);
+      return;
+    }
     setLoading(true);
     setErrorMessage(null);
     setInfoMessage(null);
@@ -116,7 +127,9 @@ export default function SignInScreen() {
         );
         return;
       }
-      setErrorMessage(error.message);
+      setErrorMessage(
+        friendlyError(error, 'We could not send a sign-in link just now. Please try again.'),
+      );
       return;
     }
     // A link and code were just sent and both stay valid for a while. Stop
@@ -143,8 +156,54 @@ export default function SignInScreen() {
     setVerifyingOtp(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(
+        friendlyError(
+          error,
+          'That code did not work. Check it, or request a new link if it has expired.',
+        ),
+      );
+      return;
     }
+    track('signed_in');
+  }
+
+  async function onForgotPassphrase() {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!isPlausibleEmail(trimmedEmail)) {
+      setErrorMessage('Enter your email address above first, then tap Forgot passphrase.');
+      return;
+    }
+    if (cooldown > 0) return;
+    setLoading(true);
+    setErrorMessage(null);
+    setInfoMessage(null);
+
+    // The link opens the passphrase screen signed in; app/_layout.tsx also
+    // listens for PASSWORD_RECOVERY. Both targets are on the redirect
+    // allowlist in supabase/config.toml (yesyas.vercel.app/** and
+    // yesyasapp://**).
+    const redirectTo =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/settings/passphrase?recovery=1`
+        : 'yesyasapp:///settings/passphrase?recovery=1';
+
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo,
+    });
+    setLoading(false);
+
+    if (error && (error.status === 429 || /rate limit|too many/i.test(error.message))) {
+      setErrorMessage(
+        friendlyError(error, 'We could not send a reset email just now. Please try again later.'),
+      );
+      return;
+    }
+    // Deliberately the same message whether or not the address has an
+    // account, so this button cannot be used to find out who uses YesYas!.
+    setCooldown(60);
+    setInfoMessage(
+      'If an account exists for that address, we have sent it a link to choose a new passphrase. It can take a few minutes to arrive.',
+    );
   }
 
   useEffect(() => {
@@ -155,6 +214,10 @@ export default function SignInScreen() {
 
   async function onSubmitPassword() {
     const trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail && !isPlausibleEmail(trimmedEmail)) {
+      setErrorMessage(BAD_EMAIL);
+      return;
+    }
     if (!trimmedEmail || password.length < MIN_PASSPHRASE_LENGTH) {
       setErrorMessage(
         `Please enter your email and a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits.`,
@@ -188,6 +251,7 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (!signInRes.error && signInRes.data.session) {
+      track('signed_in');
       return;
     }
     setErrorMessage(
@@ -197,10 +261,13 @@ export default function SignInScreen() {
 
   async function onCreateAccount() {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || password.length < MIN_PASSPHRASE_LENGTH) {
-      setErrorMessage(
-        `Please enter your email and a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters, mixing upper and lower case letters and digits.`,
-      );
+    if (!isPlausibleEmail(trimmedEmail)) {
+      setErrorMessage(BAD_EMAIL);
+      return;
+    }
+    const problem = passphraseProblem(password);
+    if (problem) {
+      setErrorMessage(`Choose a stronger passphrase. ${problem}`);
       return;
     }
 
@@ -517,6 +584,17 @@ export default function SignInScreen() {
               Signs you in straight away without waiting for email.
             </Text>
             <Pressable
+              onPress={() => void onForgotPassphrase()}
+              disabled={loading || cooldown > 0}
+              style={[styles.linkBtn, { minHeight: 44, alignItems: 'center', justifyContent: 'center' }]}
+              accessibilityRole="button"
+              accessibilityLabel="Forgot passphrase? Email me a reset link"
+            >
+              <Text style={[styles.linkText, { color: colors.accentWarm }]}>
+                Forgot passphrase?
+              </Text>
+            </Pressable>
+            <Pressable
               style={[
                 styles.createAccountButton,
                 {
@@ -564,13 +642,46 @@ export default function SignInScreen() {
             </Pressable>
           </>
         )}
+
+        <Text style={[styles.legalText, { color: colors.textMuted }]}>
+          By continuing you confirm you are 18 or over and agree to the{' '}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push('/terms' as Href)}
+            style={[styles.legalLinkText, { color: colors.secondary }]}
+          >
+            Terms
+          </Text>{' '}
+          and{' '}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push('/privacy' as Href)}
+            style={[styles.legalLinkText, { color: colors.secondary }]}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+const BAD_EMAIL = 'That email address does not look right. Check it and try again.';
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  legalText: {
+    ...TYPOGRAPHY.caption,
+    textAlign: 'center',
+    marginTop: SPACING.md,
+    lineHeight: 22,
+  },
+  legalLinkText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
   container: {
     flex: 1,
     padding: SPACING.lg,

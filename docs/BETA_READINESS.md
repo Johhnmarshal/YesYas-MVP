@@ -19,15 +19,15 @@ migrations. None of that is true any more. What follows replaces it.
 
 | Check | Result |
 |---|---|
-| Migrations applied | 14, matching the repo's 14 files |
+| Migrations applied | 19 as of 2026-10-31, matching the repo after the history repair; `20261101000001_launch_readiness` is pending until `supabase db push` |
 | RLS | enabled on every table in `public`; 0 tables without it |
 | `anon` EXECUTE on `SECURITY DEFINER` functions | **0** (was 13) |
 | `authenticated` EXECUTE | 10 functions |
-| Desire library | **180 active items** — 60 sensory, 60 suggestive, 60 explicit |
+| Desire library | **217 active items**: 55 sensory, 49 suggestive, 113 explicit (23 near-duplicates retired) |
 | Edge Functions | `ai-coach` and `therapist-export` both **ACTIVE** |
 | Reveal expiry cron | `expire-reveals` scheduled `*/15 * * * *` |
 | Magic-link sign-in | **works** — a real session was established at 2026-10-25 00:29:55Z |
-| Auth config | `mailer_autoconfirm: true`, `disable_signup: false`, email the only provider |
+| Auth config | Pushed from `config.toml` on 2026-11-01: `*.vercel.app` redirects removed (re-probed: closed), passphrase minimum 12 with mixed classes, 60s resend limit. Still `mailer_autoconfirm: true` until custom SMTP is set up |
 
 ### The whole couple journey runs on production
 
@@ -121,7 +121,9 @@ needs the SMTP credential above.
 
 ---
 
-## 2a. CONFIRMED LIVE: remove `*.vercel.app` from the redirect allowlist
+## 2a. FIXED 2026-11-01: `*.vercel.app` removed from the redirect allowlist
+
+Closed by `supabase config push`. Re-probed the same way: a random `*.vercel.app` target now falls back to the Site URL. The history below is kept for context.
 
 **This is verified on the hosted project, not a theoretical risk, and it is the
 one thing to fix before inviting anybody.**

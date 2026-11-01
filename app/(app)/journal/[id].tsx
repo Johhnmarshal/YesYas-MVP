@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import {
   type JournalEntryWithBody,
   deleteJournalEntry,
@@ -91,7 +92,7 @@ export default function JournalDetailScreen() {
     } catch (err) {
       showMessage(
         'Delete Failed',
-        err instanceof Error ? err.message : 'Could not delete entry.',
+        friendlyError(err, 'Could not delete entry.'),
       );
     } finally {
       setDeleting(false);

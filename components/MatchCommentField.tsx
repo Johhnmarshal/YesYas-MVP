@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { friendlyError } from '@/lib/errors';
 import { MATCH_COMMENT_MAX_LENGTH, saveMatchComment } from '@/lib/desires';
 import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
 
@@ -88,7 +89,7 @@ export function MatchCommentField({
         if (mountedRef.current) {
           setSaveState('error');
           setErrorMessage(
-            err instanceof Error ? err.message : 'Could not save your comment.',
+            friendlyError(err, 'Could not save your comment.'),
           );
         }
       }
