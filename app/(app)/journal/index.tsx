@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import {
   type JournalEntryWithBody,
   fetchJournalEntries,
@@ -245,9 +246,7 @@ export default function JournalScreen() {
     } catch (err) {
       showMessage(
         'Report Error',
-        err instanceof Error
-          ? err.message
-          : 'Failed to submit report. Please try again.',
+        friendlyError(err, 'Failed to submit report. Please try again.'),
       );
     } finally {
       setSubmittingReport(false);

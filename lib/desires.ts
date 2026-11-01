@@ -10,6 +10,7 @@ import type { Database, DesireTier } from './database.types';
 import { RatingRequiredError, ratingForNewNote } from './desire-note-rules';
 import { TIER_ORDER, getAllowedTiers } from './library-filter';
 import { supabase } from './supabase';
+import { track } from './analytics';
 
 export type DesireLibraryItem = Database['public']['Tables']['desire_library_items']['Row'];
 export type DesireRow = Database['public']['Tables']['desires']['Row'];
@@ -164,6 +165,7 @@ export async function upsertDesireRating(
   if (rating < 1 || rating > 5) {
     throw new Error('Rating must be between 1 and 5');
   }
+  assertNoteLength(note);
 
   const existing = await findExistingDesire(userId, pairingId, libraryItemId);
   let encryptedNote: string | null | undefined;
@@ -188,6 +190,7 @@ export async function upsertDesireRating(
     if (error) {
       throw error;
     }
+    trackRating(pairingId);
     return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
   }
 
@@ -206,7 +209,27 @@ export async function upsertDesireRating(
   if (error) {
     throw error;
   }
+  trackRating(pairingId);
   return readableNote(data, data.note ? await decryptText(data.note, userId) : null);
+}
+
+/** Longest private note, in plaintext; the ciphertext column allows 12000. */
+export const NOTE_MAX_LENGTH = 2000;
+
+function assertNoteLength(note: string | null | undefined): void {
+  if (typeof note === 'string' && note.trim().length > NOTE_MAX_LENGTH) {
+    throw new Error(`Keep private notes under ${NOTE_MAX_LENGTH.toLocaleString('en-GB')} characters.`);
+  }
+}
+
+/**
+ * Counted once per rating. Paired ratings are written twice (the pairing row
+ * and the solo mirror), so only the solo write is tracked.
+ */
+function trackRating(pairingId: string | null): void {
+  if (pairingId === null) {
+    track('rating_saved');
+  }
 }
 
 /** Longest partner-visible comment the database accepts. */
@@ -280,6 +303,7 @@ export async function upsertDesireNote(
   params: UpsertDesireNoteParams,
 ): Promise<DesireWithNote | null> {
   const { userId, pairingId, libraryItemId, note, rating } = params;
+  assertNoteLength(note);
   await requireUnlockedForNoteWrite(userId);
   const trimmed = note.trim();
   const encryptedNote = trimmed ? await encryptText(trimmed, userId) : null;

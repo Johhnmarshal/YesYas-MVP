@@ -1,18 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { withCors } from '../_shared/cors.ts';
 import { AI_COACH_SYSTEM_PROMPT } from './system-prompt.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS_HEADERS,
       'Content-Type': 'application/json',
     },
   });
@@ -50,11 +44,7 @@ const REFLECTIVE_PROMPTS = [
   'What would make exploring this thought feel a little safer or more comfortable over the next week?',
 ];
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -127,7 +117,32 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Rate Limiting Rule 2: 100 messages per day (last 24 hours)
+  // Rate Limiting Rule 2: 30 messages per hour, per user.
+  //
+  // Rule 1 counts per thread, and the client chooses the thread id, so a new
+  // id resets it. This one is keyed on the user alone, so it holds however
+  // threads are started, and caps how fast one account can spend model calls.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: hourlyCount, error: hourlyErr } = await adminClient
+    .from('ai_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id_hash', userIdHash)
+    .gte('created_at', oneHourAgo);
+
+  if (hourlyErr) {
+    console.error('Hourly count check error:', hourlyErr);
+  } else if ((hourlyCount ?? 0) >= 30) {
+    return jsonResponse(
+      {
+        error:
+          'You have sent a lot of messages in the last hour. Take a short break and come back to it.',
+        code: 'RATE_LIMIT_HOURLY_EXCEEDED',
+      },
+      429,
+    );
+  }
+
+  // Rate Limiting Rule 3: 100 messages per day (last 24 hours)
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count: dailyCount, error: dailyErr } = await adminClient
     .from('ai_logs')
@@ -320,4 +335,6 @@ Deno.serve(async (req: Request) => {
     threadId,
     model: modelUsed,
   });
-});
+}
+
+Deno.serve(withCors(handle));

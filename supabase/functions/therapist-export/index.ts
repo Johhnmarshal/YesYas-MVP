@@ -1,27 +1,17 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { withCors } from '../_shared/cors.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS_HEADERS,
       'Content-Type': 'application/json',
     },
   });
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -276,4 +266,6 @@ In strict compliance with the YesYas zero-knowledge architecture:
     },
     formattedText,
   });
-});
+}
+
+Deno.serve(withCors(handle));

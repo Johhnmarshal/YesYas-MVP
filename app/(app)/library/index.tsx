@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LibraryItemCard } from '@/components/LibraryItemCard';
+import { friendlyError } from '@/lib/errors';
 import type { DesireTier } from '@/lib/database.types';
 import {
   type DesireLibraryItem,
@@ -158,9 +159,7 @@ export default function DesireLibraryScreen() {
       setDesiresByItemId(mergedMap);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Unable to load the Desire Library.',
+        friendlyError(err, 'Unable to load the Desire Library.'),
       );
     } finally {
       setLoading(false);
@@ -218,9 +217,7 @@ export default function DesireLibraryScreen() {
       setPendingUnlockTier(null);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Failed to update content tier preference.',
+        friendlyError(err, 'Failed to update content tier preference.'),
       );
     } finally {
       setUnlockingTier(false);

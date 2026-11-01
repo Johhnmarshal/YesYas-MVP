@@ -11,6 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { notifyOnboardingComplete } from '@/app/_layout';
+import { track } from '@/lib/analytics';
+import { friendlyError } from '@/lib/errors';
 import type { DesireTier, ToneLabel } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { RADII, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -91,6 +93,7 @@ export default function OnboardingModeScreen() {
         throw new Error(updateErr.message);
       }
 
+      track('onboarding_completed');
       notifyOnboardingComplete();
 
       const destination: Href =
@@ -100,9 +103,7 @@ export default function OnboardingModeScreen() {
       router.replace(destination);
     } catch (err) {
       const message =
-        err instanceof Error
-          ? err.message
-          : 'Could not save your preferences. Please try again.';
+        friendlyError(err, 'Could not save your preferences. Please try again.');
       setErrorMessage(message);
       setSubmittingMode(null);
     }

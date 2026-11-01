@@ -64,6 +64,8 @@ export interface Database {
           content_tier_preference: DesireTier;
           locale: string;
           onboarding_complete: boolean;
+          age_confirmed_at: string | null;
+          terms_accepted_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -73,6 +75,8 @@ export interface Database {
           content_tier_preference?: DesireTier;
           locale?: string;
           onboarding_complete?: boolean;
+          age_confirmed_at?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -82,8 +86,54 @@ export interface Database {
           content_tier_preference?: DesireTier;
           locale?: string;
           onboarding_complete?: boolean;
+          age_confirmed_at?: string | null;
+          terms_accepted_at?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      /** Write-only from the app (migration 20261101000001). */
+      analytics_events: {
+        Row: {
+          id: number;
+          user_id: string;
+          event: string;
+          platform: 'ios' | 'android' | 'web' | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: never;
+          user_id?: string;
+          event: string;
+          platform?: 'ios' | 'android' | 'web' | null;
+          created_at?: string;
+        };
+        Update: Record<PropertyKey, never>;
+        Relationships: [];
+      };
+      /** Write-only from the app (migration 20261101000001). */
+      client_errors: {
+        Row: {
+          id: number;
+          user_id: string;
+          message: string;
+          stack: string | null;
+          route: string | null;
+          platform: 'ios' | 'android' | 'web' | null;
+          app_version: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: never;
+          user_id?: string;
+          message: string;
+          stack?: string | null;
+          route?: string | null;
+          platform?: 'ios' | 'android' | 'web' | null;
+          app_version?: string | null;
+          created_at?: string;
+        };
+        Update: Record<PropertyKey, never>;
         Relationships: [];
       };
       pairings: {
@@ -391,6 +441,10 @@ export interface Database {
     };
     Views: { [key: string]: never };
     Functions: {
+      get_partner_display_name: {
+        Args: { p_partner_id: string };
+        Returns: string | null;
+      };
       delete_user_account: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { friendlyError } from '@/lib/errors';
 import {
   type PairingWithPartner,
   fetchActivePairings,
@@ -255,9 +256,7 @@ export default function TherapistExportScreen() {
     } catch (err) {
       showMessage(
         'Consent Error',
-        err instanceof Error
-          ? err.message
-          : 'Failed to record export consent.',
+        friendlyError(err, 'Failed to record export consent.'),
       );
     } finally {
       setSubmittingConsent(false);

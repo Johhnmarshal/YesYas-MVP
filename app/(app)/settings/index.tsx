@@ -19,6 +19,7 @@ import {
   getBiometricSettings,
   saveBiometricSettings,
 } from '@/components/BiometricGate';
+import { friendlyError } from '@/lib/errors';
 import { confirm, showMessage } from '@/lib/alert';
 import { PairingManageModal } from '@/components/PairingManageModal';
 import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
@@ -152,7 +153,7 @@ export default function SettingsScreen() {
     } catch (err) {
       showMessage(
         'Update Error',
-        err instanceof Error ? err.message : 'Could not save display name.',
+        friendlyError(err, 'Could not save display name.'),
       );
     } finally {
       setSavingName(false);
@@ -172,7 +173,7 @@ export default function SettingsScreen() {
     } catch (err) {
       showMessage(
         'Update Error',
-        err instanceof Error ? err.message : 'Could not update tone.',
+        friendlyError(err, 'Could not update tone.'),
       );
     }
   }
@@ -192,7 +193,7 @@ export default function SettingsScreen() {
     } catch (err) {
       showMessage(
         'Update Error',
-        err instanceof Error ? err.message : 'Could not update tier.',
+        friendlyError(err, 'Could not update tier.'),
       );
     }
   }
@@ -208,7 +209,7 @@ export default function SettingsScreen() {
     } catch (err) {
       showMessage(
         'Security Error',
-        err instanceof Error ? err.message : 'Could not change lock setting.',
+        friendlyError(err, 'Could not change lock setting.'),
       );
     }
   }
@@ -232,7 +233,7 @@ export default function SettingsScreen() {
       setPinError(null);
       showMessage('Lock Enabled', 'Your 6-digit PIN and device lock are now active.');
     } catch (err) {
-      setPinError(err instanceof Error ? err.message : 'Failed to save PIN.');
+      setPinError(friendlyError(err, 'Failed to save PIN.'));
     }
   }
 
@@ -271,9 +272,7 @@ export default function SettingsScreen() {
     } catch (err) {
       showMessage(
         'Deletion Error',
-        err instanceof Error
-          ? err.message
-          : 'Could not delete account. Please try again.',
+        friendlyError(err, 'Could not delete account. Please try again.'),
       );
     } finally {
       setIsDeletingAccount(false);
@@ -780,6 +779,56 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
 
+            {/* Legal */}
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Legal
+              </Text>
+              {[
+                {
+                  href: '/privacy',
+                  icon: 'lock-closed-outline' as const,
+                  title: 'Privacy Policy',
+                  subtitle: 'What we collect, who sees it, how to delete it',
+                },
+                {
+                  href: '/terms',
+                  icon: 'document-outline' as const,
+                  title: 'Terms of Use',
+                  subtitle: 'The agreement for using YesYas!',
+                },
+              ].map((row, index, rows) => (
+                <Pressable
+                  key={row.href}
+                  onPress={() => router.push(row.href as Href)}
+                  style={[
+                    styles.navRow,
+                    index < rows.length - 1 ? { borderBottomColor: colors.border } : null,
+                  ]}
+                  accessibilityRole="link"
+                  accessibilityLabel={row.title}
+                >
+                  <View style={styles.navRowLeft}>
+                    <Ionicons name={row.icon} size={20} color={colors.primary} />
+                    <View>
+                      <Text style={[styles.navRowTitle, { color: colors.text }]}>
+                        {row.title}
+                      </Text>
+                      <Text style={[styles.navRowSubtitle, { color: colors.textMuted }]}>
+                        {row.subtitle}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              ))}
+            </View>
+
             {/* Account Actions */}
             <View
               style={[
@@ -790,6 +839,21 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Account Actions
               </Text>
+
+              <Pressable
+                onPress={() => router.push('/(app)/settings/passphrase' as Href)}
+                style={[
+                  styles.signOutButton,
+                  { borderColor: colors.border, backgroundColor: colors.bg },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Change your sign-in passphrase"
+              >
+                <Ionicons name="key-outline" size={18} color={colors.text} />
+                <Text style={[styles.signOutText, { color: colors.text }]}>
+                  Change passphrase
+                </Text>
+              </Pressable>
 
               <Pressable
                 onPress={handleSignOut}

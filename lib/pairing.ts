@@ -1,5 +1,6 @@
 import type { Database, PairingStatus } from './database.types';
 import { supabase } from './supabase';
+import { track } from './analytics';
 
 export type PairingRow = Database['public']['Tables']['pairings']['Row'];
 
@@ -44,6 +45,7 @@ export async function createPairingInvite(): Promise<PairingInviteResult> {
   if (!row) {
     throw new Error('Failed to create pairing invite');
   }
+  track('invite_created');
   return row;
 }
 
@@ -76,6 +78,7 @@ export async function acceptPairingInvite(code: string): Promise<string> {
   if (!data) {
     throw new Error('Failed to accept pairing invite');
   }
+  track('pairing_accepted');
   return data;
 }
 
@@ -90,6 +93,24 @@ export async function updatePairingStatus(
   if (error) {
     throw error;
   }
+}
+
+/**
+ * The partner's display name, and nothing else from their profile.
+ *
+ * Partners used to read each other's whole profile row directly (RLS cannot
+ * limit columns), which exposed content tier and tone. Migration
+ * 20261101000001 removed that policy; this RPC returns only the name, and only
+ * while the two of you have an active or paused pairing. Null otherwise.
+ */
+async function fetchPartnerDisplayName(partnerUserId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_partner_display_name', {
+    p_partner_id: partnerUserId,
+  });
+  if (error) {
+    return null;
+  }
+  return typeof data === 'string' ? data : null;
 }
 
 export async function getActiveOrPendingPairing(
@@ -128,15 +149,9 @@ export async function getActiveOrPendingPairing(
   const partnerUserId =
     chosen.inviter_user_id === userId ? chosen.invitee_user_id : chosen.inviter_user_id;
 
-  let partnerDisplayName: string | null = null;
-  if (partnerUserId) {
-    const { data: partnerProfile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', partnerUserId)
-      .maybeSingle();
-    partnerDisplayName = partnerProfile?.display_name ?? null;
-  }
+  const partnerDisplayName = partnerUserId
+    ? await fetchPartnerDisplayName(partnerUserId)
+    : null;
 
   return {
     ...chosen,
@@ -167,15 +182,9 @@ export async function fetchActivePairings(
     data.map(async (row) => {
       const partnerUserId =
         row.inviter_user_id === userId ? row.invitee_user_id : row.inviter_user_id;
-      let partnerDisplayName: string | null = null;
-      if (partnerUserId) {
-        const { data: partnerProfile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', partnerUserId)
-          .maybeSingle();
-        partnerDisplayName = partnerProfile?.display_name ?? null;
-      }
+      const partnerDisplayName = partnerUserId
+        ? await fetchPartnerDisplayName(partnerUserId)
+        : null;
       return {
         ...row,
         partner_user_id: partnerUserId,

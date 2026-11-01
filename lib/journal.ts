@@ -7,6 +7,10 @@ import {
 } from './crypto';
 import type { Database } from './database.types';
 import { supabase } from './supabase';
+import { track } from './analytics';
+
+/** Plaintext limit; the encrypted column is capped at 60000 (20261101000001). */
+export const JOURNAL_ENTRY_MAX_LENGTH = 10000;
 
 export type JournalEntryRow = Database['public']['Tables']['journal_entries']['Row'];
 
@@ -163,6 +167,11 @@ export async function createJournalEntry(
   if (!trimmed) {
     throw new Error('Journal entry cannot be empty');
   }
+  if (trimmed.length > JOURNAL_ENTRY_MAX_LENGTH) {
+    throw new Error(
+      `Keep each entry under ${JOURNAL_ENTRY_MAX_LENGTH.toLocaleString('en-GB')} characters. Split longer reflections into two entries.`,
+    );
+  }
 
   const validThreadId =
     typeof threadId === 'string' && UUID_REGEX.test(threadId)
@@ -184,6 +193,7 @@ export async function createJournalEntry(
     throw error;
   }
 
+  track('journal_entry_saved');
   return {
     ...data,
     body: trimmed,
