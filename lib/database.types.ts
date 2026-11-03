@@ -310,6 +310,7 @@ export interface Database {
           user_id: string;
           body: string;
           ai_coach_thread_id: string | null;
+          author: 'user' | 'coach';
           created_at: string;
         };
         Insert: {
@@ -317,6 +318,7 @@ export interface Database {
           user_id: string;
           body: string;
           ai_coach_thread_id?: string | null;
+          author?: 'user' | 'coach';
           created_at?: string;
         };
         Update: {
@@ -324,6 +326,7 @@ export interface Database {
           user_id?: string;
           body?: string;
           ai_coach_thread_id?: string | null;
+          author?: 'user' | 'coach';
           created_at?: string;
         };
         Relationships: [];

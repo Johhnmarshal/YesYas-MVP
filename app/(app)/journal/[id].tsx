@@ -16,7 +16,9 @@ import {
   type JournalEntryWithBody,
   deleteJournalEntry,
   fetchJournalEntryById,
+  fetchJournalThread,
 } from '@/lib/journal';
+import { entryAuthor } from '@/lib/journal-threads';
 import {
   SCREEN_CAPTURE_KEYS,
   useScreenCaptureProtection,
@@ -32,6 +34,9 @@ export default function JournalDetailScreen() {
   useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.journalEntry);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [entry, setEntry] = useState<JournalEntryWithBody | null>(null);
+  // The rest of the conversation this entry belongs to (coach replies and any
+  // follow-ups), so opening a reflection shows the reply to it as well.
+  const [thread, setThread] = useState<JournalEntryWithBody[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -56,6 +61,16 @@ export default function JournalDetailScreen() {
         return;
       }
       setEntry(row);
+      if (row.ai_coach_thread_id) {
+        try {
+          const rows = await fetchJournalThread(user.id, row.ai_coach_thread_id);
+          setThread(rows.filter((r) => r.id !== row.id));
+        } catch {
+          setThread([]);
+        }
+      } else {
+        setThread([]);
+      }
     } catch (err) {
       console.warn('Error loading journal entry:', err);
       setErrorMsg('Could not decrypt journal entry on this device.');
@@ -260,9 +275,30 @@ export default function JournalDetailScreen() {
               <Text style={[styles.entryBody, { color: colors.textMuted }]}>
                 {entry.bodyState === 'locked'
                   ? 'This entry is still encrypted because this device has no key for it. Close and reopen YesYas! to enter your recovery code.'
-                  : 'This entry can no longer be decrypted on this account.'}
+                  : 'This entry was written with a key that is no longer on this device, and there was no recovery code to bring it back, so it cannot be opened.'}
               </Text>
             )}
+
+            {thread.map((item) => (
+              <View
+                key={item.id}
+                style={[styles.threadItem, { borderTopColor: colors.border }]}
+              >
+                <Text style={[styles.threadLabel, { color: colors.secondary }]}>
+                  {entryAuthor(item) === 'coach' ? 'Coach' : 'You'}
+                </Text>
+                <Text
+                  style={[
+                    styles.threadBody,
+                    { color: item.bodyState === 'ok' ? colors.text : colors.textMuted },
+                  ]}
+                >
+                  {item.bodyState === 'ok'
+                    ? item.body
+                    : 'This part of the conversation cannot be opened on this device.'}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : null}
       </ScrollView>
@@ -357,6 +393,19 @@ const styles = StyleSheet.create({
   entryBody: {
     fontSize: TYPOGRAPHY.body.fontSize + 1,
     lineHeight: 26,
+  },
+  threadItem: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    gap: 6,
+  },
+  threadLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  threadBody: {
+    ...TYPOGRAPHY.body,
   },
   stateContainer: {
     paddingVertical: SPACING.xl * 2,

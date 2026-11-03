@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -47,6 +47,13 @@ export function RecoveryCodeModal({
   const [confirmInput, setConfirmInput] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Held in a ref so a parent passing an inline callback does not change
+  // `generate`, which would re-run the effect below and replace the code
+  // while it is on screen (a parent that re-renders from onCreated did
+  // exactly that).
+  const onCreatedRef = useRef(onCreated);
+  onCreatedRef.current = onCreated;
+
   const generate = useCallback(async () => {
     if (!userId) return;
     setStep('generating');
@@ -56,14 +63,14 @@ export function RecoveryCodeModal({
       const created = await createRecoveryCode(userId);
       setCode(created);
       setStep('show');
-      onCreated?.();
+      onCreatedRef.current?.();
     } catch {
       setStep('error');
       setErrorMessage(
         'We could not create a recovery code. Check your connection and try again.',
       );
     }
-  }, [onCreated, userId]);
+  }, [userId]);
 
   useEffect(() => {
     if (visible) {
