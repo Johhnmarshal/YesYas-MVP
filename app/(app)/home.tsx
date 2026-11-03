@@ -30,6 +30,7 @@ import {
 } from '@/lib/pairing';
 import { describePairingError } from '@/lib/pairing-errors';
 import { hapticMedium } from '@/lib/haptics';
+import { pingNotify } from '@/lib/notifications';
 import { type RevealRow, fetchCurrentReveal } from '@/lib/reveal';
 import { supabase } from '@/lib/supabase';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -186,6 +187,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadDashboard(allowedItemsCount === 0);
+      // Deliver any reveal nudge still queued for this pairing (for example
+      // one that failed to send when a partner tapped ready).
+      pingNotify();
     }, [allowedItemsCount, loadDashboard]),
   );
 
@@ -202,6 +206,22 @@ export default function HomeScreen() {
     }
     return 0;
   }, [reveal]);
+
+  // The two moments that need the person to act, pulled out of the grey
+  // status line into their own card: until now the only signal that a
+  // partner was waiting was one line of secondary text.
+  const urgentReveal = useMemo<'partner_waiting' | 'matches_ready' | null>(() => {
+    if (!pairing || pairing.status !== 'active' || !reveal) return null;
+    if (isReadinessWindowClosed(reveal, nowMs)) return null;
+    if (isRevealContentExpired(reveal, nowMs)) return null;
+    if (reveal.status === 'pending' && reveal.triggered_by && reveal.triggered_by !== userId) {
+      return 'partner_waiting';
+    }
+    if (reveal.status === 'both_ready' || reveal.status === 'computed') {
+      return 'matches_ready';
+    }
+    return null;
+  }, [nowMs, pairing, reveal, userId]);
 
   const revealStatusSummary = useMemo(() => {
     if (!pairing || pairing.status === 'pending') {
@@ -398,6 +418,40 @@ export default function HomeScreen() {
 
         {!loading && !errorMessage ? (
           <>
+            {urgentReveal ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  urgentReveal === 'partner_waiting'
+                    ? `${partnerName} is ready for a reveal. Open the reveal`
+                    : 'Your reveal is ready. Open it'
+                }
+                onPress={() => router.push('/(app)/reveal' as Href)}
+                style={({ pressed }) => [
+                  styles.urgentCard,
+                  {
+                    backgroundColor: colors.accentWarmSubtle,
+                    borderColor: colors.accentWarm,
+                    opacity: pressed ? 0.9 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.urgentTextBlock}>
+                  <Text style={[styles.urgentTitle, { color: colors.text }]}>
+                    {urgentReveal === 'partner_waiting'
+                      ? `${partnerName.charAt(0).toUpperCase()}${partnerName.slice(1)} is ready for a reveal`
+                      : 'Your reveal is ready'}
+                  </Text>
+                  <Text style={[styles.urgentBody, { color: colors.secondary }]}>
+                    {urgentReveal === 'partner_waiting'
+                      ? 'Tap when you are ready too. Nothing is shared until you both choose.'
+                      : 'See what you both want. It stays open for 24 hours.'}
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward" size={22} color={colors.accentWarm} />
+              </Pressable>
+            ) : null}
+
             {/* 1. Pairing Status Card (Active/Paused, Pending, or Solo Mode) */}
             {isPairedActiveOrPaused && pairing ? (
               <View
@@ -1178,5 +1232,26 @@ const styles = StyleSheet.create({
   actionCardSubtitle: {
     ...TYPOGRAPHY.caption,
     lineHeight: 19,
+  },
+  urgentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    borderWidth: 1,
+    borderRadius: RADII.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    minHeight: 44,
+  },
+  urgentTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  urgentTitle: {
+    ...TYPOGRAPHY.h3,
+  },
+  urgentBody: {
+    ...TYPOGRAPHY.body,
   },
 });

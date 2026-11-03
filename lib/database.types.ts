@@ -66,6 +66,7 @@ export interface Database {
           onboarding_complete: boolean;
           age_confirmed_at: string | null;
           terms_accepted_at: string | null;
+          email_notifications: boolean;
           created_at: string;
         };
         Insert: {
@@ -77,6 +78,7 @@ export interface Database {
           onboarding_complete?: boolean;
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
+          email_notifications?: boolean;
           created_at?: string;
         };
         Update: {
@@ -88,6 +90,7 @@ export interface Database {
           onboarding_complete?: boolean;
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
+          email_notifications?: boolean;
           created_at?: string;
         };
         Relationships: [];

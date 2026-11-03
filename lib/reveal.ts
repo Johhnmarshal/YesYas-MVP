@@ -1,6 +1,7 @@
 import type { Database, RevealStatus } from './database.types';
 import { supabase } from './supabase';
 import { track } from './analytics';
+import { pingNotifyNow } from './notifications';
 
 export type RevealRow = Database['public']['Tables']['reveals']['Row'];
 
@@ -117,6 +118,9 @@ export async function triggerReveal(
     throw new Error('Failed to trigger reveal');
   }
   track('reveal_ready');
+  // Tell the partner (or, when this completed the reveal, the partner who was
+  // waiting). The database already queued the nudge; this only delivers it.
+  pingNotifyNow();
   return row;
 }
 

@@ -52,6 +52,7 @@ export default function SettingsScreen() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
   const [pairing, setPairing] = useState<PairingWithPartner | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,6 +138,28 @@ export default function SettingsScreen() {
       void loadSettingsData();
     }, [loadSettingsData]),
   );
+
+  async function handleToggleEmailNotifications(next: boolean) {
+    if (!userId || !profile || savingNotifications) return;
+    const previous = profile.email_notifications;
+    setSavingNotifications(true);
+    setProfile({ ...profile, email_notifications: next });
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ email_notifications: next })
+        .eq('id', userId);
+      if (error) throw error;
+    } catch (err) {
+      setProfile({ ...profile, email_notifications: previous });
+      showMessage(
+        'Update Error',
+        friendlyError(err, 'Could not change your email setting.'),
+      );
+    } finally {
+      setSavingNotifications(false);
+    }
+  }
 
   async function handleSaveDisplayName() {
     if (!userId || savingName) return;
@@ -598,6 +621,44 @@ export default function SettingsScreen() {
                   );
                 })}
               </View>
+            </View>
+
+            {/* Notifications */}
+            <View
+              style={[
+                styles.sectionCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Notifications
+              </Text>
+              <Pressable
+                style={styles.switchRow}
+                onPress={() =>
+                  void handleToggleEmailNotifications(!(profile?.email_notifications ?? true))
+                }
+                accessible={false}
+              >
+                <View style={styles.navRowText}>
+                  <Text style={[styles.switchTitle, { color: colors.text }]}>
+                    Email me when my partner is ready
+                  </Text>
+                  <Text style={[styles.switchSubtitle, { color: colors.textMuted }]}>
+                    A short, discreet email to {email ?? 'your account address'} when
+                    your partner taps ready or a reveal is waiting. It never says
+                    what either of you rated.
+                  </Text>
+                </View>
+                <Switch
+                  value={profile?.email_notifications ?? true}
+                  onValueChange={(val) => void handleToggleEmailNotifications(val)}
+                  disabled={!profile || savingNotifications}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.surface}
+                  accessibilityLabel="Email me when my partner is ready for a reveal"
+                />
+              </Pressable>
             </View>
 
             {/* Device Security & Biometric Lock */}

@@ -28,6 +28,7 @@ const SECTIONS: LegalSection[] = [
       'Private notes and journal entries: encrypted on your device with a key that never leaves it unencrypted. We store only the ciphertext and cannot read them.',
       'Comments for your partner: the optional comment you leave on an item rated 4 or 5. These are not end to end encrypted, so your partner can read them when a reveal shows that item as a mutual match. The copy shown in a reveal is deleted when the reveal expires after 24 hours; your own copy stays until you edit or clear it.',
       'Pairing and reveals: who you are paired with, the reveal results for your pairing, and a tamper-evident log of consent events such as accepting a pairing or starting a reveal.',
+      'Notification emails: if your partner is ready for a reveal, or a reveal is waiting for you, we send a short email to your account address. It names your partner by their display name and never says anything about what either of you rated or matched. Our email provider delivers it. You can switch these emails off in Settings.',
       'Usage events: a short list of named events (for example "rating saved" or "reveal viewed") with the date and platform. They never include what you rated, wrote or matched.',
       'Error reports: when the app crashes or fails, a report of what went wrong, with email addresses, tokens, numbers and quoted text removed before it is sent.',
     ],

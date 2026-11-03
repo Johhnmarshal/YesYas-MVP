@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(63);
+select plan(69);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -1049,6 +1049,71 @@ select throws_ok(
   'P0003',
   null,
   'an eleventh invite within the hour is refused'
+);
+
+-- ---------- reveal notifications (20261103000001) ----------
+-- Still signed in as an ordinary user here.
+
+-- 61. Clients cannot read the notification outbox at all.
+select throws_ok(
+  $$select count(*) from public.notification_outbox$$,
+  '42501',
+  null,
+  'notification_outbox is closed to signed-in users'
+);
+
+-- 62. ...and cannot queue mail directly.
+select throws_ok(
+  $$select public.enqueue_notification('22222222-2222-2222-2222-222222222222'::uuid, null, 'partner_ready')$$,
+  '42501',
+  null,
+  'enqueue_notification cannot be called by signed-in users'
+);
+
+reset role;
+
+-- Earlier, A tapped ready (B was nudged), withdrew (the unsent nudge was
+-- dropped), tapped again (B nudged again), and then B completed the reveal.
+
+-- 63. The partner who was waiting (A) is told the reveal is ready.
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '11111111-1111-1111-1111-111111111111'
+      and pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and kind = 'matches_ready'),
+  1,
+  'completing a reveal queues one matches_ready nudge for the partner who was waiting'
+);
+
+-- 64. The partner who completed it (B) gets nothing: they are looking at it,
+-- and the stale "your partner is ready" nudge was dropped.
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '22222222-2222-2222-2222-222222222222'
+      and sent_at is null),
+  0,
+  'the completing partner has no pending nudges once the reveal is computed'
+);
+
+-- 65. Opting out means nothing is queued.
+update public.profiles set email_notifications = false
+  where id = '33333333-3333-3333-3333-333333333333';
+select public.enqueue_notification('33333333-3333-3333-3333-333333333333'::uuid, null, 'partner_ready');
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '33333333-3333-3333-3333-333333333333'),
+  0,
+  'no nudge is queued for someone who switched emails off'
+);
+
+-- 66. Repeats within 12 hours collapse to one.
+select public.enqueue_notification('44444444-4444-4444-4444-444444444444'::uuid, null, 'partner_ready');
+select public.enqueue_notification('44444444-4444-4444-4444-444444444444'::uuid, null, 'partner_ready');
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '44444444-4444-4444-4444-444444444444'),
+  1,
+  'the same nudge is not queued twice within 12 hours'
 );
 
 select * from finish();
