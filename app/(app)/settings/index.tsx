@@ -611,7 +611,13 @@ export default function SettingsScreen() {
                 Device Security & Privacy Lock
               </Text>
 
-              <View style={styles.switchRow}>
+              {/* The whole row toggles the lock, so the hit area is the row
+                  rather than a 40x20 switch. */}
+              <Pressable
+                style={styles.switchRow}
+                onPress={() => void handleToggleBiometric(!biometricSettings.enabled)}
+                accessible={false}
+              >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.switchTitle, { color: colors.text }]}>
                     Require Biometrics / 6-digit PIN
@@ -627,7 +633,7 @@ export default function SettingsScreen() {
                   thumbColor={colors.surface}
                   accessibilityLabel="Toggle biometric and PIN app lock"
                 />
-              </View>
+              </Pressable>
 
               {biometricSettings.enabled && (
                 <Pressable
@@ -718,7 +724,7 @@ export default function SettingsScreen() {
                     size={20}
                     color={colors.primary}
                   />
-                  <View>
+                  <View style={styles.navRowText}>
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Privacy Model (Plain English)
                     </Text>
@@ -742,7 +748,7 @@ export default function SettingsScreen() {
                     size={20}
                     color={colors.primary}
                   />
-                  <View>
+                  <View style={styles.navRowText}>
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Consent Audit Trail
                     </Text>
@@ -766,7 +772,7 @@ export default function SettingsScreen() {
                     size={20}
                     color={colors.primary}
                   />
-                  <View>
+                  <View style={styles.navRowText}>
                     <Text style={[styles.navRowTitle, { color: colors.text }]}>
                       Therapist Summary Export
                     </Text>
@@ -815,7 +821,7 @@ export default function SettingsScreen() {
                 >
                   <View style={styles.navRowLeft}>
                     <Ionicons name={row.icon} size={20} color={colors.primary} />
-                    <View>
+                    <View style={styles.navRowText}>
                       <Text style={[styles.navRowTitle, { color: colors.text }]}>
                         {row.title}
                       </Text>
@@ -1179,6 +1185,9 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     flex: 1,
+    // Without this a web <input> keeps its intrinsic ~20ch width and pushes
+    // the Save button past the card edge on phones.
+    minWidth: 0,
     height: 44,
     borderWidth: 1,
     borderRadius: RADII.md,
@@ -1186,6 +1195,8 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body.fontSize,
   },
   saveButton: {
+    flexShrink: 0,
+    minWidth: 64,
     paddingHorizontal: SPACING.md,
     height: 44,
     borderRadius: RADII.md,
@@ -1295,6 +1306,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 44,
     marginTop: SPACING.xs,
     gap: SPACING.sm,
   },
@@ -1335,6 +1347,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
     flex: 1,
+    minWidth: 0,
+  },
+  // Lets long subtitles wrap instead of widening the row past the card on
+  // narrow phones (320px pushed the whole Settings page sideways).
+  navRowText: {
+    flex: 1,
+    minWidth: 0,
   },
   navRowTitle: {
     fontSize: 14,

@@ -466,11 +466,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hashLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   hashValue: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'monospace',
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -483,12 +483,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   payloadTitle: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     marginBottom: 4,
   },
   payloadCode: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'monospace',
     lineHeight: 16,
   },

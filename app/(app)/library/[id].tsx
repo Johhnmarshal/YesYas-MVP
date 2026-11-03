@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tierBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -784,7 +784,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tonePillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     textTransform: 'capitalize',
   },

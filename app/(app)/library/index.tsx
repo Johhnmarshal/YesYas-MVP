@@ -767,6 +767,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    minWidth: 0,
+    minHeight: 44,
     ...TYPOGRAPHY.body,
     paddingVertical: 8,
   },

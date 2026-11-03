@@ -1683,9 +1683,13 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   topBar: {
+    // Wraps so the Pause and Double-Blind badges drop under the back link on
+    // narrow phones instead of running off the edge.
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    rowGap: SPACING.xs,
     marginBottom: SPACING.sm,
   },
   backButton: {
@@ -1699,6 +1703,7 @@ const styles = StyleSheet.create({
   },
   topBarActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: SPACING.xs,
   },
@@ -2015,7 +2020,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.xs,
   },
   tierBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },

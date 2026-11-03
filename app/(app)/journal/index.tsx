@@ -12,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -58,6 +59,11 @@ const PROMPT_STARTERS = [
 
 export default function JournalScreen() {
   const colors = useThemeColors();
+  // On a short viewport (a phone in landscape) the starter chips and the
+  // composer together leave almost no room for the journal itself, so the
+  // chips step aside; the composer stays.
+  const { height: viewportHeight } = useWindowDimensions();
+  const showStarters = viewportHeight >= 500;
   useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.journalList);
   const [userId, setUserId] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(() => {
@@ -663,7 +669,7 @@ export default function JournalScreen() {
         ) : null}
 
         {/* Reflection Prompt Starters (when no active messages) */}
-        {messages.length === 0 && (
+        {messages.length === 0 && showStarters && (
           <View
             style={[
               styles.promptsContainer,
@@ -1153,7 +1159,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   flagButtonText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   refreshButton: {
@@ -1236,7 +1242,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   entryCardEncrypted: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   entryCardSnippet: {
@@ -1307,7 +1313,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footerSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
   },
   graduateButton: {
     flexDirection: 'row',
