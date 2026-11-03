@@ -306,53 +306,58 @@ export function LibraryItemCard({
         ]}
       >
         <View style={styles.badgeRow}>
-          <View
-            style={[styles.tierBadge, { backgroundColor: colors.primary }]}
-          >
-            <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
-              {item.tier.toUpperCase()}
-            </Text>
+          {/* Tags wrap among themselves; the Rated mark and chevron stay
+              pinned top right instead of dropping onto a line of their own
+              on narrow phones. */}
+          <View style={styles.tagGroup}>
+            <View
+              style={[styles.tierBadge, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.tierBadgeText, { color: colors.onPrimary }]}>
+                {item.tier.toUpperCase()}
+              </Text>
+            </View>
+
+            {item.tone_tags.map((tag) => (
+              <View
+                key={tag}
+                style={[
+                  styles.tonePill,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.bg,
+                  },
+                ]}
+              >
+                <Text style={[styles.tonePillText, { color: colors.secondary }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
           </View>
 
-          {item.tone_tags.map((tag) => (
-            <View
-              key={tag}
-              style={[
-                styles.tonePill,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.bg,
-                },
-              ]}
-            >
-              <Text style={[styles.tonePillText, { color: colors.secondary }]}>
-                {tag}
-              </Text>
-            </View>
-          ))}
+          <View style={styles.statusGroup}>
+            {isRated ? (
+              <View style={styles.ratedBadge}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.accentWarm}
+                />
+                <Text
+                  style={[styles.ratedBadgeText, { color: colors.accentWarm }]}
+                >
+                  Rated
+                </Text>
+              </View>
+            ) : null}
 
-          <View style={styles.spacer} />
-
-          {isRated ? (
-            <View style={styles.ratedBadge}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.accentWarm}
-              />
-              <Text
-                style={[styles.ratedBadgeText, { color: colors.accentWarm }]}
-              >
-                Rated
-              </Text>
-            </View>
-          ) : null}
-
-          <Ionicons
-            name={expanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.secondary}
-          />
+            <Ionicons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.secondary}
+            />
+          </View>
         </View>
 
         <Text style={[styles.title, { color: colors.primary }]}>
@@ -529,10 +534,23 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: SPACING.xs,
+  },
+  tagGroup: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: SPACING.xs,
+  },
+  statusGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    minHeight: 24,
   },
   tierBadge: {
     paddingHorizontal: 8,
@@ -540,7 +558,7 @@ const styles = StyleSheet.create({
     borderRadius: RADII.xs,
   },
   tierBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -551,12 +569,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tonePillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     textTransform: 'capitalize',
-  },
-  spacer: {
-    flex: 1,
   },
   ratedBadge: {
     flexDirection: 'row',

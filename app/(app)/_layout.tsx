@@ -1,16 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { COLORS, SPACING, useThemeColors } from '@/lib/theme';
+
+// Bar height above the home indicator: icon, label and breathing room.
+// react-navigation sets an explicit height of its own, so the old minHeight
+// was ignored and the labels clipped in every browser.
+const BOTTOM_BAR_HEIGHT = 64;
+
+/**
+ * Where the tab bar goes on web. A bottom bar suits a phone held upright, but
+ * stretched across a desktop it is a phone pattern on a big screen, and in
+ * phone landscape it takes a fifth of a 390px-tall viewport. Those two cases
+ * get a side rail instead; tablets in portrait keep the bottom bar.
+ */
+function shouldUseSideRail(width: number, height: number): boolean {
+  if (Platform.OS !== 'web') return false;
+  return width >= 1024 || (width > height && height < 500);
+}
 
 /**
  * Authenticated `(app)` navigation shell.
- * Displays a 4-tab bottom bar (Home, Library, Journal, Settings) and hides
+ * Displays the 4 tabs (Home, Library, Journal, Settings) as a bottom bar, or
+ * a side rail on wide or short web viewports, and hides
  * onboarding, detail, pairing, reveal, and settings sub-routes via `href: null`.
  */
 export default function AppLayout() {
   const colors = useThemeColors();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const rail = shouldUseSideRail(width, height);
 
   return (
     <Tabs
@@ -18,21 +39,33 @@ export default function AppLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary || COLORS.primary,
         tabBarInactiveTintColor: colors.textMuted || COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.surface || COLORS.surface,
-          borderTopColor: colors.border || COLORS.border,
-          borderTopWidth: 1,
-          minHeight: 60,
-          paddingTop: 6,
-          paddingBottom: 6,
-        },
+        tabBarPosition: rail ? 'left' : 'bottom',
+        tabBarVariant: rail ? 'material' : 'uikit',
+        tabBarStyle: rail
+          ? {
+              backgroundColor: colors.surface || COLORS.surface,
+              borderRightColor: colors.border || COLORS.border,
+              borderRightWidth: 1,
+              width: 104,
+              paddingTop: Math.max(insets.top, SPACING.sm),
+              paddingLeft: insets.left,
+            }
+          : {
+              backgroundColor: colors.surface || COLORS.surface,
+              borderTopColor: colors.border || COLORS.border,
+              borderTopWidth: 1,
+              height: BOTTOM_BAR_HEIGHT + insets.bottom,
+              paddingTop: 4,
+              paddingBottom: Math.max(insets.bottom, 4),
+            },
         tabBarLabelStyle: {
-          fontSize: TYPOGRAPHY.caption.fontSize,
+          fontSize: 12,
+          lineHeight: 16,
           fontWeight: '600',
         },
-        tabBarItemStyle: {
-          minHeight: 44,
-        },
+        tabBarItemStyle: rail
+          ? { minHeight: 64, paddingVertical: SPACING.xs }
+          : { minHeight: 44 },
         // Every screen was designed for a phone; on a desktop browser they
         // stretched edge to edge. Cap the content column on web only.
         ...(Platform.OS === 'web'

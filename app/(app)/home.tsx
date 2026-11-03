@@ -1136,7 +1136,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   metricSubHint: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
   metricDivider: {
