@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -25,6 +25,8 @@ import {
   sendAiCoachMessage,
 } from '@/lib/journal';
 import { PrivacyShield } from '@/components/PrivacyShield';
+import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
+import { entryAuthor, groupJournalThreads } from '@/lib/journal-threads';
 import { showMessage } from '@/lib/alert';
 import { hasRecoveryBackup } from '@/lib/key-recovery';
 import { getActiveOrPendingPairing } from '@/lib/pairing';
@@ -87,7 +89,15 @@ export default function JournalScreen() {
   // entry permanently and silently. Until now the only place that said so was
   // the Settings screen, which a tester has no reason to open — and
   // user_key_recovery has zero rows on production.
+  //
+  // Entries that could not be decrypted on production showed what that costs,
+  // so a recovery code is now required before the first entry rather than
+  // suggested after it.
   const [needsRecoveryCode, setNeedsRecoveryCode] = useState(false);
+  const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
+
+  // One card per conversation, the reflection before the reply.
+  const threads = useMemo(() => groupJournalThreads(pastEntries), [pastEntries]);
 
   // Modals
   const [graduationModalVisible, setGraduationModalVisible] = useState(false);
@@ -121,16 +131,11 @@ export default function JournalScreen() {
       const entries = await fetchJournalEntries(user.id);
       setPastEntries(entries);
 
-      if (entries.length > 0) {
-        try {
-          setNeedsRecoveryCode(!(await hasRecoveryBackup(user.id)));
-        } catch {
-          // Offline or the check failed. Stay quiet rather than warn about a
-          // backup that may well exist — a false alarm here teaches people to
-          // ignore the one warning that matters.
-          setNeedsRecoveryCode(false);
-        }
-      } else {
+      try {
+        setNeedsRecoveryCode(!(await hasRecoveryBackup(user.id)));
+      } catch {
+        // Offline or the check failed. Do not block writing over a backup
+        // that may well exist.
         setNeedsRecoveryCode(false);
       }
     } catch (err) {
@@ -160,7 +165,7 @@ export default function JournalScreen() {
 
   async function handleSendMessage() {
     const text = inputText.trim();
-    if (!text || !userId || isTyping) return;
+    if (!text || !userId || isTyping || needsRecoveryCode) return;
 
     setInputText('');
     const userMsgId = `user-${Date.now()}`;
@@ -194,21 +199,31 @@ export default function JournalScreen() {
         setThreadId(aiResponse.threadId);
       }
 
-      setCoachNotice(
-        aiResponse.reason === 'rate_limited'
-          ? 'You have reached the coach limit for now. Your entry is saved — the reply below is a standard prompt.'
-          : aiResponse.reason === 'unavailable'
-            ? 'The coach could not be reached, so the reply below is a standard prompt. Your entry is saved.'
+      // A built-in stock prompt is not a reply to what was written. It used
+      // to be saved and shown as one, so every tester got the same sentence
+      // back and it sat in Past Reflections as if they had written it. Now
+      // only a real coach reply is kept; otherwise the person is told why
+      // there is none.
+      if (aiResponse.isFallback) {
+        setCoachNotice(
+          aiResponse.reason === 'rate_limited'
+            ? 'Your entry is saved. You have reached the coach limit for now, so there is no reply this time.'
             : aiResponse.reason === 'no_provider'
-              ? 'The reflective coach is not switched on yet, so the reply below is a standard prompt rather than a response to what you wrote. Your entry is saved.'
-              : null,
-      );
+              ? 'Your entry is saved. The reflective coach is not switched on yet, so there is no reply.'
+              : 'Your entry is saved. The coach could not be reached, so there is no reply this time.',
+        );
+        const updatedEntries = await fetchJournalEntries(userId);
+        setPastEntries(updatedEntries);
+        return;
+      }
+      setCoachNotice(null);
 
-      // 3. Encrypt & persist AI reply on device
+      // 3. Encrypt & persist the coach's reply in the same thread
       const savedAiRow = await saveJournalEntry(
         userId,
         aiResponse.reply,
         aiResponse.threadId ?? threadId ?? null,
+        'coach',
       );
 
       const aiMsg: ChatMessage = {
@@ -336,9 +351,10 @@ export default function JournalScreen() {
               </View>
             </View>
             <Text style={[styles.welcomeDisclaimer, { color: colors.textMuted }]}>
-              Note: The AI Coach is an intimacy self-reflection companion, not a
-              licensed therapist. All entries are encrypted with your device key
-              before saving.
+              The coach is a self-reflection companion, not a licensed
+              therapist. Entries are encrypted on this device before they are
+              saved. What you send to the coach is also passed to our AI
+              provider so it can reply.
             </Text>
           </View>
 
@@ -501,7 +517,7 @@ export default function JournalScreen() {
                     { color: colors.text },
                   ]}
                 >
-                  Past Reflections ({pastEntries.length})
+                  Past Reflections ({threads.length})
                 </Text>
               </View>
               <Pressable
@@ -550,73 +566,106 @@ export default function JournalScreen() {
               </View>
             ) : (
               <View style={styles.entriesList}>
-                {pastEntries.map((entry) => (
-                  <Pressable
-                    key={entry.id}
-                    onPress={() => {
-                      router.push(`/(app)/journal/${entry.id}` as Href);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`View entry from ${formatEntryDate(entry.created_at)}`}
-                    style={({ pressed }) => [
-                      styles.entryCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <View style={styles.entryCardHeader}>
-                      <View style={styles.entryCardDateRow}>
-                        <Ionicons
-                          name="calendar-outline"
-                          size={13}
-                          color={colors.textMuted}
-                        />
-                        <Text
-                          style={[
-                            styles.entryCardDate,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          {formatEntryDate(entry.created_at)}
-                        </Text>
-                      </View>
-                      <View style={styles.entryCardLock}>
-                        <Ionicons
-                          name="lock-closed"
-                          size={11}
-                          color={colors.primary}
-                        />
-                        <Text
-                          style={[
-                            styles.entryCardEncrypted,
-                            { color: colors.primary },
-                          ]}
-                        >
-                          Encrypted
-                        </Text>
-                      </View>
-                    </View>
-                    <Text
-                      numberOfLines={2}
-                      style={[
-                        styles.entryCardSnippet,
+                {threads.map((thread) => {
+                  const first = thread.entries[0];
+                  const replies = thread.entries.filter((e) => entryAuthor(e) === 'coach');
+                  const mine = thread.entries.filter((e) => entryAuthor(e) === 'user');
+                  const lead = mine[0] ?? first;
+                  const leadText = (entry: JournalEntryWithBody) =>
+                    entry.bodyState === 'ok'
+                      ? entry.body
+                      : entry.bodyState === 'locked'
+                        ? 'Still encrypted: this device has no key for it yet. Close and reopen YesYas! to enter your recovery code.'
+                        : 'This entry was written with a key that is no longer on this device, and there was no recovery code to bring it back, so it cannot be opened.';
+                  return (
+                    <Pressable
+                      key={thread.key}
+                      onPress={() => {
+                        router.push(`/(app)/journal/${lead.id}` as Href);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`View reflection from ${formatEntryDate(thread.startedAt)}`}
+                      style={({ pressed }) => [
+                        styles.entryCard,
                         {
-                          color:
-                            entry.bodyState === 'ok' ? colors.text : colors.textMuted,
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                          opacity: pressed ? 0.8 : 1,
                         },
                       ]}
                     >
-                      {entry.bodyState === 'ok'
-                        ? entry.body
-                        : entry.bodyState === 'locked'
-                          ? 'This entry is still encrypted because this device has no key for it. Close and reopen YesYas! to enter your recovery code.'
-                          : 'This entry can no longer be decrypted on this account.'}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <View style={styles.entryCardHeader}>
+                        <View style={styles.entryCardDateRow}>
+                          <Ionicons
+                            name="calendar-outline"
+                            size={13}
+                            color={colors.textMuted}
+                          />
+                          <Text
+                            style={[
+                              styles.entryCardDate,
+                              { color: colors.textMuted },
+                            ]}
+                          >
+                            {formatEntryDate(thread.startedAt)}
+                          </Text>
+                        </View>
+                        <View style={styles.entryCardLock}>
+                          <Ionicons
+                            name="lock-closed"
+                            size={11}
+                            color={colors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.entryCardEncrypted,
+                              { color: colors.primary },
+                            ]}
+                          >
+                            Encrypted
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        numberOfLines={3}
+                        style={[
+                          styles.entryCardSnippet,
+                          {
+                            color:
+                              lead.bodyState === 'ok' ? colors.text : colors.textMuted,
+                          },
+                        ]}
+                      >
+                        {entryAuthor(lead) === 'coach' ? `Coach: ${leadText(lead)}` : leadText(lead)}
+                      </Text>
+                      {mine.length > 0 && replies.length > 0 ? (
+                        <View
+                          style={[
+                            styles.threadReply,
+                            { backgroundColor: colors.accentWarmSubtle },
+                          ]}
+                        >
+                          <Text
+                            style={[styles.threadReplyLabel, { color: colors.secondary }]}
+                          >
+                            Coach
+                          </Text>
+                          <Text
+                            numberOfLines={2}
+                            style={[styles.threadReplyText, { color: colors.secondary }]}
+                          >
+                            {leadText(replies[replies.length - 1])}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {mine.length > 1 ? (
+                        <Text style={[styles.threadMore, { color: colors.textMuted }]}>
+                          {mine.length} reflections in this conversation
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -625,8 +674,8 @@ export default function JournalScreen() {
         {needsRecoveryCode ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Create an encryption recovery code in Settings"
-            onPress={() => router.push('/(app)/settings' as Href)}
+            accessibilityLabel="Create your recovery code before writing"
+            onPress={() => setRecoveryModalVisible(true)}
             style={({ pressed }) => [
               styles.recoveryWarning,
               {
@@ -645,9 +694,10 @@ export default function JournalScreen() {
             <Text
               style={[styles.recoveryWarningText, { color: colors.secondary }]}
             >
-              Your entries are encrypted with a key held only on this device.
-              Create a recovery code so a reinstall or a new phone does not lose
-              them — tap here.
+              Before you write, create a recovery code. Entries are encrypted
+              with a key kept only on this device; the code is the only way to
+              open them on a new phone or after clearing this browser. Tap to
+              create it.
             </Text>
           </Pressable>
         ) : null}
@@ -736,10 +786,15 @@ export default function JournalScreen() {
                 borderColor: colors.border,
               },
             ]}
-            placeholder="Write a private reflection or question..."
+            placeholder={
+              needsRecoveryCode
+                ? 'Create your recovery code first'
+                : 'Write a private reflection or question...'
+            }
             placeholderTextColor={colors.textMuted}
             value={inputText}
             onChangeText={setInputText}
+            editable={!needsRecoveryCode}
             multiline
             maxLength={1000}
             returnKeyType="default"
@@ -747,7 +802,7 @@ export default function JournalScreen() {
           />
           <Pressable
             onPress={handleSendMessage}
-            disabled={!inputText.trim() || isTyping}
+            disabled={!inputText.trim() || isTyping || needsRecoveryCode}
             accessibilityRole="button"
             accessibilityLabel="Send reflection to journal"
             style={[
@@ -817,6 +872,14 @@ export default function JournalScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Recovery code, required before the first entry */}
+      <RecoveryCodeModal
+        visible={recoveryModalVisible}
+        userId={userId}
+        onClose={() => setRecoveryModalVisible(false)}
+        onCreated={() => setNeedsRecoveryCode(false)}
+      />
 
       {/* Graduation Confirmation Modal */}
       <Modal
@@ -1458,5 +1521,23 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     fontSize: 13,
     fontWeight: '500',
+  },
+  threadReply: {
+    marginTop: SPACING.xs,
+    borderRadius: RADII.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    gap: 2,
+  },
+  threadReplyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  threadReplyText: {
+    ...TYPOGRAPHY.caption,
+  },
+  threadMore: {
+    ...TYPOGRAPHY.caption,
+    marginTop: SPACING.xs,
   },
 });

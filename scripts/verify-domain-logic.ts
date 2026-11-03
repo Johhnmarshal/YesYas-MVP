@@ -29,6 +29,9 @@ import { isPlausibleEmail, passphraseProblem } from '../lib/validation.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { parseAuthUrl } from '../lib/auth-url.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { LEGACY_COACH_PREFIX, entryAuthor, groupJournalThreads } from '../lib/journal-threads.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -1030,6 +1033,24 @@ async function main() {
   assert.equal(passphraseProblem('alllowercase123'), 'Include upper and lower case letters and at least one number.');
   assert.equal(passphraseProblem('NoDigitsHereAtAll'), 'Include upper and lower case letters and at least one number.');
   assert.equal(passphraseProblem('Correct Horse 9 Battery'), null);
+
+  // Journal threads: a reflection reads before the reply to it, threads are
+  // newest first, and pre-migration built-in replies count as the coach.
+  {
+    const t = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const rows = [
+      { id: 'r2', created_at: '2026-11-02T10:36:00.500Z', ai_coach_thread_id: t, author: 'user' as const, body: `${LEGACY_COACH_PREFIX} What matters most?`, bodyState: 'ok' },
+      { id: 'r1', created_at: '2026-11-02T10:36:00.000Z', ai_coach_thread_id: t, author: 'user' as const, body: 'A curiosity', bodyState: 'ok' },
+      { id: 'old', created_at: '2026-10-27T17:12:00.000Z', ai_coach_thread_id: null, author: 'user' as const, body: '', bodyState: 'undecryptable' },
+      { id: 'c1', created_at: '2026-11-03T09:00:00.000Z', ai_coach_thread_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', author: 'coach' as const, body: 'Reply', bodyState: 'ok' },
+      { id: 'u1', created_at: '2026-11-03T09:00:00.000Z', ai_coach_thread_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', author: 'user' as const, body: 'Same second', bodyState: 'ok' },
+    ];
+    const threads = groupJournalThreads(rows);
+    assert.deepEqual(threads.map((x) => x.entries.map((e) => e.id)), [['u1', 'c1'], ['r1', 'r2'], ['old']]);
+    assert.equal(entryAuthor(rows[0]), 'coach');
+    assert.equal(entryAuthor(rows[1]), 'user');
+    assert.equal(entryAuthor(rows[2]), 'user');
+  }
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');
 }

@@ -52,6 +52,22 @@ export default function Root({ children }: PropsWithChildren) {
           they do on native. Remove if a global scroll is ever wanted.
         */}
         <ScrollViewStyleReset />
+
+        {/*
+          The app follows the system light or dark setting (lib/theme.ts), but
+          the browser did not know that, so scrollbars, form controls and the
+          text caret stayed light-themed: a bright white scrollbar down the
+          middle of the dark journal. color-scheme hands those to the browser's
+          matching theme; the scrollbar colours come from the palette.
+        */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html:
+              ':root{color-scheme:light dark}' +
+              `*{scrollbar-color:${COLORS.muted} transparent}` +
+              '::selection{background:rgba(162,88,64,.25)}',
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

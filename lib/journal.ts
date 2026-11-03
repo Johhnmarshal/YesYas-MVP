@@ -8,6 +8,7 @@ import {
 import type { Database } from './database.types';
 import { supabase } from './supabase';
 import { track } from './analytics';
+import type { JournalAuthor } from './journal-threads';
 
 /** Plaintext limit; the encrypted column is capped at 60000 (20261101000001). */
 export const JOURNAL_ENTRY_MAX_LENGTH = 10000;
@@ -158,10 +159,36 @@ export async function fetchJournalEntryById(
   }
 }
 
+/** Every row in one coach conversation, oldest first, decrypted. */
+export async function fetchJournalThread(
+  userId: string,
+  threadId: string,
+): Promise<JournalEntryWithBody[]> {
+  const { data, error } = await supabase
+    .from('journal_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('ai_coach_thread_id', threadId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    throw error;
+  }
+  return Promise.all(
+    (data ?? []).map(async (row) => {
+      try {
+        return { ...row, body: await decryptText(row.body, userId), bodyState: 'ok' as const };
+      } catch (err) {
+        return { ...row, body: '', bodyState: classifyDecryptionFailure(err) };
+      }
+    }),
+  );
+}
+
 export async function createJournalEntry(
   userId: string,
   body: string,
   threadId?: string | null,
+  author: JournalAuthor = 'user',
 ): Promise<JournalEntryWithBody> {
   const trimmed = body.trim();
   if (!trimmed) {
@@ -185,6 +212,7 @@ export async function createJournalEntry(
       user_id: userId,
       body: encryptedBody,
       ai_coach_thread_id: validThreadId,
+      author,
     })
     .select('*')
     .single();
@@ -193,7 +221,9 @@ export async function createJournalEntry(
     throw error;
   }
 
-  track('journal_entry_saved');
+  if (author === 'user') {
+    track('journal_entry_saved');
+  }
   return {
     ...data,
     body: trimmed,
