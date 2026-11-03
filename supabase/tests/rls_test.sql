@@ -1106,12 +1106,15 @@ select is(
   'no nudge is queued for someone who switched emails off'
 );
 
--- 66. Repeats within 12 hours collapse to one.
-select public.enqueue_notification('44444444-4444-4444-4444-444444444444'::uuid, null, 'partner_ready');
-select public.enqueue_notification('44444444-4444-4444-4444-444444444444'::uuid, null, 'partner_ready');
+-- 66. Repeats within 12 hours collapse to one. (User A: D's account is
+-- deleted earlier in this file, so D has no profile to opt in with.)
+select public.enqueue_notification('11111111-1111-1111-1111-111111111111'::uuid, null, 'partner_ready');
+select public.enqueue_notification('11111111-1111-1111-1111-111111111111'::uuid, null, 'partner_ready');
 select is(
   (select count(*)::int from public.notification_outbox
-    where recipient_id = '44444444-4444-4444-4444-444444444444'),
+    where recipient_id = '11111111-1111-1111-1111-111111111111'
+      and pairing_id is null
+      and kind = 'partner_ready'),
   1,
   'the same nudge is not queued twice within 12 hours'
 );
