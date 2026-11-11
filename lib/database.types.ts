@@ -444,6 +444,18 @@ export interface Database {
         };
         Relationships: [];
       };
+      partner_nudges: {
+        Row: {
+          id: string;
+          pairing_id: string;
+          sender_id: string;
+          recipient_id: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [key: string]: never };
     Functions: {
@@ -489,6 +501,17 @@ export interface Database {
       withdraw_reveal: {
         Args: { p_pairing_id: string };
         Returns: undefined;
+      };
+      send_nudge: {
+        Args: { p_pairing_id: string };
+        Returns: string;
+      };
+      get_shared_progress: {
+        Args: { p_pairing_id: string };
+        Returns: {
+          explored_together: number;
+          total: number;
+        }[];
       };
       request_therapist_export: {
         Args: { p_pairing_id: string };

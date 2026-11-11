@@ -25,7 +25,7 @@ const MAX_ATTEMPTS = 5;
 // A nudge older than this is no longer true (the readiness window is 72h).
 const MAX_AGE_HOURS = 72;
 
-type Kind = 'partner_ready' | 'matches_ready';
+type Kind = 'partner_ready' | 'matches_ready' | 'nudge';
 
 interface OutboxRow {
   id: string;
@@ -62,6 +62,13 @@ function compose(kind: Kind, to: string, partnerName: string | null): Mail {
       ? {
           subject: `${who} is ready when you are`,
           body: `${who} is ready on YesYas!. When you are ready too, open the app to continue together. Nothing is shared until you both choose.`,
+          cta: 'Open YesYas!',
+        }
+      : kind === 'nudge'
+      ? {
+          // Discreet on purpose: the subject shows on lock screens.
+          subject: `${who} is thinking of you`,
+          body: `${who} sent you a little nudge on YesYas!. No question attached, just a reminder that you are on their mind.`,
           cta: 'Open YesYas!',
         }
       : {
