@@ -1,3 +1,4 @@
+import { useVoice } from '@/components/VoiceProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -40,7 +41,7 @@ import { RADII, SPACING,
 
 
 const TIER_FILTER_SEGMENTS: { value: TierFilterValue; label: string }[] = [
-  { value: 'up_to_ceiling', label: 'All up to my tier' },
+  { value: 'up_to_ceiling', label: 'Up to my heat limit' },
   { value: 'sensory', label: 'Sensory' },
   { value: 'suggestive', label: 'Suggestive' },
   { value: 'explicit', label: 'Explicit' },
@@ -64,6 +65,7 @@ const STATUS_FILTER_SEGMENTS: { value: StatusFilterValue; label: string }[] = [
  */
 export default function DesireLibraryScreen() {
   const colors = useThemeColors();
+  const { voice } = useVoice();
 
   const [userId, setUserId] = useState<string>('');
   const [pairingId, setPairingId] = useState<string | null>(null);
@@ -277,11 +279,14 @@ export default function DesireLibraryScreen() {
             <Text style={[styles.screenTitle, { color: colors.primary }]}>
               Desire Library
             </Text>
+            <Text style={[styles.counterText, { color: colors.secondary, marginBottom: SPACING.xs }]}>
+              {voice.librarySubtitle}
+            </Text>
 
             <View style={styles.metaRow}>
               <Text style={[styles.counterText, { color: colors.secondary }]}>
                 Rated {ratedCountInCeiling} of {ceilingAllowedItems.length}{' '}
-                items in your tier
+                ideas up to your heat limit
               </Text>
               <View
                 style={[
@@ -316,7 +321,7 @@ export default function DesireLibraryScreen() {
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Search desires by title or description…"
+                placeholder={voice.librarySearchPlaceholder}
                 placeholderTextColor={colors.textMuted}
                 accessibilityLabel="Search desire library items"
                 style={[styles.searchInput, { color: colors.primary }]}
@@ -341,7 +346,7 @@ export default function DesireLibraryScreen() {
             <View style={styles.filterSection}>
               <View style={styles.filterHeaderRow}>
                 <Text style={[styles.filterLabel, { color: colors.secondary }]}>
-                  Content tier (up to {tierCeiling})
+                  Heat limit: {tierCeiling}
                 </Text>
                 {nextUnlockableTier ? (
                   <Pressable
@@ -663,7 +668,7 @@ export default function DesireLibraryScreen() {
             <Text style={[styles.modalBody, { color: colors.secondary }]}>
               {TIER_OPTIONS.find((t) => t.value === pendingUnlockTier)
                 ?.description ??
-                'You can adjust your preferred content tier at any time in Settings.'}
+                'You can change your heat limit any time in Settings.'}
             </Text>
             <Text style={[styles.modalHint, { color: colors.textMuted }]}>
               🔒 Changing your tier only affects what you see in your own

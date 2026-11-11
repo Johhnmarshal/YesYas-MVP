@@ -396,7 +396,7 @@ export function LibraryItemCard({
           <View style={styles.noteSection}>
             <View style={styles.noteHeaderRow}>
               <Text style={[styles.noteLabel, { color: colors.secondary }]}>
-                Private note (encrypted before saving)
+                Private note, encrypted and just for you
               </Text>
               {noteSaveState === 'saving' ? (
                 <Text style={[styles.saveStatus, { color: colors.textMuted }]}>

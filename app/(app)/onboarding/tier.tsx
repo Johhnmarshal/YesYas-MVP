@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { DesireTier, ToneLabel } from '@/lib/database.types';
 import { RADII, SPACING, TIER_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { HEAT_PICKER } from '@/lib/voice';
 
 function parseToneParam(raw?: string | string[]): ToneLabel {
   const val = Array.isArray(raw) ? raw[0] : raw;
@@ -62,7 +63,10 @@ export default function OnboardingTierScreen() {
           Step 2 of 3
         </Text>
         <Text style={[styles.title, { color: colors.primary }]}>
-          What kind of content feels right for now?
+          {HEAT_PICKER.title}
+        </Text>
+        <Text style={[styles.pickerSubtitle, { color: colors.secondary }]}>
+          {HEAT_PICKER.subtitle}
         </Text>
 
         <View style={styles.optionsList}>
@@ -179,6 +183,10 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h1,
+    marginBottom: SPACING.xs,
+  },
+  pickerSubtitle: {
+    ...TYPOGRAPHY.body,
     marginBottom: SPACING.lg,
   },
   optionsList: {

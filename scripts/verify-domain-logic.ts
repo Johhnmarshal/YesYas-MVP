@@ -32,6 +32,9 @@ import { parseAuthUrl } from '../lib/auth-url.ts';
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { LEGACY_COACH_PREFIX, entryAuthor, groupJournalThreads } from '../lib/journal-threads.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { VOICES, fillVoice, voiceFor } from '../lib/voice.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -1050,6 +1053,28 @@ async function main() {
     assert.equal(entryAuthor(rows[0]), 'coach');
     assert.equal(entryAuthor(rows[1]), 'user');
     assert.equal(entryAuthor(rows[2]), 'user');
+  }
+
+  // Voice: every tone has every line, five non-empty captions, no dashes
+  // (house style), and placeholders fill correctly.
+  {
+    const tones = Object.keys(VOICES) as (keyof typeof VOICES)[];
+    const keys = Object.keys(VOICES.romantic).sort();
+    for (const tone of tones) {
+      const v = VOICES[tone];
+      assert.deepEqual(Object.keys(v).sort(), keys, `${tone} voice has a different set of lines`);
+      assert.equal(v.ratingCaptions.length, 5);
+      for (const [key, value] of Object.entries(v)) {
+        for (const line of Array.isArray(value) ? value : [value]) {
+          assert.ok(typeof line === 'string' && line.trim().length > 0, `${tone}.${key} is empty`);
+          assert.ok(!/[—–]|\s-\s|--/.test(line), `${tone}.${key} uses a dash: ${line}`);
+        }
+      }
+    }
+    assert.equal(voiceFor('unknown').ratingCaptions[0], VOICES.romantic.ratingCaptions[0]);
+    assert.equal(fillVoice('You both want {count}', { count: 1 }), 'You both want 1 thing');
+    assert.equal(fillVoice('{count} things you are both up for', { count: 3 }), '3 things you are both up for');
+    assert.equal(fillVoice('{name} is ready', { name: 'Sam' }), 'Sam is ready');
   }
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');

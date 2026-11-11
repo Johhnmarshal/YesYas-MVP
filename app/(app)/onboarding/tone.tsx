@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { ToneLabel } from '@/lib/database.types';
 import { RADII, SPACING, TONE_OPTIONS, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
+import { TONE_PICKER } from '@/lib/voice';
 
 /**
  * Onboarding Step 1/3 — Tone Preference (`romantic`, `playful`, `direct`).
@@ -29,7 +30,10 @@ export default function OnboardingToneScreen() {
           Step 1 of 3
         </Text>
         <Text style={[styles.title, { color: colors.primary }]}>
-          How do you like to talk about this?
+          {TONE_PICKER.title}
+        </Text>
+        <Text style={[styles.pickerSubtitle, { color: colors.secondary }]}>
+          {TONE_PICKER.subtitle}
         </Text>
 
         <View style={styles.optionsList}>
@@ -40,7 +44,7 @@ export default function OnboardingToneScreen() {
                 key={option.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={`${option.label}: ${option.description}`}
+                accessibilityLabel={`${option.label}: ${option.description}. For example: ${option.sample}`}
                 onPress={() => setSelectedTone(option.value)}
                 style={({ pressed }) => [
                   styles.card,
@@ -81,6 +85,9 @@ export default function OnboardingToneScreen() {
                       ]}
                     >
                       {option.description}
+                    </Text>
+                    <Text style={[styles.cardSample, { color: colors.accentWarm }]}>
+                      {option.sample}
                     </Text>
                   </View>
                 </View>
@@ -128,6 +135,10 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h1,
+    marginBottom: SPACING.xs,
+  },
+  pickerSubtitle: {
+    ...TYPOGRAPHY.body,
     marginBottom: SPACING.lg,
   },
   optionsList: {
@@ -164,6 +175,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...TYPOGRAPHY.h3,
     marginBottom: 2,
+  },
+  cardSample: {
+    ...TYPOGRAPHY.body,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   cardDescription: {
     ...TYPOGRAPHY.body,
