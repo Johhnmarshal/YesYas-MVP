@@ -67,6 +67,9 @@ export interface Database {
           age_confirmed_at: string | null;
           terms_accepted_at: string | null;
           email_notifications: boolean;
+          share_presence: boolean;
+          share_heat: boolean;
+          avatar: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +82,9 @@ export interface Database {
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
           email_notifications?: boolean;
+          share_presence?: boolean;
+          share_heat?: boolean;
+          avatar?: string | null;
           created_at?: string;
         };
         Update: {
@@ -91,6 +97,9 @@ export interface Database {
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
           email_notifications?: boolean;
+          share_presence?: boolean;
+          share_heat?: boolean;
+          avatar?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -523,6 +532,15 @@ export interface Database {
       send_nudge: {
         Args: { p_pairing_id: string };
         Returns: string;
+      };
+      get_partner_profile: {
+        Args: { p_partner_id: string };
+        Returns: {
+          display_name: string | null;
+          avatar: string | null;
+          heat: string | null;
+          shares_presence: boolean;
+        }[];
       };
       send_fantasy_card: {
         Args: { p_pairing_id: string; p_body: string };

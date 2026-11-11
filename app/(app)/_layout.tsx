@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PresenceProvider } from '@/components/PresenceProvider';
 import { VoiceProvider } from '@/components/VoiceProvider';
 import { COLORS, SPACING, useThemeColors } from '@/lib/theme';
 
@@ -36,6 +37,7 @@ export default function AppLayout() {
 
   return (
     <VoiceProvider>
+    <PresenceProvider>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -242,6 +244,7 @@ export default function AppLayout() {
           }}
         />
       </Tabs>
+    </PresenceProvider>
     </VoiceProvider>
   );
 }

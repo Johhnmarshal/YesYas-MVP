@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(86);
+select plan(92);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -1279,6 +1279,63 @@ select is(
   1,
   'a reported card survives withdrawal for review'
 );
+
+-- ---------- presence, opt-in (20261113000001) ----------
+
+-- 87. A partner's heat limit is hidden until they choose to share it.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is(
+  (select heat from public.get_partner_profile('22222222-2222-2222-2222-222222222222'::uuid)),
+  null,
+  'a partner''s heat limit is not shared by default'
+);
+
+-- 88. Presence needs both partners: A alone is refused.
+update public.profiles set share_presence = true where id = '11111111-1111-1111-1111-111111111111';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  false,
+  'presence is refused until both partners opt in'
+);
+
+-- 89. Once B opts in too (and shares heat), both work.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+update public.profiles set share_presence = true, share_heat = true where id = '22222222-2222-2222-2222-222222222222';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  true,
+  'presence is allowed once both partners opt in'
+);
+
+-- 90. A now sees B's heat limit.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select isnt(
+  (select heat from public.get_partner_profile('22222222-2222-2222-2222-222222222222'::uuid)),
+  null,
+  'a shared heat limit is visible to the partner'
+);
+
+-- 91. Someone outside the pairing cannot join its presence channel...
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+update public.profiles set share_presence = true where id = '33333333-3333-3333-3333-333333333333';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  false,
+  'an outsider cannot use a pairing''s presence channel'
+);
+
+-- 92. ...or read anything from a non-partner's profile.
+select is(
+  (select count(*)::int from public.get_partner_profile('11111111-1111-1111-1111-111111111111'::uuid)),
+  0,
+  'get_partner_profile returns nothing for someone you are not paired with'
+);
+reset role;
 
 select * from finish();
 rollback;

@@ -36,6 +36,9 @@ import { LEGACY_COACH_PREFIX, entryAuthor, groupJournalThreads } from '../lib/jo
 import { VOICES, fillVoice, voiceFor } from '../lib/voice.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { AVATARS, heatLabel, partnerPresenceFrom, presenceTopic, presenceWhere } from '../lib/presence-state.ts';
+
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { FANTASY_CARD_MAX_LENGTH, FANTASY_CONTENT_RULES, cardProblem, sendDisclosure, sentCardStatus } from '../lib/fantasy-rules.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
@@ -1081,6 +1084,24 @@ async function main() {
     assert.equal(fillVoice('You both want {count}', { count: 1 }), 'You both want 1 thing');
     assert.equal(fillVoice('{count} things you are both up for', { count: 3 }), '3 things you are both up for');
     assert.equal(fillVoice('{name} is ready', { name: 'Sam' }), 'Sam is ready');
+  }
+
+  // ---------- presence ----------
+  {
+    assert.equal(presenceTopic('abc'), 'pairing:abc');
+    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261113000001_presence.sql'), 'utf8');
+    assert.ok(migration.includes("'pairing:' || p.id::text"), 'client topic and server policy agree');
+    assert.equal(presenceWhere('/library'), 'library');
+    assert.equal(presenceWhere('/library/abc'), 'library');
+    assert.equal(presenceWhere('/librarything'), 'app');
+    assert.equal(presenceWhere('/home'), 'app');
+    const st = { k1: [{ user_id: 'me', where: 'app' }], k2: [{ user_id: 'them', where: 'app' }], k3: [{ user_id: 'them', where: 'library' }] };
+    assert.equal(partnerPresenceFrom(st, 'them'), 'library');
+    assert.equal(partnerPresenceFrom({ k1: [{ user_id: 'them', where: 'app' }] }, 'them'), 'app');
+    assert.equal(partnerPresenceFrom({ k1: [{ user_id: 'me', where: 'library' }] }, 'them'), null);
+    assert.equal(heatLabel('explicit'), 'Explicit');
+    assert.equal(heatLabel(null), null);
+    for (const a of AVATARS) assert.ok(a.length >= 1 && a.length <= 16, 'avatar fits the column check');
   }
 
   // ---------- fantasy vault ----------
