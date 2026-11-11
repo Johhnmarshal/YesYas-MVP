@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { type Href, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useVoice } from '@/components/VoiceProvider';
 import { friendlyError } from '@/lib/errors';
+import { fetchFantasyCards } from '@/lib/fantasies';
 import { hapticMedium } from '@/lib/haptics';
 import { nudgeAvailableAt, progressPercent } from '@/lib/packs';
 import { RADII, SHADOWS, SPACING, TYPOGRAPHY, useThemeColors } from '@/lib/theme';
@@ -51,15 +53,18 @@ export function TogetherCard({ pairingId, userId, partnerName, active, refreshKe
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [cardsWaiting, setCardsWaiting] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      const [p, n] = await Promise.all([
+      const [p, n, cards] = await Promise.all([
         fetchSharedProgress(pairingId),
         active ? fetchRecentNudges(pairingId) : Promise.resolve([]),
+        fetchFantasyCards(pairingId).catch(() => []),
       ]);
       setProgress(p);
       setNudges(n);
+      setCardsWaiting(cards.filter((c) => c.direction === 'received' && c.my_response === null).length);
       setNow(Date.now());
     } catch {
       // Decorative: Home still works without it.
@@ -105,6 +110,24 @@ export function TogetherCard({ pairingId, userId, partnerName, active, refreshKe
             <Text style={{ color: colors.secondary }}> · {ago(received.created_at, now)}</Text>
           </Text>
         </View>
+      ) : null}
+
+      {cardsWaiting > 0 ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`${partnerName} left you ${cardsWaiting === 1 ? 'a card' : `${cardsWaiting} cards`} in your Vault. Open it`}
+          onPress={() => router.push('/(app)/journal/fantasies' as Href)}
+          style={({ pressed }) => [
+            styles.received,
+            { backgroundColor: colors.accentWarmSubtle, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <Ionicons name="mail-unread-outline" size={18} color={colors.accentWarm} />
+          <Text style={[styles.receivedText, styles.grow, { color: colors.text }]}>
+            {partnerName} left you {cardsWaiting === 1 ? 'a card' : `${cardsWaiting} cards`} in your Vault
+          </Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.accentWarm} />
+        </Pressable>
       ) : null}
 
       {progress && progress.total > 0 ? (
@@ -186,6 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   receivedText: { ...TYPOGRAPHY.h3, flexShrink: 1 },
+  grow: { flex: 1 },
   progress: { gap: 6 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   label: { ...TYPOGRAPHY.h3 },

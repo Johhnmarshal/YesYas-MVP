@@ -36,6 +36,9 @@ import { LEGACY_COACH_PREFIX, entryAuthor, groupJournalThreads } from '../lib/jo
 import { VOICES, fillVoice, voiceFor } from '../lib/voice.ts';
 
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { FANTASY_CARD_MAX_LENGTH, FANTASY_CONTENT_RULES, cardProblem, sendDisclosure, sentCardStatus } from '../lib/fantasy-rules.ts';
+
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { NUDGE_COOLDOWN_MS, choosePack, nudgeAvailableAt, packDateKey, progressPercent } from '../lib/packs.ts';
 
 async function main() {
@@ -1078,6 +1081,23 @@ async function main() {
     assert.equal(fillVoice('You both want {count}', { count: 1 }), 'You both want 1 thing');
     assert.equal(fillVoice('{count} things you are both up for', { count: 3 }), '3 things you are both up for');
     assert.equal(fillVoice('{name} is ready', { name: 'Sam' }), 'Sam is ready');
+  }
+
+  // ---------- fantasy vault ----------
+  {
+    assert.equal(cardProblem('   '), 'Write something first.');
+    assert.equal(cardProblem('x'.repeat(FANTASY_CARD_MAX_LENGTH)), null);
+    assert.ok(cardProblem('x'.repeat(FANTASY_CARD_MAX_LENGTH + 1)));
+    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261112000001_fantasy_vault.sql'), 'utf8');
+    assert.ok(migration.includes(`between 1 and ${FANTASY_CARD_MAX_LENGTH}`), 'client and server card limits agree');
+    const d = sendDisclosure('Sam').join(' ');
+    assert.ok(/came from you/.test(d), 'the author is told the partner knows who wrote it');
+    assert.ok(/not end-to-end encrypted/.test(d), 'the author is told shared cards are not end-to-end encrypted');
+    assert.ok(!/declin|report|not for|said no/i.test(sentCardStatus(false, 'Sam')), 'a non-yes reveals nothing about the answer');
+    assert.equal(sentCardStatus(true, 'Sam'), 'Sam said yes');
+    for (const line of [...FANTASY_CONTENT_RULES, ...sendDisclosure('Sam')]) {
+      assert.ok(!/[—–]|\s-\s|--/.test(line), `fantasy copy uses a dash: ${line}`);
+    }
   }
 
   // ---------- nightly packs ----------

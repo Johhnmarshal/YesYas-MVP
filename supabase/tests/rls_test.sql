@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(77);
+select plan(86);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -1190,6 +1190,94 @@ select is(
       and kind = 'nudge'),
   1,
   'a nudge queues one email for the partner'
+);
+
+-- ---------- Fantasy Vault (20261112000001) ----------
+
+-- 78. A can send B a fantasy card.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(
+  $$select set_config('yesyas.card_low', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A slow dance in the kitchen')::text, true)$$,
+  'a partner can send a fantasy card'
+);
+select set_config('yesyas.card_yes', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A weekend away, phones off')::text, true);
+select set_config('yesyas.card_report', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'Something B will report')::text, true);
+
+-- 79. Three a day.
+select throws_ok(
+  $$select public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A fourth')$$,
+  'P0004',
+  null,
+  'fantasy cards are limited to three a day'
+);
+
+-- 80. Cards are never readable directly, not even by their author.
+select throws_ok(
+  $$select count(*) from public.fantasy_cards$$,
+  '42501',
+  null,
+  'fantasy_cards cannot be read directly'
+);
+
+-- 81. B answers one low and one yes, and reports the third.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select public.answer_fantasy_card(current_setting('yesyas.card_low')::uuid, 2::smallint);
+select public.answer_fantasy_card(current_setting('yesyas.card_yes')::uuid, 5::smallint);
+select public.report_fantasy_card(current_setting('yesyas.card_report')::uuid, 'It feels like pressure');
+select is(
+  (select count(*)::int from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) where direction = 'received'),
+  2,
+  'a reported card is hidden from the person who reported it'
+);
+
+-- 82. The author cannot answer their own card.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select throws_ok(
+  format('select public.answer_fantasy_card(%L::uuid, 5::smallint)', current_setting('yesyas.card_low')),
+  '42501',
+  null,
+  'the author cannot answer their own card'
+);
+
+-- 83. The author learns a yes, and nothing about a lower answer or a report.
+select results_eq(
+  $$select body, my_response, is_yes from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) order by body$$,
+  $$values ('A slow dance in the kitchen'::text, null::smallint, false),
+           ('A weekend away, phones off'::text, null::smallint, true),
+           ('Something B will report'::text, null::smallint, false)$$,
+  'the author sees only whether it was a yes'
+);
+
+-- 84. Withdrawing a reported card looks like any withdrawal, but it is kept.
+select public.withdraw_fantasy_card(current_setting('yesyas.card_report')::uuid);
+select is(
+  (select count(*)::int from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)),
+  2,
+  'a withdrawn card leaves the author''s list'
+);
+
+-- 85. Private fantasies are the owner's alone.
+insert into public.fantasies (body) values ('ciphertext only');
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select is(
+  (select count(*)::int from public.fantasies),
+  0,
+  'a partner cannot read your private fantasies'
+);
+reset role;
+
+-- 86. The reported card is kept for review.
+select is(
+  (select count(*)::int from public.fantasy_cards
+    where id = current_setting('yesyas.card_report')::uuid
+      and reported_at is not null and withdrawn_at is not null),
+  1,
+  'a reported card survives withdrawal for review'
 );
 
 select * from finish();
