@@ -578,7 +578,7 @@ export default function DesireLibraryItemDetailScreen() {
                   ]}
                 >
                   {pairingId
-                    ? `Paired with ${partnerName ?? 'your partner'}. Rejections (1–2★) are a hard veto and never surface. Only mutual matches (4–5★) or Curiosity Bridges (one 4–5★, one 3★) appear in a couple reveal.`
+                    ? `${partnerName ?? 'Your partner'} never sees a 1 or 2 from you. It only shows up if you both rate it 4 or 5, or if one of you is keen and the other curious.`
                     : 'Your solo ratings are stored privately and will automatically carry over if you invite a partner later.'}
                 </Text>
               </View>
@@ -596,7 +596,7 @@ export default function DesireLibraryItemDetailScreen() {
             >
               <View style={styles.noteHeaderRow}>
                 <Text style={[styles.sectionTitle, { color: colors.primary }]}>
-                  Private note (encrypted — never shared in reveals)
+                  Private note, encrypted and just for you
                 </Text>
                 {noteSaveState === 'saving' ? (
                   <Text style={[styles.saveStatus, { color: colors.textMuted }]}>

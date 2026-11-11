@@ -1,3 +1,4 @@
+import { useVoice } from '@/components/VoiceProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -68,6 +69,7 @@ function formatRelativeRevealTime(isoDate: string | null | undefined): string {
  */
 export default function HomeScreen() {
   const colors = useThemeColors();
+  const { voice } = useVoice();
 
   const [userId, setUserId] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('there');
@@ -341,7 +343,7 @@ export default function HomeScreen() {
               ]}
             >
               <Text style={[styles.tierPillText, { color: colors.secondary }]}>
-                Up to {tierCeiling}
+                Heat: {tierCeiling}
               </Text>
             </View>
           </View>
@@ -350,7 +352,7 @@ export default function HomeScreen() {
             Welcome back, {displayName}
           </Text>
           <Text style={[styles.greetingSubtitle, { color: colors.secondary }]}>
-            Nothing is ever shared without mutual consent.
+            {voice.homeSubtitle}
           </Text>
         </View>
 

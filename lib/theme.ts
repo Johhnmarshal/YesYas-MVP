@@ -142,23 +142,28 @@ export interface ToneOption {
   value: ToneLabel;
   label: string;
   description: string;
+  /** A line in this voice, so people hear the difference before choosing. */
+  sample: string;
 }
 
 export const TONE_OPTIONS: ToneOption[] = [
   {
     value: 'romantic',
     label: 'Romantic',
-    description: 'Soft, imagery-based',
+    description: 'Warm, sensual and gentle',
+    sample: '“Tell me what makes you melt.”',
   },
   {
     value: 'playful',
     label: 'Playful',
-    description: 'Light and exploratory',
+    description: 'Cheeky, teasing, never too serious',
+    sample: '“Go on, what is on your naughty list?”',
   },
   {
     value: 'direct',
     label: 'Direct',
-    description: 'Clear and specific',
+    description: 'Plain words. Sex is sex.',
+    sample: '“What do you want in bed?”',
   },
 ];
 
@@ -172,17 +177,17 @@ export const TIER_OPTIONS: TierOption[] = [
   {
     value: 'sensory',
     label: 'Sensory',
-    description: 'Touch, warmth, physical closeness',
+    description: 'Touch, warmth and slow closeness',
   },
   {
     value: 'suggestive',
     label: 'Suggestive',
-    description: 'Intimate but not explicit (default)',
+    description: 'Sexy and teasing, stops short of explicit',
   },
   {
     value: 'explicit',
     label: 'Explicit',
-    description: 'Fully frank content',
+    description: 'Everything, in plain words. No limits.',
   },
 ];
 

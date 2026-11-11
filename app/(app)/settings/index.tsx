@@ -22,6 +22,7 @@ import {
 import { friendlyError } from '@/lib/errors';
 import { confirm, showMessage } from '@/lib/alert';
 import { PairingManageModal } from '@/components/PairingManageModal';
+import { useVoice } from '@/components/VoiceProvider';
 import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
 import { clearMasterKey } from '@/lib/crypto';
 import type {
@@ -46,6 +47,7 @@ import { RADII, SPACING,
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export default function SettingsScreen() {
+  const { setTone: setVoiceTone } = useVoice();
   const colors = useThemeColors();
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -193,6 +195,8 @@ export default function SettingsScreen() {
 
       if (error) throw error;
       setProfile((prev) => (prev ? { ...prev, tone_preference: newTone } : null));
+      // Switch the whole app's voice now, not on next launch.
+      setVoiceTone(newTone);
     } catch (err) {
       showMessage(
         'Update Error',
@@ -494,7 +498,7 @@ export default function SettingsScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Tone Preference
+                How we talk to you
               </Text>
               <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                 Adjust how desire titles and prompts are phrased.
@@ -562,7 +566,7 @@ export default function SettingsScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Content Tier Preference
+                Heat limit
               </Text>
               <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                 Choose the maximum depth of desire prompts shown in your library.
@@ -588,7 +592,7 @@ export default function SettingsScreen() {
                         },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Set content tier to ${opt.label}`}
+                      accessibilityLabel={`Set heat limit to ${opt.label}`}
                     >
                       <View style={{ flex: 1 }}>
                         <Text

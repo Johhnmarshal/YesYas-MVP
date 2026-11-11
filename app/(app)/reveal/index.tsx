@@ -1,3 +1,5 @@
+import { useVoice } from '@/components/VoiceProvider';
+import { fillVoice } from '@/lib/voice';
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -84,6 +86,7 @@ function formatRemainingDuration(targetMs: number, nowMs: number): string {
  */
 export default function RevealScreen() {
   const colors = useThemeColors();
+  const { voice } = useVoice();
   useScreenCaptureProtection(SCREEN_CAPTURE_KEYS.reveal);
 
   const [userId, setUserId] = useState<string>('');
@@ -771,10 +774,10 @@ export default function RevealScreen() {
           <View>
             <Text style={[styles.screenTitle, { color: colors.primary }]}>
               {effectiveState === 'partner_waiting_for_you'
-                ? `${partnerName} is ready for a reveal!`
+                ? fillVoice(voice.revealPartnerReadyTitle, { name: partnerName })
                 : effectiveState === 'both_ready'
-                  ? 'Both of you are ready!'
-                  : 'Ready for a reveal?'}
+                  ? voice.revealBothReadyTitle
+                  : voice.revealIdleTitle}
             </Text>
 
             <Text style={[styles.subtitle, { color: colors.secondary }]}>
@@ -876,7 +879,7 @@ export default function RevealScreen() {
                     ? `Reveal locked until you rate ${ratingsStillNeeded} more items`
                     : effectiveState === 'partner_waiting_for_you' ||
                         effectiveState === 'both_ready'
-                      ? 'See our matches'
+                      ? voice.revealOpenButton
                       : "I'm ready"
                 }
                 disabled={actionBusy || tooFewRatingsToReveal}
@@ -1293,7 +1296,7 @@ export default function RevealScreen() {
 
             {/* Mutual Matches Section (both >= 4) */}
             <Text style={[styles.sectionHeading, { color: colors.primary }]}>
-              Things you both want ({matches.length})
+              {fillVoice(voice.revealMatchesHeading, { count: matches.length })}
             </Text>
 
             {matches.length === 0 ? (
@@ -1307,7 +1310,7 @@ export default function RevealScreen() {
                 ]}
               >
                 <Text style={[styles.emptyMatchTitle, { color: colors.primary }]}>
-                  No 4–5 overlaps in this window yet
+                  {voice.revealNoMatches}
                 </Text>
                 <Text style={[styles.bodyText, { color: colors.secondary }]}>
                   As you both explore and rate more items in the Desire Library,
