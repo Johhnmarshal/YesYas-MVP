@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(69);
+select plan(77);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -1117,6 +1117,79 @@ select is(
       and kind = 'partner_ready'),
   1,
   'the same nudge is not queued twice within 12 hours'
+);
+
+-- ---------- nudges and shared progress (20261111000001) ----------
+
+-- 70. A can send B a "thinking of you" nudge.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  'a partner can send a thinking-of-you nudge'
+);
+
+-- 71. A second one inside six hours is refused.
+select throws_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  'P0004',
+  null,
+  'nudges are limited to one every six hours'
+);
+
+-- 72. Nobody writes nudge rows directly.
+select throws_ok(
+  $$insert into public.partner_nudges (pairing_id, sender_id, recipient_id)
+    values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')$$,
+  '42501',
+  null,
+  'clients cannot insert nudges directly'
+);
+
+-- 73. Shared progress counts items you have both rated, and nothing else.
+select ok(
+  (select p.explored_together > 0 and p.explored_together <= p.total
+     from public.get_shared_progress('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) p),
+  'shared progress returns a together count within the visible total'
+);
+
+-- 74. B sees the nudge A sent.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select is(
+  (select count(*)::int from public.partner_nudges
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  1,
+  'the recipient can see a nudge sent to them'
+);
+
+-- 75. Someone outside the pairing can neither nudge into it...
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+select throws_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  '42501',
+  null,
+  'an outsider cannot nudge into a pairing'
+);
+
+-- 76. ...nor read its progress.
+select throws_ok(
+  $$select * from public.get_shared_progress('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  '42501',
+  null,
+  'an outsider cannot read a pairing''s shared progress'
+);
+reset role;
+
+-- 77. The nudge queued one email for B.
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '22222222-2222-2222-2222-222222222222'
+      and kind = 'nudge'),
+  1,
+  'a nudge queues one email for the partner'
 );
 
 select * from finish();

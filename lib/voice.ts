@@ -38,6 +38,15 @@ export interface Voice {
   revealMatchesHeading: string;
   /** Shown when a reveal found nothing in common this time. */
   revealNoMatches: string;
+  /** Home: the daily pack of three. */
+  tonightTitle: string;
+  tonightSubtitle: string;
+  /** Shown once all three in today's pack are rated. */
+  tonightDone: string;
+  /** The one-tap nudge button. */
+  nudgeButton: string;
+  /** Shown to the person a nudge was sent to. {name} is replaced. */
+  nudgeReceived: string;
 }
 
 export const VOICES: Record<VoiceTone, Voice> = {
@@ -59,6 +68,11 @@ export const VOICES: Record<VoiceTone, Voice> = {
     revealOpenButton: 'Show us what we share',
     revealMatchesHeading: 'You both want {count}',
     revealNoMatches: 'Nothing overlapped this time. Rate a few more and try again next week.',
+    tonightTitle: '3 for tonight',
+    tonightSubtitle: 'Three ideas picked for today. A minute, no more.',
+    tonightDone: 'That is tonight done. Three new ideas tomorrow.',
+    nudgeButton: 'Thinking of you',
+    nudgeReceived: '{name} is thinking of you',
   },
   playful: {
     homeSubtitle: 'Your secret little playground. Nobody sees a thing unless you both say yes.',
@@ -78,6 +92,11 @@ export const VOICES: Record<VoiceTone, Voice> = {
     revealOpenButton: 'Show me what we both want',
     revealMatchesHeading: '{count} things you are both up for',
     revealNoMatches: 'No overlap this round. Rate a few more and try again next week.',
+    tonightTitle: 'Tonight\'s 3',
+    tonightSubtitle: 'Three little ideas for today. Quick, go on.',
+    tonightDone: 'All three done. Fresh ones tomorrow, you keen thing.',
+    nudgeButton: 'Send a wink',
+    nudgeReceived: '{name} sent you a wink',
   },
   direct: {
     homeSubtitle: 'Say what you want in bed. Your partner only sees it if they want it too.',
@@ -97,6 +116,11 @@ export const VOICES: Record<VoiceTone, Voice> = {
     revealOpenButton: 'Show our matches',
     revealMatchesHeading: 'You both want {count}',
     revealNoMatches: 'No mutual yes this time. Rate more and try again next week.',
+    tonightTitle: '3 for tonight',
+    tonightSubtitle: 'Three things to rate today. Quick and honest.',
+    tonightDone: 'Done for today. Three more tomorrow.',
+    nudgeButton: 'I want you',
+    nudgeReceived: '{name} wants you',
   },
 };
 
