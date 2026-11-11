@@ -24,7 +24,7 @@ function shouldUseSideRail(width: number, height: number): boolean {
 
 /**
  * Authenticated `(app)` navigation shell.
- * Displays the 4 tabs (Home, Library, Journal, Settings) as a bottom bar, or
+ * Displays the 4 tabs (Home, Library, Vault, Settings) as a bottom bar, or
  * a side rail on wide or short web viewports, and hides
  * onboarding, detail, pairing, reveal, and settings sub-routes via `href: null`.
  */
@@ -113,11 +113,11 @@ export default function AppLayout() {
         <Tabs.Screen
           name="journal/index"
           options={{
-            title: 'Journal',
-            tabBarAccessibilityLabel: 'Journal tab',
+            title: 'Vault',
+            tabBarAccessibilityLabel: 'Vault tab: fantasies and private journal',
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
-                name={focused ? 'journal' : 'journal-outline'}
+                name={focused ? 'lock-closed' : 'lock-closed-outline'}
                 size={size}
                 color={color}
               />
@@ -199,6 +199,12 @@ export default function AppLayout() {
         />
         <Tabs.Screen
           name="journal/[id]"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="journal/fantasies"
           options={{
             href: null,
           }}
