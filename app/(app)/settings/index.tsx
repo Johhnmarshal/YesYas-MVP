@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { TogetherSettings } from '@/components/TogetherSettings';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -650,8 +651,9 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={[styles.switchSubtitle, { color: colors.textMuted }]}>
                     A short, discreet email to {email ?? 'your account address'} when
-                    your partner taps ready or a reveal is waiting. It never says
-                    what either of you rated.
+                    your partner taps ready, a reveal is waiting, they nudge you or
+                    they leave you a card. It never says what either of you rated
+                    or wrote.
                   </Text>
                 </View>
                 <Switch
@@ -664,6 +666,17 @@ export default function SettingsScreen() {
                 />
               </Pressable>
             </View>
+
+            {userId && profile ? (
+              <TogetherSettings
+                userId={userId}
+                initial={{
+                  share_presence: profile.share_presence ?? false,
+                  share_heat: profile.share_heat ?? false,
+                  avatar: profile.avatar ?? null,
+                }}
+              />
+            ) : null}
 
             {/* Device Security & Biometric Lock */}
             <View

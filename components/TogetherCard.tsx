@@ -3,7 +3,9 @@ import { type Href, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { usePresence } from '@/components/PresenceProvider';
 import { useVoice } from '@/components/VoiceProvider';
+import { heatLabel } from '@/lib/presence-state';
 import { friendlyError } from '@/lib/errors';
 import { fetchFantasyCards } from '@/lib/fantasies';
 import { hapticMedium } from '@/lib/haptics';
@@ -48,6 +50,7 @@ function untilText(ms: number): string {
 export function TogetherCard({ pairingId, userId, partnerName, active, refreshKey }: TogetherCardProps) {
   const colors = useThemeColors();
   const { voice } = useVoice();
+  const { partner, partnerWhere, live } = usePresence();
   const [progress, setProgress] = useState<{ together: number; total: number } | null>(null);
   const [nudges, setNudges] = useState<NudgeRow[]>([]);
   const [busy, setBusy] = useState(false);
@@ -100,8 +103,50 @@ export function TogetherCard({ pairingId, userId, partnerName, active, refreshKe
 
   const pct = progress ? progressPercent(progress.together, progress.total) : 0;
 
+  const partnerHeat = heatLabel(partner?.heat ?? null);
+  const presenceLine = live
+    ? partnerWhere === 'library'
+      ? 'Here now, in the library'
+      : partnerWhere === 'app'
+        ? 'Here now'
+        : 'Not in the app right now'
+    : null;
+  const showPartnerRow = !!partner?.avatar || !!presenceLine || !!partnerHeat;
+
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {showPartnerRow ? (
+        <View
+          style={styles.partnerRow}
+          accessible
+          accessibilityLabel={[partnerName, presenceLine, partnerHeat ? `heat limit ${partnerHeat}` : null]
+            .filter(Boolean)
+            .join(', ')}
+        >
+          <View style={[styles.avatar, { backgroundColor: colors.accentWarmSubtle }]}>
+            <Text style={[styles.avatarText, { color: colors.accentWarm }]}>
+              {partner?.avatar ?? partnerName.charAt(0).toUpperCase()}
+            </Text>
+            {partnerWhere ? (
+              <View style={[styles.dot, { backgroundColor: colors.success, borderColor: colors.surface }]} />
+            ) : null}
+          </View>
+          <View style={styles.grow}>
+            <Text style={[styles.label, { color: colors.primary }]}>{partnerName}</Text>
+            {presenceLine ? (
+              <Text style={[styles.value, { color: partnerWhere ? colors.success : colors.secondary }]}>
+                {presenceLine}
+              </Text>
+            ) : null}
+          </View>
+          {partnerHeat ? (
+            <View style={[styles.heatPill, { borderColor: colors.border, backgroundColor: colors.bg }]}>
+              <Text style={[styles.value, { color: colors.secondary }]}>Heat: {partnerHeat}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {received ? (
         <View style={[styles.received, { backgroundColor: colors.accentWarmSubtle }]}>
           <Ionicons name="heart" size={18} color={colors.accentWarm} />
@@ -210,6 +255,11 @@ const styles = StyleSheet.create({
   },
   receivedText: { ...TYPOGRAPHY.h3, flexShrink: 1 },
   grow: { flex: 1 },
+  partnerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+  avatar: { width: 44, height: 44, borderRadius: RADII.pill, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 22, lineHeight: 28 },
+  dot: { position: 'absolute', right: 0, bottom: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
+  heatPill: { borderWidth: 1, borderRadius: RADII.pill, paddingHorizontal: 10, paddingVertical: 4 },
   progress: { gap: 6 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   label: { ...TYPOGRAPHY.h3 },
