@@ -7,7 +7,7 @@
 -- If this test ever fails, halt the release.
 
 begin;
-select plan(69);
+select plan(92);
 
 -- ---------- fixtures ----------
 -- Create four auth users directly in auth.users. The on_auth_user_created
@@ -1118,6 +1118,224 @@ select is(
   1,
   'the same nudge is not queued twice within 12 hours'
 );
+
+-- ---------- nudges and shared progress (20261111000001) ----------
+
+-- 70. A can send B a "thinking of you" nudge.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  'a partner can send a thinking-of-you nudge'
+);
+
+-- 71. A second one inside six hours is refused.
+select throws_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  'P0004',
+  null,
+  'nudges are limited to one every six hours'
+);
+
+-- 72. Nobody writes nudge rows directly.
+select throws_ok(
+  $$insert into public.partner_nudges (pairing_id, sender_id, recipient_id)
+    values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')$$,
+  '42501',
+  null,
+  'clients cannot insert nudges directly'
+);
+
+-- 73. Shared progress counts items you have both rated, and nothing else.
+select ok(
+  (select p.explored_together > 0 and p.explored_together <= p.total
+     from public.get_shared_progress('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) p),
+  'shared progress returns a together count within the visible total'
+);
+
+-- 74. B sees the nudge A sent.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select is(
+  (select count(*)::int from public.partner_nudges
+    where pairing_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  1,
+  'the recipient can see a nudge sent to them'
+);
+
+-- 75. Someone outside the pairing can neither nudge into it...
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+select throws_ok(
+  $$select public.send_nudge('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  '42501',
+  null,
+  'an outsider cannot nudge into a pairing'
+);
+
+-- 76. ...nor read its progress.
+select throws_ok(
+  $$select * from public.get_shared_progress('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)$$,
+  '42501',
+  null,
+  'an outsider cannot read a pairing''s shared progress'
+);
+reset role;
+
+-- 77. The nudge queued one email for B.
+select is(
+  (select count(*)::int from public.notification_outbox
+    where recipient_id = '22222222-2222-2222-2222-222222222222'
+      and kind = 'nudge'),
+  1,
+  'a nudge queues one email for the partner'
+);
+
+-- ---------- Fantasy Vault (20261112000001) ----------
+
+-- 78. A can send B a fantasy card.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(
+  $$select set_config('yesyas.card_low', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A slow dance in the kitchen')::text, true)$$,
+  'a partner can send a fantasy card'
+);
+select set_config('yesyas.card_yes', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A weekend away, phones off')::text, true);
+select set_config('yesyas.card_report', public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'Something B will report')::text, true);
+
+-- 79. Three a day.
+select throws_ok(
+  $$select public.send_fantasy_card('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'A fourth')$$,
+  'P0004',
+  null,
+  'fantasy cards are limited to three a day'
+);
+
+-- 80. Cards are never readable directly, not even by their author.
+select throws_ok(
+  $$select count(*) from public.fantasy_cards$$,
+  '42501',
+  null,
+  'fantasy_cards cannot be read directly'
+);
+
+-- 81. B answers one low and one yes, and reports the third.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select public.answer_fantasy_card(current_setting('yesyas.card_low')::uuid, 2::smallint);
+select public.answer_fantasy_card(current_setting('yesyas.card_yes')::uuid, 5::smallint);
+select public.report_fantasy_card(current_setting('yesyas.card_report')::uuid, 'It feels like pressure');
+select is(
+  (select count(*)::int from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) where direction = 'received'),
+  2,
+  'a reported card is hidden from the person who reported it'
+);
+
+-- 82. The author cannot answer their own card.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select throws_ok(
+  format('select public.answer_fantasy_card(%L::uuid, 5::smallint)', current_setting('yesyas.card_low')),
+  '42501',
+  null,
+  'the author cannot answer their own card'
+);
+
+-- 83. The author learns a yes, and nothing about a lower answer or a report.
+select results_eq(
+  $$select body, my_response, is_yes from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) order by body$$,
+  $$values ('A slow dance in the kitchen'::text, null::smallint, false),
+           ('A weekend away, phones off'::text, null::smallint, true),
+           ('Something B will report'::text, null::smallint, false)$$,
+  'the author sees only whether it was a yes'
+);
+
+-- 84. Withdrawing a reported card looks like any withdrawal, but it is kept.
+select public.withdraw_fantasy_card(current_setting('yesyas.card_report')::uuid);
+select is(
+  (select count(*)::int from public.list_fantasy_cards('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid)),
+  2,
+  'a withdrawn card leaves the author''s list'
+);
+
+-- 85. Private fantasies are the owner's alone.
+insert into public.fantasies (body) values ('ciphertext only');
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select is(
+  (select count(*)::int from public.fantasies),
+  0,
+  'a partner cannot read your private fantasies'
+);
+reset role;
+
+-- 86. The reported card is kept for review.
+select is(
+  (select count(*)::int from public.fantasy_cards
+    where id = current_setting('yesyas.card_report')::uuid
+      and reported_at is not null and withdrawn_at is not null),
+  1,
+  'a reported card survives withdrawal for review'
+);
+
+-- ---------- presence, opt-in (20261113000001) ----------
+
+-- 87. A partner's heat limit is hidden until they choose to share it.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is(
+  (select heat from public.get_partner_profile('22222222-2222-2222-2222-222222222222'::uuid)),
+  null,
+  'a partner''s heat limit is not shared by default'
+);
+
+-- 88. Presence needs both partners: A alone is refused.
+update public.profiles set share_presence = true where id = '11111111-1111-1111-1111-111111111111';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  false,
+  'presence is refused until both partners opt in'
+);
+
+-- 89. Once B opts in too (and shares heat), both work.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+update public.profiles set share_presence = true, share_heat = true where id = '22222222-2222-2222-2222-222222222222';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  true,
+  'presence is allowed once both partners opt in'
+);
+
+-- 90. A now sees B's heat limit.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select isnt(
+  (select heat from public.get_partner_profile('22222222-2222-2222-2222-222222222222'::uuid)),
+  null,
+  'a shared heat limit is visible to the partner'
+);
+
+-- 91. Someone outside the pairing cannot join its presence channel...
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+update public.profiles set share_presence = true where id = '33333333-3333-3333-3333-333333333333';
+select is(
+  public.can_use_pairing_presence('pairing:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  false,
+  'an outsider cannot use a pairing''s presence channel'
+);
+
+-- 92. ...or read anything from a non-partner's profile.
+select is(
+  (select count(*)::int from public.get_partner_profile('11111111-1111-1111-1111-111111111111'::uuid)),
+  0,
+  'get_partner_profile returns nothing for someone you are not paired with'
+);
+reset role;
 
 select * from finish();
 rollback;

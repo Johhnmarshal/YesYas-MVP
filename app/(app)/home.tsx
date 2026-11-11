@@ -18,8 +18,12 @@ import {
   isRevealContentExpired,
 } from '@/lib/reveal-state';
 import { PairingManageModal } from '@/components/PairingManageModal';
+import { TogetherCard } from '@/components/TogetherCard';
+import { TonightPack } from '@/components/TonightPack';
+import { choosePack, packDateKey } from '@/lib/packs';
 import type { DesireTier } from '@/lib/database.types';
 import {
+  type DesireLibraryItem,
   TIER_ORDER,
   fetchLibraryItems,
   fetchUserDesires,
@@ -80,6 +84,9 @@ export default function HomeScreen() {
   const [allowedItemsCount, setAllowedItemsCount] = useState<number>(0);
   const [ratedInTierCount, setRatedInTierCount] = useState<number>(0);
   const [totalRatedCount, setTotalRatedCount] = useState<number>(0);
+  const [packItems, setPackItems] = useState<DesireLibraryItem[]>([]);
+  const [packRatings, setPackRatings] = useState<Record<string, number>>({});
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   // The two reveal windows are time-based, so the summary line has to re-derive
   // without waiting for a refetch. 15s matches the reveal screen's cadence;
@@ -177,6 +184,32 @@ export default function HomeScreen() {
       setRatedInTierCount(ratedAllowed.length);
       setTotalRatedCount(ratedItemMap.size);
       setReveal(currentReveal);
+
+      // Tonight's pack ignores ratings given today, so the three stay put
+      // (showing your stars) until midnight instead of being replaced as you
+      // rate them.
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const ratedBeforeToday = new Set<string>();
+      const ratedToday: Record<string, number> = {};
+      for (const row of [...soloDesires, ...pairedDesires]) {
+        if (Date.parse(row.created_at) < startOfToday.getTime()) {
+          ratedBeforeToday.add(row.library_item_id);
+        } else {
+          ratedToday[row.library_item_id] = row.rating;
+        }
+      }
+      for (const id of ratedBeforeToday) delete ratedToday[id];
+      setPackItems(
+        choosePack(
+          allowedItems,
+          ratedBeforeToday,
+          activeOrPausedPairingId ?? user.id,
+          packDateKey(),
+        ),
+      );
+      setPackRatings(ratedToday);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       setErrorMessage(
         friendlyError(err, 'Could not load your Today dashboard.'),
@@ -824,6 +857,24 @@ export default function HomeScreen() {
                 </View>
               </View>
             )}
+
+            {isPairedActiveOrPaused && pairing ? (
+              <TogetherCard
+                pairingId={pairing.id}
+                userId={userId}
+                partnerName={`${partnerName.charAt(0).toUpperCase()}${partnerName.slice(1)}`}
+                active={pairing.status === 'active'}
+                refreshKey={refreshKey}
+              />
+            ) : null}
+
+            <TonightPack
+              userId={userId}
+              pairingId={isPairedActiveOrPaused && pairing ? pairing.id : null}
+              items={packItems}
+              ratings={packRatings}
+              onRated={() => void loadDashboard(false)}
+            />
 
             {/* 2. Progress Summary Card */}
             <View

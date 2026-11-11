@@ -26,6 +26,7 @@ import {
 } from '@/lib/journal';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { RecoveryCodeModal } from '@/components/RecoveryCodeModal';
+import { VaultSwitch } from '@/components/VaultSwitch';
 import { entryAuthor, groupJournalThreads } from '@/lib/journal-threads';
 import { showMessage } from '@/lib/alert';
 import { hasRecoveryBackup } from '@/lib/key-recovery';
@@ -302,11 +303,12 @@ export default function JournalScreen() {
         {/* Top Header with Encryption Badge */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerTitleRow}>
-            <Ionicons name="journal-outline" size={22} color={colors.primary} />
+            <Ionicons name="lock-closed-outline" size={22} color={colors.primary} />
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              Solo Journal
+              Vault
             </Text>
           </View>
+          <VaultSwitch current="journal" />
           <View
             style={[
               styles.lockBadge,
@@ -1100,6 +1102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
+    gap: SPACING.xs,
   },
   headerTitleRow: {
     flexDirection: 'row',

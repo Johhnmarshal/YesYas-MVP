@@ -35,6 +35,15 @@ import { LEGACY_COACH_PREFIX, entryAuthor, groupJournalThreads } from '../lib/jo
 // @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
 import { VOICES, fillVoice, voiceFor } from '../lib/voice.ts';
 
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { AVATARS, heatLabel, partnerPresenceFrom, presenceTopic, presenceWhere } from '../lib/presence-state.ts';
+
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { FANTASY_CARD_MAX_LENGTH, FANTASY_CONTENT_RULES, cardProblem, sendDisclosure, sentCardStatus } from '../lib/fantasy-rules.ts';
+
+// @ts-expect-error TS5097: Node 24 --experimental-strip-types requires explicit .ts extension
+import { NUDGE_COOLDOWN_MS, choosePack, nudgeAvailableAt, packDateKey, progressPercent } from '../lib/packs.ts';
+
 async function main() {
   const userA = '11111111-1111-4111-8111-111111111111';
   const userB = '22222222-2222-4222-8222-222222222222';
@@ -1075,6 +1084,62 @@ async function main() {
     assert.equal(fillVoice('You both want {count}', { count: 1 }), 'You both want 1 thing');
     assert.equal(fillVoice('{count} things you are both up for', { count: 3 }), '3 things you are both up for');
     assert.equal(fillVoice('{name} is ready', { name: 'Sam' }), 'Sam is ready');
+  }
+
+  // ---------- presence ----------
+  {
+    assert.equal(presenceTopic('abc'), 'pairing:abc');
+    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261113000001_presence.sql'), 'utf8');
+    assert.ok(migration.includes("'pairing:' || p.id::text"), 'client topic and server policy agree');
+    assert.equal(presenceWhere('/library'), 'library');
+    assert.equal(presenceWhere('/library/abc'), 'library');
+    assert.equal(presenceWhere('/librarything'), 'app');
+    assert.equal(presenceWhere('/home'), 'app');
+    const st = { k1: [{ user_id: 'me', where: 'app' }], k2: [{ user_id: 'them', where: 'app' }], k3: [{ user_id: 'them', where: 'library' }] };
+    assert.equal(partnerPresenceFrom(st, 'them'), 'library');
+    assert.equal(partnerPresenceFrom({ k1: [{ user_id: 'them', where: 'app' }] }, 'them'), 'app');
+    assert.equal(partnerPresenceFrom({ k1: [{ user_id: 'me', where: 'library' }] }, 'them'), null);
+    assert.equal(heatLabel('explicit'), 'Explicit');
+    assert.equal(heatLabel(null), null);
+    for (const a of AVATARS) assert.ok(a.length >= 1 && a.length <= 16, 'avatar fits the column check');
+  }
+
+  // ---------- fantasy vault ----------
+  {
+    assert.equal(cardProblem('   '), 'Write something first.');
+    assert.equal(cardProblem('x'.repeat(FANTASY_CARD_MAX_LENGTH)), null);
+    assert.ok(cardProblem('x'.repeat(FANTASY_CARD_MAX_LENGTH + 1)));
+    const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261112000001_fantasy_vault.sql'), 'utf8');
+    assert.ok(migration.includes(`between 1 and ${FANTASY_CARD_MAX_LENGTH}`), 'client and server card limits agree');
+    const d = sendDisclosure('Sam').join(' ');
+    assert.ok(/came from you/.test(d), 'the author is told the partner knows who wrote it');
+    assert.ok(/not end-to-end encrypted/.test(d), 'the author is told shared cards are not end-to-end encrypted');
+    assert.ok(!/declin|report|not for|said no/i.test(sentCardStatus(false, 'Sam')), 'a non-yes reveals nothing about the answer');
+    assert.equal(sentCardStatus(true, 'Sam'), 'Sam said yes');
+    for (const line of [...FANTASY_CONTENT_RULES, ...sendDisclosure('Sam')]) {
+      assert.ok(!/[—–]|\s-\s|--/.test(line), `fantasy copy uses a dash: ${line}`);
+    }
+  }
+
+  // ---------- nightly packs ----------
+  {
+    const items = Array.from({ length: 40 }, (_, i) => ({ id: `item-${String(i).padStart(2, '0')}` }));
+    const none = new Set<string>();
+    const a = choosePack(items, none, 'pair-1', '2026-11-11');
+    assert.equal(a.length, 3, 'a pack has three items');
+    assert.deepEqual(a, choosePack([...items].reverse(), none, 'pair-1', '2026-11-11'), 'the pack does not depend on server order');
+    assert.notDeepEqual(a.map((x) => x.id), choosePack(items, none, 'pair-1', '2026-11-12').map((x) => x.id), 'a new day brings a new pack');
+    const rated = new Set([a[0].id]);
+    const b = choosePack(items, rated, 'pair-1', '2026-11-11');
+    assert.ok(!b.some((x) => rated.has(x.id)), 'rated items never appear');
+    assert.deepEqual(b.slice(0, 2), a.slice(1), 'rating one shifts the rest along rather than reshuffling');
+    assert.equal(choosePack(items, new Set(items.map((x) => x.id)), 'pair-1', '2026-11-11').length, 0);
+    assert.equal(packDateKey(new Date(2026, 0, 5, 23, 59)), '2026-01-05');
+    assert.equal(progressPercent(0, 0), 0);
+    assert.equal(progressPercent(1, 3), 33);
+    assert.equal(progressPercent(5, 3), 100);
+    assert.equal(nudgeAvailableAt(null), 0);
+    assert.equal(nudgeAvailableAt('2026-11-11T00:00:00.000Z'), Date.parse('2026-11-11T00:00:00.000Z') + NUDGE_COOLDOWN_MS);
   }
 
   console.log('PASS: All crypto, consent hash-chain and library-filter assertions succeeded.');

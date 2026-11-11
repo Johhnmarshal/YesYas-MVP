@@ -67,6 +67,9 @@ export interface Database {
           age_confirmed_at: string | null;
           terms_accepted_at: string | null;
           email_notifications: boolean;
+          share_presence: boolean;
+          share_heat: boolean;
+          avatar: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +82,9 @@ export interface Database {
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
           email_notifications?: boolean;
+          share_presence?: boolean;
+          share_heat?: boolean;
+          avatar?: string | null;
           created_at?: string;
         };
         Update: {
@@ -91,6 +97,9 @@ export interface Database {
           age_confirmed_at?: string | null;
           terms_accepted_at?: string | null;
           email_notifications?: boolean;
+          share_presence?: boolean;
+          share_heat?: boolean;
+          avatar?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -444,6 +453,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      fantasies: {
+        Row: {
+          id: string;
+          user_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          body?: string;
+        };
+        Relationships: [];
+      };
+      partner_nudges: {
+        Row: {
+          id: string;
+          pairing_id: string;
+          sender_id: string;
+          recipient_id: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: { [key: string]: never };
     Functions: {
@@ -489,6 +528,53 @@ export interface Database {
       withdraw_reveal: {
         Args: { p_pairing_id: string };
         Returns: undefined;
+      };
+      send_nudge: {
+        Args: { p_pairing_id: string };
+        Returns: string;
+      };
+      get_partner_profile: {
+        Args: { p_partner_id: string };
+        Returns: {
+          display_name: string | null;
+          avatar: string | null;
+          heat: string | null;
+          shares_presence: boolean;
+        }[];
+      };
+      send_fantasy_card: {
+        Args: { p_pairing_id: string; p_body: string };
+        Returns: string;
+      };
+      list_fantasy_cards: {
+        Args: { p_pairing_id: string };
+        Returns: {
+          id: string;
+          direction: string;
+          body: string;
+          created_at: string;
+          my_response: number | null;
+          is_yes: boolean | null;
+        }[];
+      };
+      answer_fantasy_card: {
+        Args: { p_card_id: string; p_rating: number };
+        Returns: undefined;
+      };
+      report_fantasy_card: {
+        Args: { p_card_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      withdraw_fantasy_card: {
+        Args: { p_card_id: string };
+        Returns: undefined;
+      };
+      get_shared_progress: {
+        Args: { p_pairing_id: string };
+        Returns: {
+          explored_together: number;
+          total: number;
+        }[];
       };
       request_therapist_export: {
         Args: { p_pairing_id: string };
